@@ -47,7 +47,7 @@ pub fn Document::set_properties(
   )
   {
     ..self,
-    children: change_at(self.children, path[:], fn(n) {
+    children: change_at(self.children, path[:], n => {
       match n {
         Layer(_, i) => Layer(p, i)
         Group(_, s, c) => Group(p, s, c)
@@ -64,7 +64,7 @@ pub fn Document::replace_image(
 ) -> Document raise {
   {
     ..self,
-    children: change_at(self.children, path[:], fn(n) {
+    children: change_at(self.children, path[:], n => {
       match n {
         Layer(p, _) => Layer(p, image)
         Group(_, _, _) => raise InvalidDocument("Expected raster layer")
