@@ -1,14 +1,13 @@
 <!doctype html>
-<html lang="zh-CN" data-design="studio">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MoonOpenRaster — 海报图层工作台</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=studio-20261117-2">
 </head>
 <body>
 <header class="app-header">
- <div class="brand"><span class="brand-mark" aria-hidden="true">M</span><div><strong>MoonOpenRaster</strong><span class="brand-subtitle">分层图像工作台</span></div></div>
- <nav class="design-switch" aria-label="设计方案"><button type="button" data-design="studio">专业工作室</button><button type="button" data-design="gallery">作品画廊</button><button type="button" data-design="clarity">清晰操作台</button></nav>
+ <div class="brand"><div><strong>MoonOpenRaster</strong><span class="brand-subtitle">分层图像工作台</span></div></div>
  <div class="header-actions"><button type="button" id="open">打开 ORA</button><button type="button" id="png">导出 PNG</button><button type="button" id="save" class="primary">保存 ORA</button></div>
  <input type="file" id="file" name="document" accept=".ora" hidden>
 </header>
@@ -37,6 +36,13 @@
   <div class="inspector-note"><strong>如何看懂图层？</strong><p>选中“中文主标题”，蓝色框标出该层范围。调整 X 值，标题会整体移动。</p></div>
  </aside>
 </main>
-<script type="module" src="app.js"></script>
+<script>
+window.addEventListener('error', function (event) {
+  if (event.target && event.target.tagName === 'IMG') return;
+  const loading = document.getElementById('loading');
+  if (loading) { loading.hidden = false; loading.textContent = '界面资源未能载入，请重新启动服务并刷新页面。'; }
+}, true);
+</script>
+<script type="module" src="app.js?v=studio-20261117-2"></script>
 </body>
 </html>

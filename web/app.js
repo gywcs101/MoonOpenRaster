@@ -1,4 +1,4 @@
-import { request } from './core.js';
+import { request } from './core.js?v=studio-20261117-2';
 
 const $ = id => document.getElementById(id);
 const modes = {
@@ -55,23 +55,6 @@ function findNodes() {
 }
 
 function samePath(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
-
-function setDesign(design) {
-  const allowed = ['studio', 'gallery', 'clarity'];
-  if (!allowed.includes(design)) design = 'studio';
-  document.documentElement.dataset.design = design;
-  for (const button of document.querySelectorAll('button[data-design]')) {
-    button.setAttribute('aria-pressed', String(button.dataset.design === design));
-  }
-  const url = new URL(location.href);
-  url.searchParams.set('design', design);
-  history.replaceState(null, '', url);
-  requestAnimationFrame(fitCanvas);
-}
-for (const button of document.querySelectorAll('button[data-design]')) {
-  button.onclick = () => setDesign(button.dataset.design);
-}
-setDesign(new URL(location.href).searchParams.get('design') || 'studio');
 
 for (const [value, label] of Object.entries(modes)) {
   const option = document.createElement('option');

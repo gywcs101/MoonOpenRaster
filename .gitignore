@@ -4,3 +4,4 @@ node_modules/
 *.ora.tmp
 web/core.mjs
 web/core.js
+__pycache__/

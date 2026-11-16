@@ -24,6 +24,7 @@ jobs:
       - run: python scripts/check_krita.py
       - run: python scripts/build_web.py
       - run: node scripts/check_bridge.mjs
+      - run: python scripts/check_web_server.py
       - run: python scripts/check_package.py
       - run: moon run examples/basic --target native
       - run: moon fmt --check

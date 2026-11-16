@@ -12,11 +12,12 @@ Use MoonBit 0.10.20 or newer, Node.js and Python 3.
 moon update
 moon check --target all --deny-warn
 moon test --target js --deny-warn
-python scripts/build_web.py
-python -m http.server 8765 --bind 127.0.0.1 --directory web
+python scripts/serve_web.py
 ```
 
 For a self-contained distribution with compiled MoonBit code and license notices, run `python scripts/package_web.py` and use `_build/publish/MoonOpenRaster-web.zip`.
+
+The launcher builds the JavaScript core and serves from the correct web directory with browser caching disabled. Stop older servers before starting it.
 
 Open http://127.0.0.1:8765 in a browser. The workbench loads a generated multi-layer sample. Open an ORA document, select a layer, edit its attributes, apply changes and download PNG or ORA. Processing happens locally. The browser import limit is 32 MiB.
 

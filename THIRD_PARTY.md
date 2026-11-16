@@ -19,4 +19,4 @@ Copies of the resolved dependencies' licenses and available NOTICE files are dis
 
 The new workbench sample uses NASA/JPL's published The Grand Tour poster unchanged as a single image layer. Chinese title, subtitle, rule and source credit are newly drawn independent layers. See LICENSES/NASA-JPL-image-NOTICE.txt for the original page and image-use policy. The NASA/JPL image retains its source terms.
 
-Inter (rsms/inter), Instrument Serif and Work Sans (Google Fonts) are bundled locally. Their SIL Open Font License notices are included under LICENSES/font-*.txt. No remote font service is needed at runtime.
+Inter (rsms/inter) and Instrument Serif (Google Fonts) are bundled locally. Their SIL Open Font License notices are included under LICENSES/font-*.txt. No remote font service is needed at runtime.
