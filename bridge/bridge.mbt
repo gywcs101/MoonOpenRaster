@@ -86,14 +86,14 @@ fn sample() -> @ora.Document raise {
     w,
     h,
     [
-      Group(@ora.Properties::new("Light study"), Isolate, [
+      Group(@ora.Properties::new("光影叠层示例"), Isolate, [
         Layer(
-          @ora.Properties::new("Amber", x=95, y=65),
+          @ora.Properties::new("金色圆", x=95, y=65),
           @ora.Image::new(160, 160, shape),
         ),
         Layer(
           @ora.Properties::new(
-            "Echo",
+            "半透明圆",
             x=210,
             y=140,
             opacity=0.6,
@@ -102,9 +102,12 @@ fn sample() -> @ora.Document raise {
           @ora.Image::new(160, 160, shape),
         ),
       ]),
-      Layer(@ora.Properties::new("Slate"), @ora.Image::new(w, h, background)),
+      Layer(
+        @ora.Properties::new("渐变背景"),
+        @ora.Image::new(w, h, background),
+      ),
     ],
-    name="Light study",
+    name="光影叠层示例",
   )
 }
 

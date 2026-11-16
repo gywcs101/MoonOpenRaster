@@ -3,3 +3,6 @@
 [hidden]{display:none!important}
 
 .fold{font-size:10px;padding:3px 7px;margin:0 8px 6px;color:#9da6b3;background:transparent;border-color:#353b43}
+
+.usage-note{color:#b8c0ca;font-size:12px;line-height:1.7;margin-top:24px}.usage-note summary{cursor:pointer;color:#d7b785}.usage-note p{margin:12px 0}.pair label{line-height:1.5}
+@media(max-width:560px){main{grid-template-columns:minmax(0,1fr);height:auto}main>aside:first-child{max-height:280px;border-bottom:1px solid #353940}.stage{min-height:420px}.toolbar{flex-wrap:wrap;padding:16px}.canvas-wrap{min-height:280px}footer{gap:12px;padding:14px 16px}.properties{grid-column:auto}nav{gap:6px}header{padding:14px}}
