@@ -2,6 +2,8 @@
 package "gywcs101/MoonOpenRaster"
 
 // Values
+pub fn composite_pixel(Array[Double], Array[Double], String) -> Array[Double] raise OraError
+
 pub fn version() -> String
 
 // Errors
