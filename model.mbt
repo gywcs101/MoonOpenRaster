@@ -107,7 +107,7 @@ pub fn Document::new(
     width.to_int64() * height.to_int64() > 16777216 {
     raise InvalidDocument("Canvas dimensions exceed limits")
   }
-  { width, height, name, children: children.copy(), }
+  { width, height, name, children: children.map(copy_node), }
 }
 
 ///|
@@ -127,5 +127,5 @@ pub fn Document::name(self : Document) -> String {
 
 ///|
 pub fn Document::children(self : Document) -> Array[Node] {
-  self.children.copy()
+  self.children.map(copy_node)
 }

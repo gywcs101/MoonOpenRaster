@@ -30,6 +30,9 @@ pub fn Document::height(Self) -> Int32
 pub fn Document::name(Self) -> String
 pub fn Document::new(Int32, Int32, Array[Node], name? : String) -> Self raise OraError
 pub fn Document::render(Self) -> Image raise OraError
+pub fn Document::replace_children(Self, Array[Node]) -> Self raise OraError
+pub fn Document::replace_image(Self, Array[Int32], Image) -> Self raise
+pub fn Document::set_properties(Self, Array[Int32], Properties) -> Self raise
 pub fn Document::width(Self) -> Int32
 pub fn Document::write(Self) -> Bytes raise
 
