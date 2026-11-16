@@ -1,4 +1,15 @@
 ///|
+fn integer(value : Double) -> Int32 raise @ora.OraError {
+  if value.is_nan() ||
+    value < -1000000.0 ||
+    value > 1000000.0 ||
+    value.to_int().to_double() != value {
+    raise @ora.InvalidDocument("Expected an integer coordinate or layer index")
+  }
+  value.to_int()
+}
+
+///|
 fn run() -> Unit raise {
   let raw = @env.args()
   let offset = if raw.length() > 2 &&
@@ -40,7 +51,7 @@ fn run() -> Unit raise {
               { "path": Array(values), .. } =>
                 values.map(fn(v) raise {
                   match v {
-                    Number(n, ..) => n.to_int()
+                    Number(n, ..) => integer(n)
                     _ => raise @ora.InvalidDocument("Path must contain numbers")
                   }
                 })

@@ -6,6 +6,8 @@ assert.equal(sample.ok,true);
 const edit=run({action:'edit',path:[0,0],name:'中文图层',x:-10,y:20,opacity:.5,visible:false,op:'svg:multiply'});
 assert.equal(edit.ok,true);
 assert.equal(edit.tree[0].children[0].name,'中文图层');
+const invalid=run({action:'edit',path:[0,0],name:'bad',x:1.5,y:0,opacity:1,visible:true,op:'svg:src-over'});
+assert.equal(invalid.ok,false);
 const saved=run({action:'export'});
 assert.equal(saved.ok,true);
 const loaded=run({action:'open',data:saved.data});

@@ -1,4 +1,15 @@
 ///|
+fn integer(value : Double) -> Int32 raise @ora.OraError {
+  if value.is_nan() ||
+    value < -1000000.0 ||
+    value > 1000000.0 ||
+    value.to_int().to_double() != value {
+    raise @ora.InvalidDocument("Expected an integer coordinate or layer index")
+  }
+  value.to_int()
+}
+
+///|
 let original_source : Ref[Bytes?] = Ref(None)
 
 ///|
@@ -175,7 +186,7 @@ pub fn request(input : String) -> String {
           } => {
             let indices = path.map(v => {
               match v {
-                Number(n, ..) => n.to_int()
+                Number(n, ..) => integer(n)
                 _ => raise @ora.InvalidDocument("Invalid path")
               }
             })
@@ -183,8 +194,8 @@ pub fn request(input : String) -> String {
               indices,
               @ora.Properties::new(
                 name,
-                x=x.to_int(),
-                y=y.to_int(),
+                x=integer(x),
+                y=integer(y),
                 opacity~,
                 visible=match visible {
                   True => true
