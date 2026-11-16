@@ -30,7 +30,7 @@ fn run() -> Unit raise {
   } else {
     0
   }
-  let args = raw[offset:].to_array()
+  let args = raw[offset:].to_owned()
   if args.length() < 3 {
     raise @ora.InvalidDocument(
       "Usage: ora inspect INPUT | render INPUT OUTPUT | edit INPUT OUTPUT EDITS.json",

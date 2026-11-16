@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {request} from '../web/core.js';
+const run=q=>JSON.parse(request(JSON.stringify(q)));
+const sample=run({action:'sample'});
+assert.equal(sample.ok,true);
+const edit=run({action:'edit',path:[0,0],name:'中文图层',x:-10,y:20,opacity:.5,visible:false,op:'svg:multiply'});
+assert.equal(edit.ok,true);
+assert.equal(edit.tree[0].children[0].name,'中文图层');
+const saved=run({action:'export'});
+assert.equal(saved.ok,true);
+const loaded=run({action:'open',data:saved.data});
+assert.equal(loaded.ok,true);
+assert.equal(loaded.png,edit.png);
+assert.equal(loaded.tree[0].children[0].visible,false);
+const bad=run({action:'open',data:'AAAA'});
+assert.equal(bad.ok,false);
+assert.equal(run({action:'export'}).ok,true);
+console.log('PASS: browser bridge edits, Chinese names, ORA reimport pixels and recovery after failed import');
