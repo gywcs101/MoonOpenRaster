@@ -77,3 +77,23 @@ test "nonseparable modes preserve defining luminosity and saturation" {
   assert_true((l[1] - 0.584).abs() < 0.000000001)
   assert_true((l[2] - 0.784).abs() < 0.000000001)
 }
+
+///|
+test "atop and additive operations have independent fractional-alpha vectors" {
+  assert_eq(
+    composite_pixel([1.0, 0.0, 0.0, 0.5], [0.0, 1.0, 0.0, 0.25], "svg:src-atop"),
+    [0.75, 0.25, 0.0, 0.5],
+  )
+  assert_eq(
+    composite_pixel([1.0, 0.0, 0.0, 0.5], [0.0, 1.0, 0.0, 0.25], "svg:dst-atop"),
+    [0.5, 0.5, 0.0, 0.25],
+  )
+  let plus = composite_pixel(
+    [1.0, 0.0, 0.0, 0.5],
+    [0.0, 1.0, 0.0, 0.25],
+    "svg:plus",
+  )
+  assert_true((plus[0] - 2.0 / 3.0).abs() < 0.000000001)
+  assert_true((plus[1] - 1.0 / 3.0).abs() < 0.000000001)
+  assert_eq(plus[3], 0.75)
+}
