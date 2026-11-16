@@ -117,7 +117,13 @@ fn run() -> Unit raise {
 fn main {
   run() catch {
     e => {
-      eprintln(e.to_string())
+      eprintln(
+        match e {
+          @ora.InvalidDocument(s) => "Invalid document: " + s
+          @ora.Unsupported(s) => "Unsupported feature: " + s
+          _ => e.to_string()
+        },
+      )
       @env.exit(1)
     }
   }

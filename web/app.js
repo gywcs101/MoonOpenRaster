@@ -1,4 +1,4 @@
-import {request} from './core.mjs';
+import {request} from './core.js';
 const $=id=>document.getElementById(id);
 let state,selected,original;
 const modes=['src-over','multiply','screen','overlay','darken','lighten','color-dodge','color-burn','hard-light','soft-light','difference','color','luminosity','hue','saturation','plus','dst-in','dst-out','src-atop','dst-atop'];

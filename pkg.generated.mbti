@@ -17,6 +17,7 @@ pub(all) suberror OraError {
   InvalidDocument(String)
   Unsupported(String)
 }
+pub fn OraError::message(Self) -> String
 
 // Types and methods
 pub struct Document {

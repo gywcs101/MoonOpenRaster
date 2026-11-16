@@ -129,3 +129,12 @@ pub fn Document::name(self : Document) -> String {
 pub fn Document::children(self : Document) -> Array[Node] {
   self.children.map(copy_node)
 }
+
+///|
+/// A readable diagnostic preserving the affected resource or property.
+pub fn OraError::message(self : OraError) -> String {
+  match self {
+    InvalidDocument(s) => "Invalid OpenRaster document: " + s
+    Unsupported(s) => "Unsupported OpenRaster feature: " + s
+  }
+}

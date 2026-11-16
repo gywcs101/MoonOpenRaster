@@ -162,7 +162,14 @@ pub fn request(input : String) -> String {
     }
   } catch {
     e => {
-      let result : Json = { "ok": false, "error": e.to_string() }
+      let result : Json = {
+        "ok": false,
+        "error": match e {
+          @ora.InvalidDocument(s) => "Invalid document: " + s
+          @ora.Unsupported(s) => "Unsupported feature: " + s
+          _ => e.to_string()
+        },
+      }
       result.stringify()
     }
   }
