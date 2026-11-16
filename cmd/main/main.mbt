@@ -23,7 +23,14 @@ fn describe(nodes : Array[@ora.Node], prefix : String) -> Unit {
 
 ///|
 fn run() -> Unit raise {
-  let args = @env.args()
+  let raw = @env.args()
+  let offset = if raw.length() > 2 &&
+    ["inspect", "render", "edit"].contains(raw[2]) {
+    1
+  } else {
+    0
+  }
+  let args = raw[offset:].to_array()
   if args.length() < 3 {
     raise @ora.InvalidDocument(
       "Usage: ora inspect INPUT | render INPUT OUTPUT | edit INPUT OUTPUT EDITS.json",
