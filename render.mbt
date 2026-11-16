@@ -59,7 +59,7 @@ fn render_nodes(
               let before = canvas.pixels.copy()
               render_nodes(children, canvas, ox + p.x, oy + p.y, depth + 1)
               if p.opacity < 1.0 {
-                for j in (0..<canvas.width) * canvas.height {
+                for j in 0..<(canvas.width * canvas.height) {
                   let b = j * 4
                   let a0 = before[b + 3].to_int().to_double() / 255.0
                   let a1 = canvas.pixels[b + 3].to_int().to_double() / 255.0

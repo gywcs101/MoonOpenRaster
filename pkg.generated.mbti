@@ -23,6 +23,7 @@ pub fn Document::children(Self) -> Array[Node]
 pub fn Document::height(Self) -> Int32
 pub fn Document::name(Self) -> String
 pub fn Document::new(Int32, Int32, Array[Node], name? : String) -> Self raise OraError
+pub fn Document::render(Self) -> Image raise OraError
 pub fn Document::width(Self) -> Int32
 
 pub struct Image {
