@@ -2,7 +2,13 @@
 package "gywcs101/MoonOpenRaster"
 
 // Values
+pub fn archive_entries(Bytes) -> Array[(String, Bytes)] raise
+
 pub fn composite_pixel(Array[Double], Array[Double], String) -> Array[Double] raise OraError
+
+pub fn decode_png(Bytes) -> Image raise
+
+pub fn read(Bytes) -> Document raise
 
 pub fn version() -> String
 
@@ -31,6 +37,7 @@ pub struct Image {
   height : Int32
   pixels : Array[Byte]
 }
+pub fn Image::encode_png(Self) -> Bytes raise
 pub fn Image::height(Self) -> Int32
 pub fn Image::new(Int32, Int32, Array[Byte]) -> Self raise OraError
 pub fn Image::pixels(Self) -> Array[Byte]

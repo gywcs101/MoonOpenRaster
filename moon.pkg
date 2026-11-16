@@ -1,1 +1,9 @@
-
+import {
+  "moonbitstack/moonzip/zip",
+  "moonbitstack/moonimage/png",
+  "moonbitstack/moonimage/raster",
+  "moonbitstack/moonxml/xml",
+  "moonbitstack/moonxml" @dom,
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}

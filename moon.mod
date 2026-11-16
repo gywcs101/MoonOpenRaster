@@ -11,3 +11,9 @@ repository = "https://github.com/gywcs101/MoonOpenRaster"
 preferred_target = "native"
 
 description = "OpenRaster layered document editing and compositing in MoonBit"
+
+import {
+  "moonbitstack/moonimage@0.2.0",
+  "moonbitstack/moonxml@0.2.0",
+  "moonbitstack/moonzip@0.4.0",
+}
