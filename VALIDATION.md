@@ -4,7 +4,7 @@ Validated on 2026-11-16 with moonc 0.10.20 and moon 0.1.20261104.
 
 ## Completed checks
 
-- 15 JavaScript unit tests cover image ownership, analytical vectors for all 20 SVG operations, fractional-alpha Porter-Duff operations, isolated versus pass-through opacity, layer clipping, persistent edits, insertion/deletion/reorder and PNG/ORA round trips.
+- 17 JavaScript unit tests cover image ownership, analytical vectors for all 20 SVG operations, fractional-alpha Porter-Duff operations, isolated versus pass-through opacity, layer clipping, persistent edits, insertion/deletion/reorder and PNG/ORA round trips.
 - GitHub CI runs check, test and build for native, JavaScript, wasm and wasm-gc, plus a native executable consumer, formatting and generated-interface consistency. The run for commit 4817f91 passed all steps. Later commits must be assessed by their own runs.
 - Independent Python ZIP/XML and Pillow validation checks compressed archive input, exact composited pixels, extension attributes/resources, archive layout, thumbnails, overwrite protection and vector-document view mode with byte-identical original export.
 - `scripts/check_package.py` reads the exact name and version from moon.mod, packages it, checks included licenses, extracts it and runs an independent consumer in a temporary workspace.

@@ -12,7 +12,9 @@ pub fn archive_entries(data : Bytes) -> Array[(String, Bytes)] raise {
     if seen.contains(name) {
       raise InvalidDocument("Duplicate resource: " + name)
     }
-    if name.has_prefix("/") || name.contains("..") || name.contains("\\") {
+    if name.has_prefix("/") ||
+      name.split("/").any(part => part == "..") ||
+      name.contains("\\") {
       raise InvalidDocument("Unsafe archive path: " + name)
     }
     seen[name] = true
