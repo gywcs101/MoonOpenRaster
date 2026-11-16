@@ -31,6 +31,7 @@ pub fn Document::name(Self) -> String
 pub fn Document::new(Int32, Int32, Array[Node], name? : String) -> Self raise OraError
 pub fn Document::render(Self) -> Image raise OraError
 pub fn Document::width(Self) -> Int32
+pub fn Document::write(Self) -> Bytes raise
 
 pub struct Image {
   width : Int32
