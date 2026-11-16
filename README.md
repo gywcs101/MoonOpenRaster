@@ -16,6 +16,8 @@ python scripts/build_web.py
 python -m http.server 8765 --bind 127.0.0.1 --directory web
 ```
 
+For a self-contained distribution with compiled MoonBit code and license notices, run `python scripts/package_web.py` and use `_build/publish/MoonOpenRaster-web.zip`.
+
 Open http://127.0.0.1:8765 in a browser. The workbench loads a generated multi-layer sample. Open an ORA document, select a layer, edit its attributes, apply changes and download PNG or ORA. Processing happens locally. The browser import limit is 32 MiB.
 
 ## Library
