@@ -1,0 +1,9 @@
+import {
+  "gywcs101/MoonOpenRaster" @ora,
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/base64",
+}
+
+options(
+  link: { "js": { "exports": [ "request" ], "format": "esm" } },
+)
