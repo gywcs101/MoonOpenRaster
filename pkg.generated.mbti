@@ -5,8 +5,53 @@ package "gywcs101/MoonOpenRaster"
 pub fn version() -> String
 
 // Errors
+pub(all) suberror OraError {
+  InvalidDocument(String)
+  Unsupported(String)
+}
 
 // Types and methods
+pub struct Document {
+  width : Int32
+  height : Int32
+  name : String
+  children : Array[Node]
+}
+pub fn Document::children(Self) -> Array[Node]
+pub fn Document::height(Self) -> Int32
+pub fn Document::name(Self) -> String
+pub fn Document::new(Int32, Int32, Array[Node], name? : String) -> Self raise OraError
+pub fn Document::width(Self) -> Int32
+
+pub struct Image {
+  width : Int32
+  height : Int32
+  pixels : Array[Byte]
+}
+pub fn Image::height(Self) -> Int32
+pub fn Image::new(Int32, Int32, Array[Byte]) -> Self raise OraError
+pub fn Image::pixels(Self) -> Array[Byte]
+pub fn Image::width(Self) -> Int32
+
+pub(all) enum Isolation {
+  Auto
+  Isolate
+}
+
+pub(all) enum Node {
+  Layer(Properties, Image)
+  Group(Properties, Isolation, Array[Node])
+}
+
+pub struct Properties {
+  name : String
+  x : Int32
+  y : Int32
+  visible : Bool
+  opacity : Double
+  composite_op : String
+}
+pub fn Properties::new(String, x? : Int32, y? : Int32, visible? : Bool, opacity? : Double, composite_op? : String) -> Self raise OraError
 
 // Type aliases
 
