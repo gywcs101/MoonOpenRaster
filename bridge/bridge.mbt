@@ -1,4 +1,7 @@
 ///|
+let original_source : Ref[Bytes?] = Ref(None)
+
+///|
 let current : Ref[@ora.Document?] = Ref(None)
 
 ///|
@@ -102,12 +105,55 @@ pub fn request(input : String) -> String {
       { "action": "sample", .. } => {
         let d = sample()
         current.val = Some(d)
+        original_source.val = None
         snapshot(d).stringify()
       }
       { "action": "open", "data": String(s), .. } => {
-        let d = @ora.read(@base64.decode(s))
-        let response = snapshot(d)
-        current.val = Some(d)
+        let bytes = @base64.decode(s)
+        let inspected = @ora.inspect(bytes)
+        let response = try {
+          let d = @ora.read(bytes)
+          let result = snapshot(d)
+          current.val = Some(d)
+          let fields = match result {
+            Object(fields) => fields
+            _ => abort("Expected object")
+          }
+          match inspected {
+            { "png": preview, .. } => fields["original"] = preview
+            _ => ()
+          }
+          fields["editable"] = true
+          result
+        } catch {
+          e => {
+            let fields = match inspected {
+              Object(fields) => fields
+              _ => abort("Expected object")
+            }
+            fields["ok"] = true
+            fields["editable"] = false
+            fields["warning"] = match e {
+              @ora.Unsupported(s) => Json::string(s)
+              _ => Json::string(e.to_string())
+            }
+            current.val = None
+            inspected
+          }
+        }
+        original_source.val = Some(bytes)
+        response.stringify()
+      }
+      { "action": "export", .. } => {
+        let bytes = match current.val {
+          Some(d) => d.write()
+          None =>
+            match original_source.val {
+              Some(b) => b
+              None => raise @ora.InvalidDocument("Open a document first")
+            }
+        }
+        let response : Json = { "ok": true, "data": @base64.encode(bytes[:]) }
         response.stringify()
       }
       _ => {

@@ -20,6 +20,9 @@ pub fn decode_png(data : Bytes) -> Image raise {
     raise Unsupported("Only 8-bit PNG input is currently supported")
   }
   let image = @png.decode(data[:])
+  if image.metadata.icc is Some(_) {
+    raise Unsupported("ICC-profiled PNG requires color management")
+  }
   let rgba = image.convert(Rgba8).to_straight()
   Image::new(rgba.width, rgba.height, rgba.pixels.to_array())
 }

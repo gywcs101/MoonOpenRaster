@@ -1,27 +1,4 @@
 ///|
-fn describe(nodes : Array[@ora.Node], prefix : String) -> Unit {
-  for i, node in nodes {
-    let path = prefix + i.to_string()
-    match node {
-      Layer(p, image) =>
-        println(
-          path +
-          "  " +
-          p.name +
-          "  " +
-          image.width().to_string() +
-          "x" +
-          image.height().to_string(),
-        )
-      Group(p, _, children) => {
-        println(path + "  [" + p.name + "]")
-        describe(children, path + "/")
-      }
-    }
-  }
-}
-
-///|
 fn run() -> Unit raise {
   let raw = @env.args()
   let offset = if raw.length() > 2 &&
@@ -36,18 +13,12 @@ fn run() -> Unit raise {
       "Usage: ora inspect INPUT | render INPUT OUTPUT | edit INPUT OUTPUT EDITS.json",
     )
   }
-  let doc = @ora.read(@fs.read_file_to_bytes(args[2]))
+  let input = @fs.read_file_to_bytes(args[2])
   if args[1] == "inspect" {
-    println(
-      doc.name() +
-      "  " +
-      doc.width().to_string() +
-      "x" +
-      doc.height().to_string(),
-    )
-    describe(doc.children(), "")
+    println(@ora.inspect(input).stringify())
     return
   }
+  let doc = @ora.read(input)
   if args.length() < 4 {
     raise @ora.InvalidDocument("Missing output path")
   }

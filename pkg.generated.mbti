@@ -1,12 +1,18 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "gywcs101/MoonOpenRaster"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn archive_entries(Bytes) -> Array[(String, Bytes)] raise
 
 pub fn composite_pixel(Array[Double], Array[Double], String) -> Array[Double] raise OraError
 
 pub fn decode_png(Bytes) -> Image raise
+
+pub fn inspect(Bytes) -> @json.Json raise
 
 pub fn read(Bytes) -> Document raise
 
