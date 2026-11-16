@@ -106,6 +106,10 @@ pub fn Document::render(self : Document) -> Image raise OraError {
     self.height,
     Array::make(self.width * self.height * 4, 0),
   )
-  render_nodes(self.children, image, 0, 0, 0)
+  let nodes = match self.root_properties {
+    None => self.children
+    Some(p) => [Group(p, self.root_isolation, self.children)]
+  }
+  render_nodes(nodes, image, 0, 0, 0)
   image
 }

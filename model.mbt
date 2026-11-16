@@ -59,6 +59,7 @@ pub struct Properties {
   visible : Bool
   opacity : Double
   composite_op : String
+  extra : Array[(String, String)]
 }
 
 ///|
@@ -76,7 +77,7 @@ pub fn Properties::new(
   if x < -1000000 || x > 1000000 || y < -1000000 || y > 1000000 {
     raise InvalidDocument("Offset exceeds limits")
   }
-  { name, x, y, visible, opacity, composite_op, }
+  { name, x, y, visible, opacity, composite_op, extra: [], }
 }
 
 ///|
@@ -91,6 +92,10 @@ pub struct Document {
   height : Int32
   name : String
   children : Array[Node]
+  root_properties : Properties?
+  root_isolation : Isolation
+  image_attributes : Array[(String, String)]
+  resources : Array[(String, Bytes)]
 }
 
 ///|
@@ -107,7 +112,16 @@ pub fn Document::new(
     width.to_int64() * height.to_int64() > 16777216 {
     raise InvalidDocument("Canvas dimensions exceed limits")
   }
-  { width, height, name, children: children.map(copy_node), }
+  {
+    width,
+    height,
+    name,
+    children: children.map(copy_node),
+    root_properties: None,
+    root_isolation: Auto,
+    image_attributes: [],
+    resources: [],
+  }
 }
 
 ///|

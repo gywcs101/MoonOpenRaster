@@ -1,6 +1,7 @@
 ///|
 fn attrs(p : Properties) -> Array[(String, String)] {
-  [
+  let a = p.extra.copy()
+  let values = [
     ("name", p.name),
     ("x", p.x.to_string()),
     ("y", p.y.to_string()),
@@ -8,6 +9,10 @@ fn attrs(p : Properties) -> Array[(String, String)] {
     ("opacity", p.opacity.to_string()),
     ("composite-op", p.composite_op),
   ]
+  for pair in values {
+    a.push(pair)
+  }
+  a
 }
 
 ///|
@@ -23,7 +28,9 @@ fn write_nodes(
   for node in nodes {
     match node {
       Layer(p, image) => {
-        let path = "data/layer" + entries.length().to_string() + ".png"
+        let path = "data/moonopenraster-layer" +
+          entries.length().to_string() +
+          ".png"
         entries.push(@zip.Entry::new(path, image.encode_png(), kind=Stored))
         let a = attrs(p)
         a.push(("src", path))
@@ -58,8 +65,25 @@ fn write_nodes(
 ///|
 pub fn Document::write(self : Document) -> Bytes raise {
   let entries = [@zip.Entry::new("mimetype", b"image/openraster", kind=Stored)]
+  for (name, data) in self.resources {
+    entries.push(@zip.Entry::new(name, data, kind=Stored))
+  }
+  let root_props = match self.root_properties {
+    None => []
+    Some(p) => attrs(p)
+  }
+  root_props.push(
+    (
+      "isolation",
+      match self.root_isolation {
+        Auto => "auto"
+        Isolate => "isolate"
+      },
+    ),
+  )
   let stack = @dom.Element::new(
     "stack",
+    attrs=root_props,
     children=write_nodes(self.children, entries, 0),
   )
   let root = @dom.Element::new(
@@ -72,6 +96,9 @@ pub fn Document::write(self : Document) -> Bytes raise {
     ],
     children=[ElementNode(stack)],
   )
+  for (key, value) in self.image_attributes {
+    root.set_attr(key, value)
+  }
   entries.push(
     @zip.Entry::new(
       "stack.xml",

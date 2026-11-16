@@ -49,8 +49,8 @@ pub fn Document::set_properties(
     ..self,
     children: change_at(self.children, path[:], n => {
       match n {
-        Layer(_, i) => Layer(p, i)
-        Group(_, s, c) => Group(p, s, c)
+        Layer(old, i) => Layer({ ..p, extra: old.extra.copy(), }, i)
+        Group(old, s, c) => Group({ ..p, extra: old.extra.copy(), }, s, c)
       }
     }),
   }

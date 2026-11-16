@@ -20,7 +20,7 @@ fn properties(e : @dom.Element) -> Properties raise {
     None => 1.0
     Some(s) => parse_number(s)
   }
-  Properties::new(
+  let p = Properties::new(
     e.attr("name").unwrap_or(""),
     x=int_attr(e, "x", 0),
     y=int_attr(e, "y", 0),
@@ -28,6 +28,10 @@ fn properties(e : @dom.Element) -> Properties raise {
     opacity~,
     composite_op=e.attr("composite-op").unwrap_or("svg:src-over"),
   )
+  let known = [
+    "name", "x", "y", "visibility", "opacity", "composite-op", "src", "isolation",
+  ]
+  { ..p, extra: e.attrs.filter(a => !known.contains(a.0)), }
 }
 
 ///|
@@ -83,10 +87,44 @@ pub fn read(data : Bytes) -> Document raise {
   if children.length() != 1 || children[0].name != "stack" {
     raise InvalidDocument("Expected one root stack")
   }
-  Document::new(
+  let doc = Document::new(
     int_attr(root, "w", 0),
     int_attr(root, "h", 0),
     parse_nodes(children[0], entries, 0),
     name=root.attr("name").unwrap_or("Untitled"),
   )
+  let layer_paths : Array[String] = []
+  collect_paths(children[0], layer_paths)
+  {
+    ..doc,
+    root_properties: Some(properties(children[0])),
+    root_isolation: if children[0].attr("isolation").unwrap_or("auto") ==
+      "isolate" {
+      Isolate
+    } else {
+      Auto
+    },
+    image_attributes: root.attrs.filter(a => {
+      !["w", "h", "name", "version"].contains(a.0)
+    }),
+    resources: entries.filter(e => {
+      !layer_paths.contains(e.0) &&
+      e.0 != "mimetype" &&
+      e.0 != "stack.xml" &&
+      e.0 != "mergedimage.png" &&
+      e.0 != "Thumbnails/thumbnail.png"
+    }),
+  }
+}
+
+///|
+fn collect_paths(e : @dom.Element, result : Array[String]) -> Unit {
+  if e.name == "layer" {
+    if e.attr("src") is Some(path) {
+      result.push(path)
+    }
+  }
+  for child in e.child_elements() {
+    collect_paths(child, result)
+  }
 }
