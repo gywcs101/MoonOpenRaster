@@ -17,3 +17,10 @@ test "document with nested group and escaped names round trips" {
   assert_eq(result.render().pixels(), doc.render().pixels())
   assert_eq(bytes[8], 0)
 }
+
+///|
+test "multicolor PNG export remains supported by reader" {
+  let pixels = Array::makei(16 * 4, fn(i) { (i * 3).to_byte() })
+  let image = Image::new(4, 4, pixels)
+  assert_eq(decode_png(image.encode_png()).pixels(), pixels)
+}

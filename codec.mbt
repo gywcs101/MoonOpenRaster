@@ -7,6 +7,7 @@ pub fn Image::encode_png(self : Image) -> Bytes raise {
       Rgba8,
       Bytes::from_array(self.pixels),
     ),
+    options={ ..@png.EncodeOptions::default(), palette: false, },
   )
 }
 
