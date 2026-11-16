@@ -19,7 +19,12 @@ pub fn decode_png(data : Bytes) -> Image raise {
   if data[24] != 8 {
     raise Unsupported("Only 8-bit PNG input is currently supported")
   }
-  let image = @png.decode(data[:])
+  let image = @png.decode(data[:], limits={
+    width: 16384,
+    height: 16384,
+    pixels: 16777216,
+    bytes: 67108864,
+  })
   if image.metadata.icc is Some(_) {
     raise Unsupported("ICC-profiled PNG requires color management")
   }

@@ -39,59 +39,36 @@ fn paint(
 fn render_nodes(
   nodes : Array[Node],
   canvas : Image,
-  ox : Int32,
-  oy : Int32,
+  opacity : Double,
   depth : Int32,
 ) -> Unit raise OraError {
-  if depth > 128 {
-    raise InvalidDocument("Layer tree exceeds depth limit")
+  if depth > 128 ||
+    (depth + 2).to_int64() *
+    canvas.width.to_int64() *
+    canvas.height.to_int64() *
+    4L >
+    268435456L {
+    raise InvalidDocument("Rendering buffer budget exceeded")
   }
   for i = nodes.length() - 1; i >= 0; i = i - 1 {
     match nodes[i] {
       Layer(p, image) =>
         if p.visible {
-          paint(canvas, image, ox + p.x, oy + p.y, p.opacity, p.composite_op)
+          paint(canvas, image, p.x, p.y, p.opacity * opacity, p.composite_op)
         }
       Group(p, isolation, children) =>
         if p.visible {
           match isolation {
-            Auto => {
-              let before = canvas.pixels.copy()
-              render_nodes(children, canvas, ox + p.x, oy + p.y, depth + 1)
-              if p.opacity < 1.0 {
-                for j in 0..<(canvas.width * canvas.height) {
-                  let b = j * 4
-                  let a0 = before[b + 3].to_int().to_double() / 255.0
-                  let a1 = canvas.pixels[b + 3].to_int().to_double() / 255.0
-                  let a = a0 * (1.0 - p.opacity) + a1 * p.opacity
-                  for k in 0..<3 {
-                    let v = if a == 0.0 {
-                      0.0
-                    } else {
-                      (
-                        before[b + k].to_int().to_double() *
-                        a0 *
-                        (1.0 - p.opacity) +
-                        canvas.pixels[b + k].to_int().to_double() *
-                        a1 *
-                        p.opacity
-                      ) /
-                      a
-                    }
-                    canvas.pixels[b + k] = (v + 0.5).to_int().to_byte()
-                  }
-                  canvas.pixels[b + 3] = (a * 255.0 + 0.5).to_int().to_byte()
-                }
-              }
-            }
+            Auto =>
+              render_nodes(children, canvas, opacity * p.opacity, depth + 1)
             Isolate => {
               let buffer = Image::new(
                 canvas.width,
                 canvas.height,
                 Array::make(canvas.width * canvas.height * 4, 0),
               )
-              render_nodes(children, buffer, ox + p.x, oy + p.y, depth + 1)
-              paint(canvas, buffer, 0, 0, p.opacity, p.composite_op)
+              render_nodes(children, buffer, 1.0, depth + 1)
+              paint(canvas, buffer, 0, 0, p.opacity * opacity, p.composite_op)
             }
           }
         }
@@ -106,10 +83,6 @@ pub fn Document::render(self : Document) -> Image raise OraError {
     self.height,
     Array::make(self.width * self.height * 4, 0),
   )
-  let nodes = match self.root_properties {
-    None => self.children
-    Some(p) => [Group(p, self.root_isolation, self.children)]
-  }
-  render_nodes(nodes, image, 0, 0, 0)
+  render_nodes(self.children, image, 1.0, 0)
   image
 }

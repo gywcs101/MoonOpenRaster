@@ -58,7 +58,7 @@ fn parse_nodes(
         result.push(
           Group(
             p,
-            if child.attr("isolation").unwrap_or("auto") == "isolate" {
+            if child.attr("isolation").unwrap_or("isolate") == "isolate" {
               Isolate
             } else {
               Auto
@@ -98,7 +98,7 @@ pub fn read(data : Bytes) -> Document raise {
   {
     ..doc,
     root_properties: Some(properties(children[0])),
-    root_isolation: if children[0].attr("isolation").unwrap_or("auto") ==
+    root_isolation: if children[0].attr("isolation").unwrap_or("isolate") ==
       "isolate" {
       Isolate
     } else {

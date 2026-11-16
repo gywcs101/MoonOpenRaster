@@ -22,3 +22,14 @@ test "negative coordinates clip pixel placement" {
   let doc = Document::new(1, 1, [Layer(Properties::new("offset", x=-1), image)])
   assert_eq(doc.render().pixels(), [0, 255, 0, 255])
 }
+
+///|
+test "pass through opacity multiplies child opacity and ignores obsolete group offsets" {
+  let image = Image::new(1, 1, [255, 0, 0, 255])
+  let doc = Document::new(1, 1, [
+    Group(Properties::new("auto", x=100, y=100, opacity=0.5), Auto, [
+      Layer(Properties::new("red", opacity=0.5), image),
+    ]),
+  ])
+  assert_eq(doc.render().pixels(), [255, 0, 0, 64])
+}
