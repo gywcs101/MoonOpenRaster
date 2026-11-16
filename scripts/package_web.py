@@ -8,6 +8,8 @@ out.parent.mkdir(parents=True,exist_ok=True)
 with zipfile.ZipFile(out,"w",zipfile.ZIP_DEFLATED) as z:
     for name in ["index.html","style.css","app.js","core.js"]:
         z.write(root/"web"/name,name)
+    for p in (root/"web/assets").rglob("*"):
+        if p.is_file():z.write(p,"assets/"+str(p.relative_to(root/"web/assets")).replace("\\","/"))
     z.write(root/"LICENSE","LICENSE")
     z.write(root/"THIRD_PARTY.md","THIRD_PARTY.md")
     for p in (root/"LICENSES").iterdir():

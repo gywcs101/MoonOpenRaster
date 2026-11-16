@@ -16,7 +16,7 @@ let original_source : Ref[Bytes?] = Ref(None)
 let current : Ref[@ora.Document?] = Ref(None)
 
 ///|
-fn tree(nodes : Array[@ora.Node], prefix : Array[Int32]) -> Json {
+fn tree(nodes : Array[@ora.Node], prefix : Array[Int32]) -> Json raise {
   let result : Array[Json] = []
   for i, node in nodes {
     let path = prefix.copy()
@@ -25,7 +25,18 @@ fn tree(nodes : Array[@ora.Node], prefix : Array[Int32]) -> Json {
       Layer(p, _) => (p, [], "layer")
       Group(p, _, c) => (p, c, "group")
     }
+    let preview = match node {
+      Layer(_, image) => thumbnail(image)
+      Group(_, _, _) => ""
+    }
+    let (width, height) = match node {
+      Layer(_, image) => (image.width(), image.height())
+      Group(_, _, _) => (0, 0)
+    }
     result.push({
+      "thumbnail": preview,
+      "width": width,
+      "height": height,
       "name": p.name,
       "path": path,
       "x": p.x,
@@ -38,6 +49,27 @@ fn tree(nodes : Array[@ora.Node], prefix : Array[Int32]) -> Json {
     })
   }
   Json::array(result)
+}
+
+///|
+fn thumbnail(image : @ora.Image) -> String raise {
+  let w = image.width()
+  let h = image.height()
+  let scale = 40.0 / w.max(h).to_double()
+  let tw = (w.to_double() * scale).to_int().max(1)
+  let th = (h.to_double() * scale).to_int().max(1)
+  let source = image.pixels()
+  let target : Array[Byte] = Array::make(tw * th * 4, 0)
+  for y in 0..<th {
+    for x in 0..<tw {
+      for c in 0..<4 {
+        target[(y * tw + x) * 4 + c] = source[(y * h / th * w + x * w / tw) * 4 +
+          c]
+      }
+    }
+  }
+  let png = @ora.Image::new(tw, th, target).encode_png()
+  @base64.encode(png[:])
 }
 
 ///|
@@ -116,6 +148,51 @@ pub fn request(input : String) -> String {
   try {
     let query = @json.parse(input)
     match query {
+      {
+        "action": "compose",
+        "width": Number(w, ..),
+        "height": Number(h, ..),
+        "layers": Array(items),
+        ..
+      } => {
+        let layers = items.map(item => {
+          match item {
+            {
+              "name": String(name),
+              "data": String(data),
+              "x": Number(x, ..),
+              "y": Number(y, ..),
+              ..
+            } =>
+              @ora.Node::Layer(
+                @ora.Properties::new(name, x=integer(x), y=integer(y)),
+                @ora.decode_png(@base64.decode(data)),
+              )
+            _ => raise @ora.InvalidDocument("Invalid sample layer")
+          }
+        })
+        if layers.length() < 2 {
+          raise @ora.InvalidDocument("Sample requires at least two layers")
+        }
+        let original = layers[layers.length() - 1]
+        let d = @ora.Document::new(
+          integer(w),
+          integer(h),
+          [
+            @ora.Node::Group(
+              @ora.Properties::new("中文信息（再编排）"),
+              Isolate,
+              layers[:layers.length() - 1].to_owned(),
+            ),
+            original,
+          ],
+          name="星际漫游 · 海报再编排",
+        )
+        let response = snapshot(d)
+        current.val = Some(d)
+        original_source.val = None
+        response.stringify()
+      }
       { "action": "sample", .. } => {
         let d = sample()
         current.val = Some(d)
@@ -176,6 +253,35 @@ pub fn request(input : String) -> String {
           None => raise @ora.InvalidDocument("Open a document first")
         }
         match query {
+          { "action": "remove", "path": Array(values), .. } => {
+            let path = values.map(v => {
+              match v {
+                Number(n, ..) => integer(n)
+                _ => raise @ora.InvalidDocument("Invalid path")
+              }
+            })
+            let d = doc.remove(path)
+            let result = snapshot(d)
+            current.val = Some(d)
+            result.stringify()
+          }
+          {
+            "action": "reorder",
+            "path": Array(values),
+            "index": Number(index, ..),
+            ..
+          } => {
+            let path = values.map(v => {
+              match v {
+                Number(n, ..) => integer(n)
+                _ => raise @ora.InvalidDocument("Invalid path")
+              }
+            })
+            let d = doc.reorder(path, integer(index))
+            let result = snapshot(d)
+            current.val = Some(d)
+            result.stringify()
+          }
           {
             "action": "edit",
             "path": Array(path),

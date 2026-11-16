@@ -1,0 +1,7 @@
+The Grand Tour — JPL Travel Poster
+Courtesy NASA/JPL-Caltech.
+Original image: https://d2pn8kiwq2w21t.cloudfront.net/original_images/grand_tour.jpg
+Source: https://www.jpl.nasa.gov/images/the-grand-tour-jpl-travel-poster/
+Use policy: https://www.jpl.nasa.gov/jpl-image-use-policy/
+The source is a flattened poster. The Chinese title, subtitle, rule and credit are independent demonstration layers added by MoonOpenRaster. The original poster is retained as one raster layer.
+This demonstration does not imply endorsement by NASA, JPL or Caltech. The image is subject to the source policy and is not relicensed under this project's MIT license.
