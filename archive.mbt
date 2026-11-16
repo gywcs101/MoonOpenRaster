@@ -17,10 +17,14 @@ pub fn archive_entries(data : Bytes) -> Array[(String, Bytes)] raise {
     }
     seen[name] = true
   }
-  let entries = @zip.unzip(data[:], limit=67108864)
+  let reader = @zip.Reader::new(data[:])
   let result : Array[(String, Bytes)] = []
   let mut total = 0L
-  for e in entries {
+  while true {
+    let e = match reader.next(limit=67108864) {
+      Some(e) => e
+      None => break
+    }
     total = total + e.data.length().to_int64()
     if total > 268435456L {
       raise InvalidDocument("Expanded archive exceeds limit")

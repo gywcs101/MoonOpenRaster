@@ -85,3 +85,104 @@ pub fn Document::replace_children(
     name=self.name,
   )
 }
+
+///|
+fn edit_children(
+  document : Document,
+  parent : Array[Int32],
+  edit : (Array[Node]) -> Array[Node] raise,
+) -> Document raise {
+  if parent.is_empty() {
+    return { ..document, children: edit(document.children.map(copy_node)), }
+  }
+  {
+    ..document,
+    children: change_at(document.children, parent[:], node => {
+      match node {
+        Group(p, s, c) => Group(p, s, edit(c))
+        Layer(_, _) => raise InvalidDocument("Parent must be a group")
+      }
+    }),
+  }
+}
+
+///|
+pub fn Document::insert(
+  self : Document,
+  parent : Array[Int32],
+  index : Int32,
+  node : Node,
+) -> Document raise {
+  edit_children(self, parent, children => {
+    if index < 0 || index > children.length() {
+      raise InvalidDocument("Insertion index out of range")
+    }
+    let result : Array[Node] = []
+    for i in 0..<(children.length() + 1) {
+      if i == index {
+        result.push(copy_node(node))
+      }
+      if i < children.length() {
+        result.push(children[i])
+      }
+    }
+    result
+  })
+}
+
+///|
+pub fn Document::remove(self : Document, path : Array[Int32]) -> Document raise {
+  if path.is_empty() {
+    raise InvalidDocument("Cannot remove document root")
+  }
+  let index = path[path.length() - 1]
+  edit_children(self, path[:path.length() - 1].to_owned(), children => {
+    if index < 0 || index >= children.length() {
+      raise InvalidDocument("Removal index out of range")
+    }
+    let result : Array[Node] = []
+    for i, node in children {
+      if i != index {
+        result.push(node)
+      }
+    }
+    result
+  })
+}
+
+///|
+pub fn Document::reorder(
+  self : Document,
+  path : Array[Int32],
+  index : Int32,
+) -> Document raise {
+  if path.is_empty() {
+    raise InvalidDocument("Cannot reorder document root")
+  }
+  let from = path[path.length() - 1]
+  edit_children(self, path[:path.length() - 1].to_owned(), children => {
+    if index < 0 ||
+      index >= children.length() ||
+      from < 0 ||
+      from >= children.length() {
+      raise InvalidDocument("Reorder index out of range")
+    }
+    let moved = children[from]
+    let result : Array[Node] = []
+    for i, node in children {
+      if i != from {
+        result.push(node)
+      }
+    }
+    let output : Array[Node] = []
+    for i in 0..<children.length() {
+      if i == index {
+        output.push(moved)
+      }
+      if i < result.length() {
+        output.push(result[i])
+      }
+    }
+    output
+  })
+}
