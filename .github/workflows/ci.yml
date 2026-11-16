@@ -21,6 +21,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install Pillow==11.1.0
       - run: python scripts/check_interop.py
+      - run: python scripts/check_krita.py
       - run: python scripts/build_web.py
       - run: node scripts/check_bridge.mjs
       - run: python scripts/check_package.py

@@ -16,6 +16,7 @@ fn change_at(
   if path.length() == 0 || path[0] < 0 || path[0] >= nodes.length() {
     raise InvalidDocument("Invalid layer path")
   }
+  validate_nodes(nodes, 0, Ref(0L), Ref(0))
   let result = nodes.map(copy_node)
   let index = path[0]
   if path.length() == 1 {
@@ -62,15 +63,15 @@ pub fn Document::replace_image(
   path : Array[Int32],
   image : Image,
 ) -> Document raise {
-  {
-    ..self,
-    children: change_at(self.children, path[:], n => {
+  checked_document(
+    self,
+    change_at(self.children, path[:], n => {
       match n {
         Layer(p, _) => Layer(p, image)
         Group(_, _, _) => raise InvalidDocument("Expected raster layer")
       }
     }),
-  }
+  )
 }
 
 ///|
@@ -78,12 +79,16 @@ pub fn Document::replace_children(
   self : Document,
   children : Array[Node],
 ) -> Document raise OraError {
-  Document::new(
-    self.width,
-    self.height,
-    children.map(copy_node),
-    name=self.name,
-  )
+  checked_document(self, children)
+}
+
+///|
+fn checked_document(
+  document : Document,
+  children : Array[Node],
+) -> Document raise OraError {
+  validate_nodes(children, 0, Ref(0L), Ref(0))
+  { ..document, children: children.map(copy_node), }
 }
 
 ///|
@@ -93,17 +98,17 @@ fn edit_children(
   edit : (Array[Node]) -> Array[Node] raise,
 ) -> Document raise {
   if parent.is_empty() {
-    return { ..document, children: edit(document.children.map(copy_node)), }
+    return checked_document(document, edit(document.children.map(copy_node)))
   }
-  {
-    ..document,
-    children: change_at(document.children, parent[:], node => {
+  checked_document(
+    document,
+    change_at(document.children, parent[:], node => {
       match node {
         Group(p, s, c) => Group(p, s, edit(c))
         Layer(_, _) => raise InvalidDocument("Parent must be a group")
       }
     }),
-  }
+  )
 }
 
 ///|
@@ -113,6 +118,7 @@ pub fn Document::insert(
   index : Int32,
   node : Node,
 ) -> Document raise {
+  validate_nodes([node], 0, Ref(0L), Ref(0))
   edit_children(self, parent, children => {
     if index < 0 || index > children.length() {
       raise InvalidDocument("Insertion index out of range")

@@ -1,7 +1,7 @@
 """Independent Python ZIP/XML and Pillow reference for the JavaScript CLI."""
 from pathlib import Path
 from io import BytesIO
-import subprocess, tempfile, zipfile, xml.etree.ElementTree as ET
+import subprocess, tempfile, zipfile, json, xml.etree.ElementTree as ET
 from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 subprocess.run(["moon", "build", "--target", "js"], cwd=ROOT, check=True)
@@ -34,6 +34,22 @@ with tempfile.TemporaryDirectory(prefix="moonora-interop-") as folder:
         assert tree.find(".//layer").attrib["custom"] == "preserve"
         assert Image.open(BytesIO(z.read("mergedimage.png"))).convert("RGBA").tobytes() == expected.tobytes()
         assert Image.open(BytesIO(z.read("Thumbnails/thumbnail.png"))).size == (4, 4)
+    # A vector layer can be inspected and preserved in browser view mode.
+    import base64
+    with zipfile.ZipFile(p / "vector.ora", "w") as z:
+        z.writestr("mimetype", "image/openraster")
+        z.writestr("stack.xml", '<image w="4" h="4"><stack><layer name="Vector" src="data/vector.svg"/></stack></image>')
+        z.writestr("data/vector.svg", '<svg xmlns="http://www.w3.org/2000/svg"/>')
+        z.writestr("mergedimage.png", png(expected))
+    encoded = base64.b64encode((p / "vector.ora").read_bytes()).decode()
+    bridge = ROOT / "_build/js/debug/build/bridge/bridge.js"
+    script = """import {request} from %s;
+const data=process.argv[1];const run=q=>JSON.parse(request(JSON.stringify(q)));
+const view=run({action:'open',data});
+if(!view.ok || view.editable!==false || view.tree[0].name!=='Vector')throw Error('view mode failed');
+if(run({action:'export'}).data!==data)throw Error('original bytes changed');
+""" % json.dumps(bridge.as_uri())
+    subprocess.run(["node", "--input-type=module", "-e", script, encoded], check=True)
     failed = subprocess.run(["node", str(cli), "render", str(p / "input.ora"), str(p / "result.png")], capture_output=True)
     assert failed.returncode != 0
     assert b"Output exists" in failed.stderr

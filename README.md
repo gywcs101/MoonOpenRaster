@@ -2,7 +2,7 @@
 
 MoonBit library for OpenRaster layered documents, with a command-line interface and a local browser workspace.
 
-**Development preview.** Core read/edit/render/write paths are working. See [VALIDATION.md](VALIDATION.md) for verified behavior and remaining acceptance work.
+Core read/edit/render/write paths have independent Krita and Pillow validation. See [VALIDATION.md](VALIDATION.md) for exact compatibility, resource limits and platform evidence.
 
 ## Quick start
 
@@ -53,12 +53,16 @@ Install Pillow in your test environment, then run the generated independent fixt
 python scripts/check_interop.py
 python scripts/build_web.py
 node scripts/check_bridge.mjs
+python scripts/check_krita.py
+python scripts/check_package.py
 ```
 
 ## Format support
 
-The current renderer accepts 8-bit raster PNG layers, clipped canvas placement, nested groups and the 20 baseline SVG composite operators. It implements isolated and pass-through group paths. Unknown operations are rejected when rendering. Unsupported PNG bit depths and unknown layer elements currently cause import errors. Extension attributes and additional archive resources are preserved for supported documents.
+The current renderer accepts 8-bit raster PNG layers, clipped canvas placement, nested groups and the 20 baseline SVG composite operators. It implements isolated and pass-through group paths. Unknown operations are rejected when rendering. The editing reader rejects unsupported PNG bit depths and unknown layer elements. Structural inspection and the browser can show their original preview and export the original archive unchanged. Extension attributes and additional archive resources are preserved for supported documents.
 
 The core format work follows the [OpenRaster baseline specification](https://www.openraster.org/baseline/baseline.html). ZIP, XML and PNG processing reuse MoonBit ecosystem components. See [THIRD_PARTY.md](THIRD_PARTY.md).
 
 MIT License. Copyright 2026 gywcs101.
+
+Krita 5.3.4 differs from the standard `svg:plus` alpha rule in the tested sample. Additive-layer visual equality across these implementations is not guaranteed; numerical evidence is recorded in VALIDATION.md.

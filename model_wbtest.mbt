@@ -8,3 +8,11 @@ test "image owns input and output buffers" {
   result[0] = 0
   assert_eq(image.pixels()[0], 255)
 }
+
+///|
+test "cyclic externally built groups fail before cloning" {
+  let children : Array[Node] = []
+  children.push(Group(Properties::new("cycle"), Isolate, children))
+  let result = Ok(Document::new(1, 1, children)) catch { e => Err(e) }
+  assert_true(result is Err(_))
+}

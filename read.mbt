@@ -39,6 +39,7 @@ fn parse_nodes(
   e : @dom.Element,
   entries : Array[(String, Bytes)],
   depth : Int32,
+  decoded_bytes : Ref[Int64],
 ) -> Array[Node] raise {
   if depth > 128 {
     raise InvalidDocument("Layer tree exceeds depth limit")
@@ -52,7 +53,13 @@ fn parse_nodes(
           Some(s) => s
           None => raise InvalidDocument("Layer is missing src")
         }
-        result.push(Layer(p, decode_png(resource(entries, path))))
+        let image = decode_png(resource(entries, path))
+        decoded_bytes.val = decoded_bytes.val +
+          image.width.to_int64() * image.height.to_int64() * 4L
+        if decoded_bytes.val > 134217728L {
+          raise InvalidDocument("Decoded layer pixels exceed 128 MiB budget")
+        }
+        result.push(Layer(p, image))
       }
       "stack" =>
         result.push(
@@ -63,7 +70,7 @@ fn parse_nodes(
             } else {
               Auto
             },
-            parse_nodes(child, entries, depth + 1),
+            parse_nodes(child, entries, depth + 1, decoded_bytes),
           ),
         )
       _ => raise Unsupported("Unknown layer element: " + child.name)
@@ -90,7 +97,7 @@ pub fn read(data : Bytes) -> Document raise {
   let doc = Document::new(
     int_attr(root, "w", 0),
     int_attr(root, "h", 0),
-    parse_nodes(children[0], entries, 0),
+    parse_nodes(children[0], entries, 0, Ref(0L)),
     name=root.attr("name").unwrap_or("Untitled"),
   )
   let layer_paths : Array[String] = []

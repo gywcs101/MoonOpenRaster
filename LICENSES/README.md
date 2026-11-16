@@ -2,7 +2,7 @@
 
 These files accompany the browser bundle and preserve dependency notices. The version list matches the resolved module graph used for validation.
 
-- moonbitlang/x — [licenserc.toml](moonbitlang-x-licenserc.toml)
+- moonbitlang/x — [LICENSE](moonbitlang-x-LICENSE)
 - moonbitstack/moonimage — [LICENSE](moonbitstack-moonimage-LICENSE)
 - moonbitstack/moonzip — [LICENSE](moonbitstack-moonzip-LICENSE)
 - moonbitstack/moonxml — [LICENSE](moonbitstack-moonxml-LICENSE)
@@ -11,3 +11,4 @@ These files accompany the browser bundle and preserve dependency notices. The ve
 - moonbitstack/moondate — [LICENSE](moonbitstack-moondate-LICENSE)
 - moonbitstack/moonseed — [LICENSE](moonbitstack-moonseed-LICENSE)
 - moonbitstack/moonrgba — [LICENSE](moonbitstack-moonrgba-LICENSE)
+- moonbitlang/core — [LICENSE](moonbitlang-core-LICENSE)

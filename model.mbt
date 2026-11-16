@@ -112,6 +112,7 @@ pub fn Document::new(
     width.to_int64() * height.to_int64() > 16777216 {
     raise InvalidDocument("Canvas dimensions exceed limits")
   }
+  validate_nodes(children, 0, Ref(0L), Ref(0))
   {
     width,
     height,
@@ -150,5 +151,33 @@ pub fn OraError::message(self : OraError) -> String {
   match self {
     InvalidDocument(s) => "Invalid OpenRaster document: " + s
     Unsupported(s) => "Unsupported OpenRaster feature: " + s
+  }
+}
+
+///|
+fn validate_nodes(
+  nodes : Array[Node],
+  depth : Int32,
+  bytes : Ref[Int64],
+  count : Ref[Int32],
+) -> Unit raise OraError {
+  if depth > 128 {
+    raise InvalidDocument("Layer tree exceeds depth limit")
+  }
+  for node in nodes {
+    count.val = count.val + 1
+    if count.val > 4096 {
+      raise InvalidDocument("Layer count exceeds limit")
+    }
+    match node {
+      Layer(_, image) => {
+        bytes.val = bytes.val +
+          image.width.to_int64() * image.height.to_int64() * 4L
+        if bytes.val > 134217728L {
+          raise InvalidDocument("Decoded layer pixels exceed 128 MiB budget")
+        }
+      }
+      Group(_, _, children) => validate_nodes(children, depth + 1, bytes, count)
+    }
   }
 }
