@@ -56,6 +56,8 @@ try {
   assert.equal(await page.locator('#practice-progress').innerText(), '2 / 4 已完成');
   await page.locator('#undo').click(); await idle(); assert.equal(await page.locator('#practice-progress').innerText(), '4 / 4 已完成');
   await page.locator('#browse-samples').click();
+  await page.keyboard.press('Control+z');
+  assert.equal(await page.locator('#practice-progress').innerText(), '4 / 4 已完成');
   await page.locator('[data-sample=bloom] [data-mode=original]').click();
   await page.locator('#discard-dialog').waitFor({ state: 'visible' });
   await page.locator('#discard-dialog [value=cancel]').click(); await idle();

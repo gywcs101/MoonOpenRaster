@@ -413,7 +413,7 @@ $('sample').onclick = () => guard(() => sampleStudio.reload());
 document.addEventListener('keydown', event => {
   const typing = event.target.closest('input, textarea, select, [contenteditable=true]');
   if (event.key === 'Escape' && drag) { event.preventDefault(); cancelDrag(); return; }
-  if (typing) return;
+  if (typing || document.querySelector('dialog[open]')) return;
   if (event.code === 'Space') { event.preventDefault(); space = true; }
   if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) {
     event.preventDefault(); const action = event.key.toLowerCase() === 'y' || event.shiftKey ? 'redo' : 'undo';
