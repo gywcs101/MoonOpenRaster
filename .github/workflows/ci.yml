@@ -24,6 +24,11 @@ jobs:
       - run: python scripts/check_krita.py
       - run: python scripts/build_web.py
       - run: node scripts/check_bridge.mjs
+      - run: node scripts/check_editor.mjs
+      - run: python scripts/check_artwork.py
+      - run: npm ci --prefix tests/browser
+      - run: npx --prefix tests/browser playwright install --with-deps chromium
+      - run: node tests/browser/check.mjs
       - run: python scripts/check_web_server.py
       - run: python scripts/check_package.py
       - run: moon run examples/basic --target native

@@ -19,7 +19,7 @@ For a self-contained distribution with compiled MoonBit code and license notices
 
 The launcher builds the JavaScript core and serves from the correct web directory with browser caching disabled. Stop older servers before starting it.
 
-Open http://127.0.0.1:8765 in a browser. The workbench loads a generated multi-layer sample. Open an ORA document, select a layer, edit its attributes, apply changes and download PNG or ORA. Processing happens locally. The browser import limit is 32 MiB.
+Open http://127.0.0.1:8765 in a browser. The workbench loads a real source-layer illustration by David Revoy (7 original painting layers, translated names, resized to 1000 × 1000). Drag layers with live previews, undo/redo, zoom/pan, import/replace PNG layers, manage groups, extract layer PNGs and save PNG or ORA. See the [中文使用说明](docs/WORKBENCH.zh-CN.md). Processing happens locally. The browser import limit is 32 MiB.
 
 ## Library
 
@@ -56,13 +56,15 @@ Install Pillow in your test environment, then run the generated independent fixt
 python scripts/check_interop.py
 python scripts/build_web.py
 node scripts/check_bridge.mjs
+node scripts/check_editor.mjs
+python scripts/check_artwork.py
 python scripts/check_krita.py
 python scripts/check_package.py
 ```
 
 ## Format support
 
-The current renderer accepts 8-bit raster PNG layers, clipped canvas placement, nested groups and the 20 baseline SVG composite operators. It implements isolated and pass-through group paths. Unknown operations are rejected when rendering. The editing reader rejects unsupported PNG bit depths and unknown layer elements. Structural inspection and the browser can show their original preview and export the original archive unchanged. Extension attributes and additional archive resources are preserved for supported documents.
+The current renderer accepts 8-bit raster PNG layers, clipped canvas placement, nested groups and the 20 baseline SVG composite operators. It implements isolated and pass-through group paths, and Krita’s `alpha-preserve="true"` blending extension. Unknown operations are rejected when rendering. The editing reader rejects unsupported PNG bit depths and unknown layer elements. Structural inspection and the browser can show their original preview and export the original archive unchanged. Extension attributes and additional archive resources are preserved for supported documents.
 
 The core format work follows the [OpenRaster baseline specification](https://www.openraster.org/baseline/baseline.html). ZIP, XML and PNG processing reuse MoonBit ecosystem components. See [THIRD_PARTY.md](THIRD_PARTY.md).
 

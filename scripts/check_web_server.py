@@ -11,7 +11,7 @@ thread = Thread(target=server.serve_forever, daemon=True)
 thread.start()
 try:
     base = f"http://127.0.0.1:{server.server_port}/"
-    for resource in ["index.html", "style.css", "app.js", "core.js"]:
+    for resource in ["index.html", "style.css", "app.js", "core.js", "worker.js", "assets/capitole.ora"]:
         request = Request(base + resource + "?v=cache-regression", headers={"If-Modified-Since": "Wed, 01 Jan 2031 00:00:00 GMT"})
         with urlopen(request, timeout=5) as response:
             assert response.status == 200

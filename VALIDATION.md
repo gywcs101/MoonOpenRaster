@@ -41,3 +41,16 @@ Input archive limit is 256 MiB, with at most 4096 entries, 64 MiB expanded per e
 Native execution is verified on Linux CI. The local Windows environment has incomplete MSVC/SDK components, so Windows-native runtime behavior has not been verified. Browser and JavaScript CLI runs were verified locally on Windows.
 
 No Mooncakes release or contest form submission has been performed.
+
+## Real source-layer artwork and interactive editor (2026-11-17)
+
+- The default sample comes from David Revoy's hash-pinned Capitole du libre 2023 KRA source, exported with Krita 5.3.4. All seven painting layers and the original group remain. Canvas/layers are resized to 1000 × 1000 and names translated; no invented image layers are added. See LICENSES/capitole-artwork-NOTICE.txt.
+- A first comparison exposed Krita's `alpha-preserve="true"` on the shading layer. The renderer now honors that property, including isolated groups; it is retained through edits, copies, scaling for preview and ORA export. This does not claim support for all Krita extensions.
+- Krita independently rendered the exact web-sized ORA layer resources. Against that PNG the maximum channel error is 1 and the mean channel error is recorded in fixtures/artwork-validation.json. This comparison tests the converted document, not pixel equality with the larger original KRA before resizing.
+- Nineteen core tests include all 20 optimized rendering paths compared with the pixel oracle, transparent source, out-of-bounds effects, and inherited-alpha clipping. PNG/ORA and independent Krita regressions remain in place.
+- Browser edits run in one worker owning the MoonBit document. Live drag uses a cached preview of at most 384 pixels per side and transfers RGBA without PNG encoding. Pointer moves are coalesced, stale responses ignored, and only pointerup commits the full-resolution edit. Preview sampling/offset rounding is approximate; final rendering is full resolution. This is not a 60 fps claim.
+- Undo/redo is transactional and has at most 20 steps, shortened according to decoded layer pixel sizes (roughly a 64 MiB history target, with at least one undo). Runtime object overhead, current/preview documents and exported buffers are additional. Opening another file resets history; failed import does not replace it.
+- The real Chromium regression covers pixels appearing before pointerup, one-step drag undo, redo/keyboard, zoom persistence, layer locks, duplication, cross-group movement, PNG insertion/replacement/extraction, edited ORA save/reopen, failed-file recovery and mobile width. Run node tests/browser/check.mjs after installing its pinned dependencies.
+- Layer extraction exports intrinsic PNGs and a JSON property/path manifest. It does not bake opacity, offsets, visibility or blends into each PNG. Local UI locks are not serialized; structural edits clear them.
+
+The local Windows native runtime limitation documented above still applies. New commits' GitHub checks must be assessed by their actual run.
