@@ -3,37 +3,38 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MoonOpenRaster — 海报图层工作台</title>
-<link rel="stylesheet" href="style.css?v=studio-20261117-2">
+<link rel="stylesheet" href="style.css?v=editor-20261117-3">
 </head>
 <body>
 <header class="app-header">
  <div class="brand"><div><strong>MoonOpenRaster</strong><span class="brand-subtitle">分层图像工作台</span></div></div>
- <div class="header-actions"><button type="button" id="open">打开 ORA</button><button type="button" id="png">导出 PNG</button><button type="button" id="save" class="primary">保存 ORA</button></div>
- <input type="file" id="file" name="document" accept=".ora" hidden>
+ <div class="history-actions"><button type="button" id="undo" title="撤销 Ctrl+Z" disabled>撤销</button><button type="button" id="redo" title="重做 Ctrl+Shift+Z" disabled>重做</button></div><div class="header-actions"><button type="button" id="open">打开 ORA</button><button type="button" id="png">导出 PNG</button><button type="button" id="save" class="primary">保存 ORA</button></div>
+ <input type="file" id="layer-file" accept=".png,image/png" hidden><input type="file" id="file" name="document" accept=".ora" hidden>
 </header>
 <div class="document-bar"><div><span class="document-dot" aria-hidden="true"></span><span id="document-name">正在载入海报</span><span id="document-meta"></span></div><span class="local-state">文件仅在本机处理</span></div>
 <main class="workspace">
  <aside class="panel layers-panel" aria-label="文档与图层">
-  <section class="document-section"><div class="section-title"><h2>当前文档</h2><button type="button" id="sample" class="text-button">重载示例</button></div><div class="document-preview"><img src="assets/grand-tour.jpg" alt=""><div><strong>星际漫游</strong><span>NASA 海报再编排示例</span><small>5 个独立像素图层</small></div></div></section>
-  <section class="layer-section"><div class="section-title"><h2>图层</h2><span id="count"></span></div><p class="section-description">上方图层覆盖下方图层</p><div id="tree" role="group" aria-label="图层列表"></div></section>
-  <section class="source-section"><span>海报素材来源</span><a href="https://www.jpl.nasa.gov/images/the-grand-tour-jpl-travel-poster/" target="_blank" rel="noopener">NASA / JPL · The Grand Tour</a><p>原图为合成图片；中文信息是为演示另建的独立图层。</p></section>
+  <section class="document-section"><div class="section-title"><h2>当前文档</h2><button type="button" id="sample" class="text-button">重载示例</button></div><div class="document-preview"><img src="assets/capitole-preview.png" alt=""><div><strong>自由之都</strong><span>David Revoy · 原稿图层</span><small>7 个原始绘画图层</small></div></div></section>
+  <section class="layer-section"><div class="section-title"><h2>图层</h2><span id="count"></span></div><p class="section-description">上方图层覆盖下方图层</p><div class="layer-tools"><button type="button" id="add-layer">导入 PNG</button><button type="button" id="add-group">新建组</button><button type="button" id="all-layers">提取全部层</button></div><div id="tree" role="group" aria-label="图层列表"></div></section>
+  <section class="source-section"><span>原始分层素材</span><a href="https://www.peppercarrot.com/zh/viewer/misc__2023-06-30_Poster-for-Capitole-du-libre-2023_by-David-Revoy.html" target="_blank" rel="noopener">David Revoy · Capitole du libre 2023</a><p>作者原稿的线稿、底色、阴影与草稿层。仅为网页缩小、转换为 8 位 sRGB；未新增图画内容。CC BY 4.0，保留作者禁止 AI 衍生的说明。</p></section>
  </aside>
  <section class="stage" aria-label="海报画布">
-  <div class="canvas-toolbar"><div><span class="canvas-tab">当前合成</span><label class="compare"><input id="original" name="original" type="checkbox">对照原始画面</label></div><span id="zoom">适应画布</span></div>
-  <div class="canvas-area" id="canvas-area"><div class="artboard" id="artboard"><img id="canvas" alt="可编辑的海报合成画面"><div id="selection" class="selection" hidden><span class="selection-label" id="selection-label"></span><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div></div><div class="loading" id="loading" role="status">正在准备分层海报…</div></div>
-  <div class="canvas-footer"><span id="dimensions"></span><span id="canvas-hint">选择一个图层，查看它在海报中的位置</span><span>RGBA / 8 位</span></div>
+  <div class="canvas-toolbar"><div><span class="canvas-tab">当前合成</span><label class="compare"><input id="original" name="original" type="checkbox">对照原始画面</label></div><div class="zoom-tools"><button type="button" id="hand" aria-pressed="false" title="平移画布，也可按住空格拖动">手形</button><button type="button" id="zoom-out" aria-label="缩小">−</button><span id="zoom">适应画布</span><button type="button" id="zoom-in" aria-label="放大">＋</button><button type="button" id="actual-size">100%</button><button type="button" id="fit">适应</button></div></div>
+  <div class="canvas-area" id="canvas-area"><div class="artboard" id="artboard"><img id="canvas" alt="可编辑的海报合成画面"><canvas id="live-preview" aria-label="实时拖动预览" hidden></canvas><div id="selection" class="selection" hidden><span class="selection-label" id="selection-label"></span><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div></div><div class="loading" id="loading" role="status">正在读取原始分层作品…</div></div>
+  <div class="canvas-footer"><span id="dimensions"></span><span id="canvas-hint">选择一个图层，查看它在海报中的位置</span><span>8 位 sRGB</span></div>
  </section>
  <aside class="panel inspector-panel" aria-label="选中图层属性">
-  <div class="inspector-heading"><span class="section-kicker">选中图层</span><h2 id="selected-title">中文主标题</h2><p id="selected-size">独立像素图层</p></div>
+  <div class="inspector-heading"><span class="section-kicker">选中图层</span><h2 id="selected-title">线稿</h2><p id="selected-size">独立像素图层</p></div>
   <form id="properties">
-   <section class="property-section"><h3>基本信息</h3><label for="name">图层名称</label><input id="name" name="name" type="text" required><label class="visibility"><input id="visible" name="visible" type="checkbox"><span>显示此图层</span></label></section>
+   <section class="property-section"><h3>基本信息</h3><label for="name">图层名称</label><input id="name" name="name" type="text" required><p class="field-help">名称只用于图层列表，不会修改画面中的文字。</p><label class="visibility"><input id="visible" name="visible" type="checkbox"><span>显示此图层</span></label></section>
    <section class="property-section"><h3>整层位置</h3><div class="field-pair"><label for="x">水平 X <span>px</span><input id="x" name="x" type="number" min="-1000000" max="1000000" step="1" required></label><label for="y">垂直 Y <span>px</span><input id="y" name="y" type="number" min="-1000000" max="1000000" step="1" required></label></div><p class="field-help" id="position-help">移动整个选中图层，层内的内容会一起移动。</p></section>
    <section class="property-section"><h3>叠加效果</h3><label class="range-label" for="opacity">不透明度<output id="opacityValue">100%</output></label><input id="opacity" name="opacity" type="range" min="0" max="1" step="0.01"><label for="op">混合方式</label><select id="op" name="op"></select></section>
    <button type="submit" class="apply-button">应用修改</button>
   </form>
   <section class="operation-section"><h3>图层顺序</h3><div class="operation-buttons"><button type="button" id="up">上移一层</button><button type="button" id="down">下移一层</button><button type="button" id="remove">删除</button></div></section>
+  <section class="operation-section"><h3>图层管理</h3><div class="layer-management"><button type="button" id="duplicate">复制图层</button><button type="button" id="lock">锁定图层</button><button type="button" id="replace-layer">替换 PNG</button><button type="button" id="layer-png">导出此层 PNG</button></div><label class="move-label" for="move-target">移入图层组</label><div class="move-controls"><select id="move-target"><option value="[]">文档最外层</option></select><button type="button" id="move-layer">移入</button></div><p class="field-help">提取的 PNG 保留该层原始尺寸，不应用位置、透明度或混合效果；全部层压缩包附带属性清单。</p></section>
   <p id="status" class="status" role="status" aria-live="polite"></p>
-  <div class="inspector-note"><strong>如何看懂图层？</strong><p>选中“中文主标题”，蓝色框标出该层范围。调整 X 值，标题会整体移动。</p></div>
+  <div class="inspector-note"><strong>如何看懂图层？</strong><p>先隐藏“线稿”或“阴影”观察画面变化。选中绘画层可拖动整层；草稿默认隐藏。滚轮缩放，按住空格拖动画布。撤销支持 Ctrl+Z，受内存限制最多保留 20 步。</p></div>
  </aside>
 </main>
 <script>
@@ -43,6 +44,6 @@ window.addEventListener('error', function (event) {
   if (loading) { loading.hidden = false; loading.textContent = '界面资源未能载入，请重新启动服务并刷新页面。'; }
 }, true);
 </script>
-<script type="module" src="app.js?v=studio-20261117-2"></script>
+<script type="module" src="app.js?v=editor-20261117-3"></script>
 </body>
 </html>

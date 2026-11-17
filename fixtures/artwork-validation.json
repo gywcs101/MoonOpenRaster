@@ -1,0 +1,88 @@
+{
+  "source_sha256": "a8b84d86f645bc4ccef4a4a4519023f2f2cdeac36ad05b7235c95a9630c28895",
+  "canvas": [
+    1000,
+    1000
+  ],
+  "layers": [
+    {
+      "original_name": "ink - thick (for tee-shirts)",
+      "name": "粗线稿（T 恤备选）",
+      "src": "data/layer6.png",
+      "size": [
+        1000,
+        1000
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "original_name": "ink",
+      "name": "线稿",
+      "src": "data/layer5.png",
+      "size": [
+        723,
+        832
+      ],
+      "x": 127,
+      "y": 107
+    },
+    {
+      "original_name": "retouches",
+      "name": "修饰",
+      "src": "data/layer4.png",
+      "size": [
+        654,
+        622
+      ],
+      "x": 184,
+      "y": 116
+    },
+    {
+      "original_name": "ombrage",
+      "name": "阴影",
+      "src": "data/layer3.png",
+      "size": [
+        1000,
+        1000
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "original_name": "applat de couleurs",
+      "name": "底色",
+      "src": "data/layer2.png",
+      "size": [
+        718,
+        829
+      ],
+      "x": 130,
+      "y": 108
+    },
+    {
+      "original_name": "sketch",
+      "name": "草稿",
+      "src": "data/layer1.png",
+      "size": [
+        813,
+        900
+      ],
+      "x": 94,
+      "y": 72
+    },
+    {
+      "original_name": "fond",
+      "name": "背景",
+      "src": "data/layer0.png",
+      "size": [
+        1000,
+        1000
+      ],
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "krita_max_channel_error": 1,
+  "krita_mean_channel_error": 0.04953875
+}

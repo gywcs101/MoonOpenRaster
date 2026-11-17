@@ -6,7 +6,7 @@ subprocess.run(["python", "scripts/build_web.py"],cwd=root,check=True)
 out=root / "_build/publish/MoonOpenRaster-web.zip"
 out.parent.mkdir(parents=True,exist_ok=True)
 with zipfile.ZipFile(out,"w",zipfile.ZIP_DEFLATED) as z:
-    for name in ["index.html","style.css","app.js","core.js"]:
+    for name in ["index.html","style.css","app.js","core.js","worker.js"]:
         z.write(root/"web"/name,name)
     for p in (root/"web/assets").rglob("*"):
         if p.is_file():z.write(p,"assets/"+str(p.relative_to(root/"web/assets")).replace("\\","/"))

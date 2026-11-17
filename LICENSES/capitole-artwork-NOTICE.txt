@@ -1,0 +1,30 @@
+Poster for Capitole du libre 2023
+Copyright David Revoy, 2023
+
+Source and artwork page:
+https://www.peppercarrot.com/zh/viewer/misc__2023-06-30_Poster-for-Capitole-du-libre-2023_by-David-Revoy.html
+Original source archive:
+https://www.peppercarrot.com/0_sources/0ther/misc/zip/2023-06-30_Poster-for-Capitole-du-libre-2023_by-David-Revoy.zip
+SHA-256: a8b84d86f645bc4ccef4a4a4519023f2f2cdeac36ad05b7235c95a9630c28895
+
+The artwork page states Creative Commons Attribution 4.0 International:
+https://creativecommons.org/licenses/by/4.0/
+Full license: https://creativecommons.org/licenses/by/4.0/legalcode.en
+The current page also states "AI derivation prohibited":
+https://www.davidrevoy.com/article1178/license-update-ai-derivation-prohibited-on-all-my-art-lore-stories-and-comics
+That statement is retained here. No generative image model was used to create,
+split, repaint or invent any of the supplied artwork layers.
+
+Our changes: export the original KRA with Krita 5.3.4; resize the original
+layers and offsets from a 3340 x 3340 canvas to 1000 x 1000; normalize to
+8-bit sRGB RGBA; translate layer names into Chinese. Preserve the original
+7 painting layers, group, visibility, blend operations and opacity. Rebuild
+the merged preview and thumbnail with MoonOpenRaster. No new painted or
+text layers are added. This conversion is reproducible with
+scripts/prepare_artwork.py. Original-to-translated names and the independent
+Krita comparison are recorded in fixtures/artwork-validation.json.
+
+Files covered by this notice: web/assets/capitole.ora,
+web/assets/capitole-preview.png, fixtures/capitole-krita.png, and their
+contained artwork. The project's MIT license does not relicense this artwork.
+No endorsement of MoonOpenRaster by the artist is implied.

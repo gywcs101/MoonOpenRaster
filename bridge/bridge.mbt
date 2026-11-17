@@ -82,6 +82,9 @@ fn snapshot(doc : @ora.Document) -> Json raise {
     "name": doc.name(),
     "tree": tree(doc.children(), []),
     "png": @base64.encode(png[:]),
+    "canUndo": !undo_stack.val.is_empty(),
+    "canRedo": !redo_stack.val.is_empty(),
+    "revision": revision.val,
   }
 }
 
@@ -188,14 +191,14 @@ pub fn request(input : String) -> String {
           ],
           name="星际漫游 · 海报再编排",
         )
+        reset_editor(d)
         let response = snapshot(d)
-        current.val = Some(d)
         original_source.val = None
         response.stringify()
       }
       { "action": "sample", .. } => {
         let d = sample()
-        current.val = Some(d)
+        reset_editor(d)
         original_source.val = None
         snapshot(d).stringify()
       }
@@ -204,8 +207,8 @@ pub fn request(input : String) -> String {
         let inspected = @ora.inspect(bytes)
         let response = try {
           let d = @ora.read(bytes)
+          reset_editor(d)
           let result = snapshot(d)
-          current.val = Some(d)
           let fields = match result {
             Object(fields) => fields
             _ => abort("Expected object")
@@ -229,6 +232,9 @@ pub fn request(input : String) -> String {
               _ => Json::string(e.to_string())
             }
             current.val = None
+            undo_stack.val = []
+            redo_stack.val = []
+            preview_cache.val = None
             inspected
           }
         }
@@ -253,6 +259,18 @@ pub fn request(input : String) -> String {
           None => raise @ora.InvalidDocument("Open a document first")
         }
         match query {
+          { "action": String(action), .. } if action == "warm-preview" ||
+            action == "undo" ||
+            action == "redo" ||
+            action == "preview" ||
+            action == "insert" ||
+            action == "replace" ||
+            action == "duplicate" ||
+            action == "group" ||
+            action == "move" ||
+            action == "layer-png" ||
+            action == "layers-zip" =>
+            editor_request(doc, query, action).stringify()
           { "action": "remove", "path": Array(values), .. } => {
             let path = values.map(v => {
               match v {
@@ -261,8 +279,7 @@ pub fn request(input : String) -> String {
               }
             })
             let d = doc.remove(path)
-            let result = snapshot(d)
-            current.val = Some(d)
+            let result = commit_document(doc, d)
             result.stringify()
           }
           {
@@ -278,8 +295,7 @@ pub fn request(input : String) -> String {
               }
             })
             let d = doc.reorder(path, integer(index))
-            let result = snapshot(d)
-            current.val = Some(d)
+            let result = commit_document(doc, d)
             result.stringify()
           }
           {
@@ -313,8 +329,7 @@ pub fn request(input : String) -> String {
                 composite_op=op,
               ),
             )
-            let response = snapshot(d)
-            current.val = Some(d)
+            let response = commit_document(doc, d)
             response.stringify()
           }
           { "action": "export", .. } => {
