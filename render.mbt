@@ -6,30 +6,145 @@ fn paint(
   y : Int32,
   opacity : Double,
   op : String,
+  preserve_alpha~ : Bool = false,
 ) -> Unit raise OraError {
-  for ty in 0..<target.height {
+  // Validate once, then avoid allocating channel arrays for each separable pixel.
+  ignore(composite_pixel([0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], op))
+  let full_canvas = op == "svg:dst-in" || op == "svg:dst-atop"
+  let left = if full_canvas { 0 } else { x.max(0).min(target.width) }
+  let top = if full_canvas { 0 } else { y.max(0).min(target.height) }
+  let right = if full_canvas {
+    target.width
+  } else {
+    (x + source.width).max(0).min(target.width)
+  }
+  let bottom = if full_canvas {
+    target.height
+  } else {
+    (y + source.height).max(0).min(target.height)
+  }
+  let nonseparable = op == "svg:hue" ||
+    op == "svg:saturation" ||
+    op == "svg:color" ||
+    op == "svg:luminosity"
+  for ty in top..<bottom {
     let sy = ty - y
-    for tx in 0..<target.width {
+    for tx in left..<right {
       let sx = tx - x
       let b = (ty * target.width + tx) * 4
-      let back = Array::makei(4, fn(i) {
-        target.pixels[b + i].to_int().to_double() / 255.0
-      })
-      let front = if sx >= 0 &&
-        sy >= 0 &&
-        sx < source.width &&
-        sy < source.height {
-        let s = (sy * source.width + sx) * 4
-        Array::makei(4, fn(i) {
-          source.pixels[s + i].to_int().to_double() / 255.0
-        })
+      let inside = sx >= 0 && sy >= 0 && sx < source.width && sy < source.height
+      let s = if inside { (sy * source.width + sx) * 4 } else { 0 }
+      let a = if inside {
+        source.pixels[s + 3].to_int().to_double() / 255.0 * opacity
       } else {
-        [0.0, 0.0, 0.0, 0.0]
+        0.0
       }
-      front[3] = front[3] * opacity
-      let pixel = composite_pixel(back, front, op)
-      for i in 0..<4 {
-        target.pixels[b + i] = (pixel[i] * 255.0 + 0.5).to_int().to_byte()
+      let ab = target.pixels[b + 3].to_int().to_double() / 255.0
+      if a == 0.0 && !full_canvas {
+        continue
+      }
+      if preserve_alpha && ab == 0.0 {
+        continue
+      }
+      if op == "svg:src-over" && !preserve_alpha {
+        let alpha = a + ab * (1.0 - a)
+        if a == 1.0 || ab == 0.0 {
+          for i in 0..<3 {
+            target.pixels[b + i] = source.pixels[s + i]
+          }
+        } else {
+          for i in 0..<3 {
+            let cb = target.pixels[b + i].to_int().to_double() / 255.0
+            let cs = source.pixels[s + i].to_int().to_double() / 255.0
+            // Keep the same operation order as the independent pixel oracle.
+            let blended = (1.0 - ab) * cs + ab * cs
+            let value = ((a * blended + ab * (1.0 - a) * cb).min(1.0) / alpha)
+              .max(0.0)
+              .min(1.0)
+            target.pixels[b + i] = (value * 255.0 + 0.5).to_int().to_byte()
+          }
+        }
+        target.pixels[b + 3] = (alpha * 255.0 + 0.5).to_int().to_byte()
+        continue
+      }
+      if nonseparable {
+        let back = Array::makei(4, i => {
+          target.pixels[b + i].to_int().to_double() / 255.0
+        })
+        let front = Array::makei(4, i => {
+          if inside {
+            source.pixels[s + i].to_int().to_double() / 255.0
+          } else {
+            0.0
+          }
+        })
+        front[3] = a
+        let pixel = composite_pixel(back, front, op)
+        if preserve_alpha {
+          let blend = match op {
+            "svg:hue" => set_lum(set_sat(front, sat(back)), lum(back))
+            "svg:saturation" => set_lum(set_sat(back, sat(front)), lum(back))
+            "svg:color" => set_lum(front, lum(back))
+            _ => set_lum(back, lum(front))
+          }
+          for i in 0..<3 {
+            pixel[i] = if ab > 0.0 {
+              (1.0 - a) * back[i] + a * blend[i]
+            } else {
+              0.0
+            }
+          }
+          pixel[3] = ab
+        }
+        for i in 0..<4 {
+          target.pixels[b + i] = (pixel[i] * 255.0 + 0.5).to_int().to_byte()
+        }
+      } else {
+        let (fa, fb) = match op {
+          "svg:dst-in" => (0.0, a)
+          "svg:dst-out" => (0.0, 1.0 - a)
+          "svg:src-atop" => (ab, 1.0 - a)
+          "svg:dst-atop" => (1.0 - ab, a)
+          "svg:plus" => (1.0, 1.0)
+          _ => (1.0, 1.0 - a)
+        }
+        let alpha = (a * fa + ab * fb).min(1.0)
+        for i in 0..<3 {
+          let cb = target.pixels[b + i].to_int().to_double() / 255.0
+          let cs = if inside {
+            source.pixels[s + i].to_int().to_double() / 255.0
+          } else {
+            0.0
+          }
+          let blended = if op == "svg:plus" ||
+            op == "svg:dst-in" ||
+            op == "svg:dst-out" ||
+            op == "svg:src-atop" ||
+            op == "svg:dst-atop" {
+            cs
+          } else {
+            (1.0 - ab) * cs + ab * channel(cb, cs, op)
+          }
+          let value = if preserve_alpha {
+            if ab > 0.0 {
+              ((1.0 - a) * cb + a * channel(cb, cs, op)).max(0.0).min(1.0)
+            } else {
+              0.0
+            }
+          } else if alpha > 0.0 {
+            ((a * fa * blended + ab * fb * cb).min(1.0) / alpha)
+            .max(0.0)
+            .min(1.0)
+          } else {
+            0.0
+          }
+          target.pixels[b + i] = (value * 255.0 + 0.5).to_int().to_byte()
+        }
+        target.pixels[b + 3] = ((if preserve_alpha { ab } else { alpha }) *
+          255.0 +
+          0.5)
+          .to_int()
+          .to_byte()
       }
     }
   }
@@ -54,7 +169,15 @@ fn render_nodes(
     match nodes[i] {
       Layer(p, image) =>
         if p.visible {
-          paint(canvas, image, p.x, p.y, p.opacity * opacity, p.composite_op)
+          paint(
+            canvas,
+            image,
+            p.x,
+            p.y,
+            p.opacity * opacity,
+            p.composite_op,
+            preserve_alpha=p.extra.contains(("alpha-preserve", "true")),
+          )
         }
       Group(p, isolation, children) =>
         if p.visible {
@@ -68,7 +191,15 @@ fn render_nodes(
                 Array::make(canvas.width * canvas.height * 4, 0),
               )
               render_nodes(children, buffer, 1.0, depth + 1)
-              paint(canvas, buffer, 0, 0, p.opacity * opacity, p.composite_op)
+              paint(
+                canvas,
+                buffer,
+                0,
+                0,
+                p.opacity * opacity,
+                p.composite_op,
+                preserve_alpha=p.extra.contains(("alpha-preserve", "true")),
+              )
             }
           }
         }
