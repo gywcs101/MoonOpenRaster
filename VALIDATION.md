@@ -54,3 +54,14 @@ No Mooncakes release or contest form submission has been performed.
 - Layer extraction exports intrinsic PNGs and a JSON property/path manifest. It does not bake opacity, offsets, visibility or blends into each PNG. Local UI locks are not serialized; structural edits clear them.
 
 The local Windows native runtime limitation documented above still applies. New commits' GitHub checks must be assessed by their actual run.
+
+
+## Sample collection and guided tasks (2026-11-17)
+
+Four original-mode layered works now have separate practice files, starting previews and reference results. Three added source archives are pinned by SHA-256. Their original KRA stored preview versus Krita-exported ORA preview maximum channel differences are 0, 0 and 1; independent renders of the normalized web-sized documents differ by 0, 1 and 1. `fixtures/sample-validation.json` records the source names, translations and measurements. Rain City's two KRA adjustment effects are baked by Krita into the exported raster result; they are not represented as editable adjustment layers.
+
+Practice variants intentionally change existing layer offsets/visibility/opacity. The Capitole variant also tints its flat background; its replacement asset is the author's original white background PNG. Practice tasks do not invent replacement artwork layers. Every sample retains its raster layer count and nesting. Source terms and modifications are in LICENSES/sample-artworks-NOTICE.txt.
+
+`node scripts/check_samples.mjs` replays each task through the real MoonBit bridge, checks the initial tasks are unfinished, verifies the completed result equals its reference PNG byte-for-byte, and saves/reopens ORA without pixel changes. `python scripts/check_sample_pixels.py` independently checks archives and Krita reference pixels; optionally pass a Krita executable to reopen the reference-result documents. Browser coverage includes manual position editing, eye toggles, built-in PNG replacement, undo/redo task re-evaluation, export revision tracking, all four guides, sample switch cancellation, mobile width and saved ORA reopening.
+
+Completion evaluates the current document, including numeric ranges and image thumbnails/dimensions for the prescribed background. Export completion is linked to a document revision and invalidated by further edits. These are tutorial reference conditions, not an automatic judgment of artistic quality. Missing or renamed required layers are reported with a reset option. There is no server-side upload or persistent account progress.

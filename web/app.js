@@ -1,3 +1,4 @@
+import { SampleStudio } from './samples.js?v=guided-20261117-1';
 const $ = id => document.getElementById(id);
 const modes = {
   'src-over': '正常', multiply: '正片叠底', screen: '滤色', overlay: '叠加',
@@ -30,7 +31,8 @@ function invoke(query) {
   });
 }
 let state, selected, original, savedRevision;
-let busy = false, isPosterSample = false;
+let busy = false;
+let sampleStudio;
 let drag = null, previewRunning = false, previewFrame = 0;
 let gestureId = 0;
 let scale = 1, fitMode = true, panX = 0, panY = 0, pan = null, space = false;
@@ -101,6 +103,7 @@ function updateActions() {
     $('document-meta').textContent = dirty() ? '已修改 · 尚未保存' : '文档已载入';
     drawTree();
   }
+  sampleStudio?.refresh();
 }
 for (const [value, label] of Object.entries(modes)) {
   const option = document.createElement('option');
@@ -220,12 +223,19 @@ function show(result, reset = false, selectionPath = selected?.path) {
   const name = result.name === 'Untitled' ? '未命名文档' : result.name;
   $('document-name').textContent = name + '.ora';
   document.querySelector('.document-preview img').src = 'data:image/png;base64,' + result.png;
-  document.querySelector('.document-preview strong').textContent = isPosterSample ? '自由之都 · 原始分层插画' : name;
-  document.querySelector('.document-preview span').textContent = isPosterSample ? 'David Revoy · 原稿图层' : '本地导入的分层文档';
+  document.querySelector('.document-preview strong').textContent = sampleStudio?.active?.sample.title || name;
+  document.querySelector('.document-preview span').textContent = sampleStudio?.active ? (sampleStudio.active.mode === 'practice' ? '动手练习 · 可随时查看参考成图' : 'David Revoy · 原稿图层') : '本地导入的分层文档';
   document.querySelector('.document-preview small').textContent = nodes.filter(node => node.kind === 'layer').length + ' 个独立像素图层';
-  document.querySelector('.source-section').hidden = !isPosterSample;
+  document.querySelector('.source-section').hidden = !sampleStudio?.active;
+  if (sampleStudio?.active) {
+    const sample = sampleStudio.active.sample;
+    document.querySelector('.source-section a').href = sample.source;
+    document.querySelector('.source-section a').textContent = sample.author + ' · ' + sample.sourceTitle;
+    document.querySelector('.source-section p').textContent = sample.note + ' ' + sample.license;
+  }
   $('dimensions').textContent = result.width + ' × ' + result.height + ' 像素';
   $('canvas').src = 'data:image/png;base64,' + ($('original').checked ? original : result.png);
+  $('compare-label').textContent = sampleStudio?.active?.mode === 'practice' ? '对照练习起点' : '对照导入时画面';
   $('loading').hidden = true;
   $('canvas-hint').textContent = state.editable === false ? '原始预览模式 · 可保存原文件' : '滚轮缩放 · 空格拖动画布 · 蓝框内拖动整层';
   if (selected) choose(selected);
@@ -328,9 +338,13 @@ function download(data, filename, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 const fileBase = () => (state?.name || '分层图像').replace(/[\\/:*?"<>|]/g, '_');
-$('png').onclick = () => guard(() => download(state.png, fileBase() + '.png', 'image/png'));
+$('png').onclick = () => guard(() => {
+  download(state.png, fileBase() + '.png', 'image/png');
+  sampleStudio?.recordExport(state.revision);
+});
 $('save').onclick = () => guard(async () => {
   download((await invoke({ action: 'export' })).data, fileBase() + '.ora', 'image/openraster'); savedRevision = state.revision;
+  sampleStudio?.recordExport(state.revision);
 });
 $('layer-png').onclick = () => guard(async () => download((await invoke({ action: 'layer-png', path: selected.path })).data, '图层-' + fileBase() + '.png', 'image/png'));
 $('all-layers').onclick = () => guard(async () => download((await invoke({ action: 'layers-zip' })).data, fileBase() + '-各图层.zip', 'application/zip'));
@@ -346,8 +360,9 @@ $('file').onchange = () => {
   const file = $('file').files[0]; if (!file) return;
   guard(async () => {
     try {
+      if (!await sampleStudio.allowSwitch()) return;
       const result = await invoke({ action: 'open', data: await encodedFile(file) });
-      isPosterSample = false; show(result, true); $('document-name').textContent = file.name;
+      sampleStudio.clear(); show(result, true); $('document-name').textContent = file.name;
     } finally { $('file').value = ''; }
   });
 };
@@ -371,17 +386,30 @@ $('add-group').onclick = () => guard(async () => {
   const parent = selected?.kind === 'group' ? selected.path : selected?.path.slice(0, -1) || [];
   await mutate({ action: 'group', parent, index: 0, name: '新建图层组' }, [...parent, 0]);
 });
-async function loadPoster() {
+async function loadSample(sample, mode) {
   $('loading').hidden = false;
   try {
-    const response = await fetch('assets/capitole.ora');
+    const url = mode === 'practice' ? sample.practice.file : sample.file;
+    const response = await fetch(url);
     if (!response.ok) throw Error('示例文件读取失败');
-    const file = new File([await response.blob()], 'capitole.ora');
+    const file = new File([await response.blob()], sample.id + '.ora');
     const result = await invoke({ action: 'open', data: await encodedFile(file) });
-    isPosterSample = true; show(result, true);
+    sampleStudio.activate(sample, mode);
+    show(result, true);
   } finally { $('loading').hidden = true; }
 }
-$('sample').onclick = () => guard(loadPoster);
+sampleStudio = new SampleStudio({
+  run: guard, load: loadSample, select: node => {
+    for (let i = 1; i < node.path.length; i++) collapsed.delete(key(node.path.slice(0, i)));
+    choose(node);
+    document.querySelector('.layer-row.active')?.scrollIntoView({ block: 'nearest' });
+  },
+  getNodes: findNodes, getState: () => state, isBusy: () => busy || !!drag, isDirty: dirty,
+  edit: editNode,
+  replace: async (node, file) => mutate({ action: 'replace', path: node.path, data: await encodedFile(file) }),
+  exportPNG: () => $('png').click(),
+});
+$('sample').onclick = () => guard(() => sampleStudio.reload());
 document.addEventListener('keydown', event => {
   const typing = event.target.closest('input, textarea, select, [contenteditable=true]');
   if (event.key === 'Escape' && drag) { event.preventDefault(); cancelDrag(); return; }
@@ -395,4 +423,7 @@ document.addEventListener('keydown', event => {
 document.addEventListener('keyup', event => { if (event.code === 'Space') space = false; });
 window.addEventListener('blur', () => { space = false; if (drag) cancelDrag(); pan = null; });
 window.addEventListener('beforeunload', event => { if (dirty()) { event.preventDefault(); event.returnValue = ''; } });
-void guard(loadPoster);
+void guard(async () => {
+  await sampleStudio.init();
+  await sampleStudio.switchTo(sampleStudio.samples[0], 'original', true);
+});

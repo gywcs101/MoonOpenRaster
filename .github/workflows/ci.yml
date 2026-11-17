@@ -25,12 +25,16 @@ jobs:
       - run: python scripts/build_web.py
       - run: node scripts/check_bridge.mjs
       - run: node scripts/check_editor.mjs
+      - run: node scripts/check_samples.mjs
+      - run: python scripts/check_sample_pixels.py
       - run: python scripts/check_artwork.py
       - run: npm ci --prefix tests/browser
       - run: npx --prefix tests/browser playwright install --with-deps chromium
       - run: node tests/browser/check.mjs
+      - run: node tests/browser/samples.mjs
       - run: python scripts/check_web_server.py
       - run: python scripts/check_package.py
+      - run: python scripts/package_web.py
       - run: moon run examples/basic --target native
       - run: moon fmt --check
       - run: moon info && git diff --exit-code

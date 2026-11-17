@@ -19,7 +19,7 @@ For a self-contained distribution with compiled MoonBit code and license notices
 
 The launcher builds the JavaScript core and serves from the correct web directory with browser caching disabled. Stop older servers before starting it.
 
-Open http://127.0.0.1:8765 in a browser. The workbench loads a real source-layer illustration by David Revoy (7 original painting layers, translated names, resized to 1000 × 1000). Drag layers with live previews, undo/redo, zoom/pan, import/replace PNG layers, manage groups, extract layer PNGs and save PNG or ORA. See the [中文使用说明](docs/WORKBENCH.zh-CN.md). Processing happens locally. The browser import limit is 32 MiB.
+Open http://127.0.0.1:8765 in a browser. The workbench loads a real source-layer illustration by David Revoy (7 original painting layers, translated names, resized to 1000 × 1000). Drag layers with live previews, undo/redo, zoom/pan, import/replace PNG layers, manage groups, extract layer PNGs and save PNG or ORA. The sample gallery offers four authentic layered works, each with a separately labelled practice starting point, reference result and four-step guide. Completion follows actual layer state and the current exported revision. See the [中文使用说明](docs/WORKBENCH.zh-CN.md). Processing happens locally. The browser import limit is 32 MiB.
 
 ## Library
 
@@ -57,6 +57,8 @@ python scripts/check_interop.py
 python scripts/build_web.py
 node scripts/check_bridge.mjs
 node scripts/check_editor.mjs
+node scripts/check_samples.mjs
+python scripts/check_sample_pixels.py
 python scripts/check_artwork.py
 python scripts/check_krita.py
 python scripts/check_package.py

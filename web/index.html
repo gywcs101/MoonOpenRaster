@@ -3,24 +3,30 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MoonOpenRaster — 海报图层工作台</title>
-<link rel="stylesheet" href="style.css?v=editor-20261117-3">
+<link rel="stylesheet" href="style.css?v=guided-20261117-1">
 </head>
 <body>
 <header class="app-header">
  <div class="brand"><div><strong>MoonOpenRaster</strong><span class="brand-subtitle">分层图像工作台</span></div></div>
- <div class="history-actions"><button type="button" id="undo" title="撤销 Ctrl+Z" disabled>撤销</button><button type="button" id="redo" title="重做 Ctrl+Shift+Z" disabled>重做</button></div><div class="header-actions"><button type="button" id="open">打开 ORA</button><button type="button" id="png">导出 PNG</button><button type="button" id="save" class="primary">保存 ORA</button></div>
+ <div class="history-actions"><button type="button" id="undo" title="撤销 Ctrl+Z" disabled>撤销</button><button type="button" id="redo" title="重做 Ctrl+Shift+Z" disabled>重做</button></div><div class="header-actions"><button type="button" id="browse-samples">样例与练习</button><button type="button" id="open">打开 ORA</button><button type="button" id="png">导出 PNG</button><button type="button" id="save" class="primary">保存 ORA</button></div>
  <input type="file" id="layer-file" accept=".png,image/png" hidden><input type="file" id="file" name="document" accept=".ora" hidden>
 </header>
 <div class="document-bar"><div><span class="document-dot" aria-hidden="true"></span><span id="document-name">正在载入海报</span><span id="document-meta"></span></div><span class="local-state">文件仅在本机处理</span></div>
 <main class="workspace">
  <aside class="panel layers-panel" aria-label="文档与图层">
-  <section class="document-section"><div class="section-title"><h2>当前文档</h2><button type="button" id="sample" class="text-button">重载示例</button></div><div class="document-preview"><img src="assets/capitole-preview.png" alt=""><div><strong>自由之都</strong><span>David Revoy · 原稿图层</span><small>7 个原始绘画图层</small></div></div></section>
+  <section class="document-section"><div class="section-title"><h2>当前文档</h2><button type="button" id="sample" class="text-button">重载</button></div><div class="document-preview"><img src="assets/capitole-preview.png" alt=""><div><strong>自由之都</strong><span>David Revoy · 原稿图层</span><small>7 个原始绘画图层</small></div></div></section>
   <section class="layer-section"><div class="section-title"><h2>图层</h2><span id="count"></span></div><p class="section-description">上方图层覆盖下方图层</p><div class="layer-tools"><button type="button" id="add-layer">导入 PNG</button><button type="button" id="add-group">新建组</button><button type="button" id="all-layers">提取全部层</button></div><div id="tree" role="group" aria-label="图层列表"></div></section>
   <section class="source-section"><span>原始分层素材</span><a href="https://www.peppercarrot.com/zh/viewer/misc__2023-06-30_Poster-for-Capitole-du-libre-2023_by-David-Revoy.html" target="_blank" rel="noopener">David Revoy · Capitole du libre 2023</a><p>作者原稿的线稿、底色、阴影与草稿层。仅为网页缩小、转换为 8 位 sRGB；未新增图画内容。CC BY 4.0，保留作者禁止 AI 衍生的说明。</p></section>
  </aside>
  <section class="stage" aria-label="海报画布">
-  <div class="canvas-toolbar"><div><span class="canvas-tab">当前合成</span><label class="compare"><input id="original" name="original" type="checkbox">对照原始画面</label></div><div class="zoom-tools"><button type="button" id="hand" aria-pressed="false" title="平移画布，也可按住空格拖动">手形</button><button type="button" id="zoom-out" aria-label="缩小">−</button><span id="zoom">适应画布</span><button type="button" id="zoom-in" aria-label="放大">＋</button><button type="button" id="actual-size">100%</button><button type="button" id="fit">适应</button></div></div>
-  <div class="canvas-area" id="canvas-area"><div class="artboard" id="artboard"><img id="canvas" alt="可编辑的海报合成画面"><canvas id="live-preview" aria-label="实时拖动预览" hidden></canvas><div id="selection" class="selection" hidden><span class="selection-label" id="selection-label"></span><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div></div><div class="loading" id="loading" role="status">正在读取原始分层作品…</div></div>
+  <div class="practice-invite" id="practice-invite" hidden><div><strong>动手做一张新图</strong><span id="invite-text"></span></div><button type="button" id="start-practice">开始练习 →</button></div>
+  <section class="practice-panel" id="practice-panel" aria-label="练习指引" hidden>
+   <div class="practice-heading"><div><span class="practice-tag">练习模式</span><strong id="practice-title"></strong><span id="practice-progress" role="status" aria-live="polite"></span></div><div><button type="button" id="view-goal">参考成图</button><button type="button" id="restart-practice">重新练习</button></div></div>
+   <nav id="guide-steps" aria-label="练习步骤"></nav>
+   <div class="guide-body"><div><h2 id="guide-title"></h2><p id="guide-text"></p></div><div class="guide-actions"><button type="button" id="guide-locate">定位图层</button><button type="button" id="guide-action" class="primary">应用参考值</button><a id="guide-asset" hidden>下载原稿背景 PNG</a></div></div>
+  </section>
+  <div class="canvas-toolbar"><div><span class="canvas-tab">当前合成</span><label class="compare"><input id="original" name="original" type="checkbox"><span id="compare-label">对照导入时画面</span></label></div><div class="zoom-tools"><button type="button" id="hand" aria-pressed="false" title="平移画布，也可按住空格拖动">手形</button><button type="button" id="zoom-out" aria-label="缩小">−</button><span id="zoom">适应画布</span><button type="button" id="zoom-in" aria-label="放大">＋</button><button type="button" id="actual-size">100%</button><button type="button" id="fit">适应</button></div></div>
+  <div class="canvas-area" id="canvas-area"><div class="artboard" id="artboard"><img id="canvas" alt="当前图层合成画面"><canvas id="live-preview" aria-label="实时拖动预览" hidden></canvas><div id="selection" class="selection" hidden><span class="selection-label" id="selection-label"></span><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div></div><div class="loading" id="loading" role="status">正在读取原始分层作品…</div></div>
   <div class="canvas-footer"><span id="dimensions"></span><span id="canvas-hint">选择一个图层，查看它在海报中的位置</span><span>8 位 sRGB</span></div>
  </section>
  <aside class="panel inspector-panel" aria-label="选中图层属性">
@@ -37,6 +43,13 @@
   <div class="inspector-note"><strong>如何看懂图层？</strong><p>先隐藏“线稿”或“阴影”观察画面变化。选中绘画层可拖动整层；草稿默认隐藏。滚轮缩放，按住空格拖动画布。撤销支持 Ctrl+Z，受内存限制最多保留 20 步。</p></div>
  </aside>
 </main>
+<dialog id="sample-gallery" aria-labelledby="gallery-heading">
+ <div class="dialog-heading"><div><span class="section-kicker">样例与练习</span><h2 id="gallery-heading">从原稿，做出你的版本</h2><p>四份真实分层作品。查看原稿，或用四个小步骤练习改图与导出。</p></div><button type="button" id="gallery-close" aria-label="关闭样例库">关闭 ×</button></div>
+ <div id="sample-grid" class="sample-grid"></div>
+ <p class="gallery-note">练习会故意调整部分位置、显隐或背景，起点与原稿分开提供。画面里的物体能否单独移动，取决于作者原本怎样分层。来源和转换说明在工作台左下角。</p>
+</dialog>
+<dialog id="goal-dialog" aria-labelledby="goal-heading"><div class="dialog-heading"><h2 id="goal-heading">练习前后</h2><button type="button" id="goal-close">关闭 ×</button></div><div class="goal-comparison"><figure><img id="goal-start" alt="练习起点"><figcaption>练习起点</figcaption></figure><figure><img id="goal-result" alt="参考成图"><figcaption>参考成图 · 也可以做出自己的版本</figcaption></figure></div></dialog>
+<dialog id="discard-dialog" aria-labelledby="discard-heading"><form method="dialog"><h2 id="discard-heading">保留当前改动吗？</h2><p>当前改动还没有保存为 ORA。可以先返回并保存，或放弃改动后打开新的文档。</p><div class="discard-actions"><button value="cancel" autofocus>返回继续编辑</button><button value="discard">放弃改动并切换</button></div></form></dialog>
 <script>
 window.addEventListener('error', function (event) {
   if (event.target && event.target.tagName === 'IMG') return;
@@ -44,6 +57,6 @@ window.addEventListener('error', function (event) {
   if (loading) { loading.hidden = false; loading.textContent = '界面资源未能载入，请重新启动服务并刷新页面。'; }
 }, true);
 </script>
-<script type="module" src="app.js?v=editor-20261117-3"></script>
+<script type="module" src="app.js?v=guided-20261117-1"></script>
 </body>
 </html>
