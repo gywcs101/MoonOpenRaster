@@ -21,6 +21,7 @@ SHA-256: b4fdccfd7858544bbb5dbc9ca3b89dc5a3897f714d06788b2c8010ba7f64ab92
 The artwork pages state Creative Commons Attribution 4.0 International:
 https://creativecommons.org/licenses/by/4.0/
 Full license: https://creativecommons.org/licenses/by/4.0/legalcode.en
+A complete local copy accompanies this distribution: LICENSES/CC-BY-4.0.txt
 The author's additional "AI derivation prohibited" statement is retained:
 https://www.davidrevoy.com/article1178/license-update-ai-derivation-prohibited-on-all-my-art-lore-stories-and-comics
 No generative image models were used to invent, split, repaint or complete

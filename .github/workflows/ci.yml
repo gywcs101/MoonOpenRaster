@@ -20,6 +20,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install Pillow==11.1.0
+      - run: python scripts/check_licenses.py
       - run: python scripts/check_interop.py
       - run: python scripts/check_krita.py
       - run: python scripts/build_web.py

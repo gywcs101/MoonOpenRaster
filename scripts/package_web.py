@@ -1,6 +1,7 @@
 """Build a self-contained local web bundle with dependency licenses."""
 from pathlib import Path
 import subprocess, zipfile, json
+from check_licenses import validate_bundle
 root=Path(__file__).resolve().parents[1]
 subprocess.run(["python", "scripts/build_web.py"],cwd=root,check=True)
 out=root / "_build/publish/MoonOpenRaster-web.zip"
@@ -25,4 +26,5 @@ with zipfile.ZipFile(out) as z:
             required.extend(check["asset"] for check in step.get("checks", []) if "asset" in check)
         assert all(name in names for name in required), sample["id"]
     assert "samples.js" in names and "LICENSES/sample-artworks-NOTICE.txt" in names
+validate_bundle(out, web=True)
 print(out)

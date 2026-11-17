@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "project_license": "MIT",
+  "license_text_source": {
+    "CC-BY-4.0": "https://creativecommons.org/licenses/by/4.0/legalcode.txt"
+  },
+  "license_texts": [
+    {
+      "id": "CC-BY-4.0",
+      "file": "LICENSES/CC-BY-4.0.txt",
+      "sha256_lf": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+    },
+    {
+      "id": "OFL-1.1",
+      "file": "LICENSES/font-instrument-serif-OFL.txt",
+      "sha256_lf": "129ed7618959716959f2941fdd5b49e0ad6e6c1d78726761786a00253d865521"
+    },
+    {
+      "id": "OFL-1.1",
+      "file": "LICENSES/font-inter-OFL.txt",
+      "sha256_lf": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitlang-core-LICENSE",
+      "sha256_lf": "86460c45017ffacb9aa9e18850fa9fdb036339dc8851125465f4a3f3442fc894"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitlang-x-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-moonbase-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-mooncrypt-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-moondate-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-moonimage-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-moonrgba-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-moonseed-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-moonxml-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/moonbitstack-moonzip-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "MIT",
+      "file": "LICENSE",
+      "sha256_lf": "b0c793c5f10886aedb5302bf421139d61c4b25628e897661290485b6d16ce1c3"
+    }
+  ],
+  "runtime_dependencies": [
+    {
+      "module": "moonbitstack/moonbase",
+      "version": "0.5.0",
+      "source": "https://github.com/moonbitstack/moonbase",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-moonbase-LICENSE"
+    },
+    {
+      "module": "moonbitstack/mooncrypt",
+      "version": "0.5.0",
+      "source": "https://github.com/moonbitstack/mooncrypt",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-mooncrypt-LICENSE"
+    },
+    {
+      "module": "moonbitstack/moondate",
+      "version": "0.1.7",
+      "source": "https://github.com/moonbitstack/moondate",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-moondate-LICENSE"
+    },
+    {
+      "module": "moonbitstack/moonimage",
+      "version": "0.2.0",
+      "source": "https://github.com/moonbitstack/moonimage",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-moonimage-LICENSE"
+    },
+    {
+      "module": "moonbitstack/moonrgba",
+      "version": "0.1.3",
+      "source": "https://github.com/moonbitstack/moonrgba",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-moonrgba-LICENSE"
+    },
+    {
+      "module": "moonbitstack/moonseed",
+      "version": "0.1.3",
+      "source": "https://github.com/moonbitstack/moonseed",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-moonseed-LICENSE"
+    },
+    {
+      "module": "moonbitstack/moonxml",
+      "version": "0.2.0",
+      "source": "https://github.com/moonbitstack/moonxml",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-moonxml-LICENSE"
+    },
+    {
+      "module": "moonbitstack/moonzip",
+      "version": "0.4.0",
+      "source": "https://github.com/moonbitstack/moonzip",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitstack-moonzip-LICENSE"
+    },
+    {
+      "module": "moonbitlang/x",
+      "version": "0.5.7",
+      "source": "https://github.com/moonbitlang/x",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitlang-x-LICENSE",
+      "notice_file": "LICENSES/moonbitlang-x-NOTICE",
+      "notice_sha256_lf": "24f138a288e69d1eef6a1d12ec7ad174f52cd6ca4e6ec797a5cdcd4497dd825b"
+    },
+    {
+      "module": "moonbitlang/core",
+      "version": "compiler-bundled (validated with moonc 0.10.20)",
+      "source": "https://github.com/moonbitlang/core",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitlang-core-LICENSE",
+      "notice_file": "LICENSES/moonbitlang-core-NOTICE",
+      "notice_scope": "Complete upstream NOTICE, including licenses/attributions of code adapted from other projects",
+      "notice_sha256_lf": "a20a618afc132a32e340f567fc2fb4296cfbefda7284422b6085afcd394e478d"
+    }
+  ],
+  "asset_groups": [
+    {
+      "patterns": [
+        "web/assets/capitole.ora",
+        "web/assets/capitole-preview.png",
+        "fixtures/capitole-krita.png",
+        "web/assets/samples/capitole*"
+      ],
+      "license": "CC-BY-4.0",
+      "license_file": "LICENSES/CC-BY-4.0.txt",
+      "notice_file": "LICENSES/capitole-artwork-NOTICE.txt",
+      "additional_notice_file": "LICENSES/sample-artworks-NOTICE.txt",
+      "source": "https://www.peppercarrot.com/zh/viewer/misc__2023-06-30_Poster-for-Capitole-du-libre-2023_by-David-Revoy.html"
+    },
+    {
+      "patterns": [
+        "web/assets/samples/bloom*",
+        "web/assets/samples/house*",
+        "web/assets/samples/rain*",
+        "fixtures/samples/*-krita.png"
+      ],
+      "license": "CC-BY-4.0",
+      "license_file": "LICENSES/CC-BY-4.0.txt",
+      "notice_file": "LICENSES/sample-artworks-NOTICE.txt",
+      "source": "See the per-work source URLs and archive SHA-256 in LICENSES/sample-artworks-NOTICE.txt"
+    },
+    {
+      "patterns": [
+        "web/assets/inter.woff2"
+      ],
+      "license": "OFL-1.1",
+      "license_file": "LICENSES/font-inter-OFL.txt",
+      "source": "https://github.com/rsms/inter"
+    },
+    {
+      "patterns": [
+        "web/assets/instrument-serif.woff2"
+      ],
+      "license": "OFL-1.1",
+      "license_file": "LICENSES/font-instrument-serif-OFL.txt",
+      "source": "https://github.com/Instrument/instrument-serif"
+    },
+    {
+      "patterns": [
+        "fixtures/krita-5.3.4.ora",
+        "fixtures/krita-5.3.4.png"
+      ],
+      "license": "MIT",
+      "license_file": "LICENSE",
+      "source": "Project-generated Light study, exported and rewritten by Krita 5.3.4; see fixtures/README.md"
+    }
+  ],
+  "development_dependencies_note": "Playwright and Pillow are installed separately for validation; their implementation code is not redistributed in the repository or the two bundles. node_modules and .mooncakes must be excluded.",
+  "hash_normalization": "License/notice hashes canonicalize CRLF to LF so Git checkout line endings do not create false changes."
+}

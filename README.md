@@ -73,3 +73,6 @@ The core format work follows the [OpenRaster baseline specification](https://www
 MIT License. Copyright 2026 gywcs101.
 
 Krita 5.3.4 differs from the standard `svg:plus` alpha rule in the tested sample. Additive-layer visual equality across these implementations is not guaranteed; numerical evidence is recorded in VALIDATION.md.
+
+
+The project code is MIT; bundled artwork, fonts and compiled dependencies retain their own licenses. Complete texts, per-file applicability, source links and modification notices are in [LICENSES/README.md](LICENSES/README.md). Run `python scripts/check_licenses.py` to verify redistribution metadata; the same check is applied to source and offline-web packages.

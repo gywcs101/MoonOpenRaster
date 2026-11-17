@@ -1,12 +1,14 @@
 """Validate and consume the exact package generated for moon.mod's current version."""
 from pathlib import Path
 import re, subprocess, tempfile, zipfile
+from check_licenses import validate_bundle
 root = Path(__file__).resolve().parents[1]
 text = (root / "moon.mod").read_text()
 name = re.search(r'^name\s*=\s*"([^"]+)"', text, re.M)[1]
 version = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)[1]
 subprocess.run(["moon", "package"], cwd=root, check=True)
 archive = root / "_build/publish" / (name.replace("/", "-") + "-" + version + ".zip")
+validate_bundle(archive)
 with tempfile.TemporaryDirectory(prefix="moonora-consumer-") as folder:
     workspace = Path(folder)
     package = workspace / "package"

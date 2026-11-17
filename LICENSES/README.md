@@ -1,14 +1,42 @@
-# Third-party dependency licenses
+# Distribution license index
 
-These files accompany the browser bundle and preserve dependency notices. The version list matches the resolved module graph used for validation.
+The project code uses [MIT](../LICENSE). Third-party runtime code, fonts and artwork retain the separate licenses below. The project MIT license does not relicense those materials. Full texts are included locally; source links are additional provenance, not a substitute for the copies.
 
-- moonbitlang/x — [LICENSE](moonbitlang-x-LICENSE)
-- moonbitstack/moonimage — [LICENSE](moonbitstack-moonimage-LICENSE)
-- moonbitstack/moonzip — [LICENSE](moonbitstack-moonzip-LICENSE)
-- moonbitstack/moonxml — [LICENSE](moonbitstack-moonxml-LICENSE)
-- moonbitstack/moonbase — [LICENSE](moonbitstack-moonbase-LICENSE)
-- moonbitstack/mooncrypt — [LICENSE](moonbitstack-mooncrypt-LICENSE)
-- moonbitstack/moondate — [LICENSE](moonbitstack-moondate-LICENSE)
-- moonbitstack/moonseed — [LICENSE](moonbitstack-moonseed-LICENSE)
-- moonbitstack/moonrgba — [LICENSE](moonbitstack-moonrgba-LICENSE)
-- moonbitlang/core — [LICENSE](moonbitlang-core-LICENSE)
+## Runtime components
+
+The resolved graph is recorded in [manifest.json](manifest.json). The browser bundle embeds compiled dependency code. The source package declares these dependencies and does not vendor their source.
+
+| Component | Version / scope | License copy | Attribution notice |
+| --- | --- | --- | --- |
+| [moonbitstack/moonbase](https://github.com/moonbitstack/moonbase) | 0.5.0 | [Apache-2.0](moonbitstack-moonbase-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitstack/mooncrypt](https://github.com/moonbitstack/mooncrypt) | 0.5.0 | [Apache-2.0](moonbitstack-mooncrypt-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitstack/moondate](https://github.com/moonbitstack/moondate) | 0.1.7 | [Apache-2.0](moonbitstack-moondate-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitstack/moonimage](https://github.com/moonbitstack/moonimage) | 0.2.0 | [Apache-2.0](moonbitstack-moonimage-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitstack/moonrgba](https://github.com/moonbitstack/moonrgba) | 0.1.3 | [Apache-2.0](moonbitstack-moonrgba-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitstack/moonseed](https://github.com/moonbitstack/moonseed) | 0.1.3 | [Apache-2.0](moonbitstack-moonseed-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitstack/moonxml](https://github.com/moonbitstack/moonxml) | 0.2.0 | [Apache-2.0](moonbitstack-moonxml-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitstack/moonzip](https://github.com/moonbitstack/moonzip) | 0.4.0 | [Apache-2.0](moonbitstack-moonzip-LICENSE) | No upstream NOTICE in the installed module |
+| [moonbitlang/x](https://github.com/moonbitlang/x) | 0.5.7 | [Apache-2.0](moonbitlang-x-LICENSE) | [moonbitlang-x-NOTICE](moonbitlang-x-NOTICE) |
+| [moonbitlang/core](https://github.com/moonbitlang/core) | compiler-bundled (validated with moonc 0.10.20) | [Apache-2.0](moonbitlang-core-LICENSE) | [moonbitlang-core-NOTICE](moonbitlang-core-NOTICE) |
+
+The core NOTICE is the complete upstream SDK file, including third-party component license texts and attributions. The x notice records the module source and copyright. Upstream notices are retained where supplied. The moonbitstack license copies are identical to the installed modules after normalizing Git line endings.
+
+## Fonts and artwork
+
+| Distributed files | Applicable license | Source, attribution and modifications |
+| --- | --- | --- |
+| `web/assets/inter.woff2` | [SIL OFL 1.1 + copyright](font-inter-OFL.txt) | [Inter project](https://github.com/rsms/inter); bundled font unchanged |
+| `web/assets/instrument-serif.woff2` | [SIL OFL 1.1 + copyright](font-instrument-serif-OFL.txt) | [Instrument Serif project](https://github.com/Instrument/instrument-serif); bundled font unchanged |
+| Capitole artwork, preview, practice variant, background PNG and Krita reference | [CC BY 4.0 full text](CC-BY-4.0.txt) | [Author, source URLs, source hash and changes](capitole-artwork-NOTICE.txt); [practice modifications](sample-artworks-NOTICE.txt) |
+| In Bloom, Spooky Cute House and Rain City: original/practice/reference ORA and PNG, including `fixtures/samples/` | [CC BY 4.0 full text](CC-BY-4.0.txt) | [Per-work source, hashes, modifications and author statement](sample-artworks-NOTICE.txt) |
+| `fixtures/krita-5.3.4.ora` and `.png` | [Project MIT](../LICENSE) | Project-generated Light study, independently exported by Krita; [fixture provenance](../fixtures/README.md) |
+
+The artwork author also states **AI derivation prohibited**; the linked notices retain that statement and explain the actual format conversions and practice edits. No generative image model was used to create or split these artwork layers. Technical metadata and instruction code do not change the artwork license.
+
+The complete CC BY 4.0 text was copied from [Creative Commons](https://creativecommons.org/licenses/by/4.0/legalcode.txt). File-level patterns, line-ending-normalized full-text hashes and source references are in [manifest.json](manifest.json).
+
+## Verification and distribution
+
+Run `python scripts/check_licenses.py` to check complete texts, source/license coverage of every bundled binary asset, resolved upstream licenses and notices. Library and offline-web packaging checks also verify that the exact same license/notice bytes are included in their archives. Missing or stale notices fail CI.
+
+Playwright and Pillow are development tools installed separately. Their implementation code is not included in the source or offline-web archives; `node_modules/` and `.mooncakes/` are excluded.
