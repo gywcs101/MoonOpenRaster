@@ -20,3 +20,8 @@ Copies of the resolved dependencies' licenses and available NOTICE files are dis
 The workbench bundles a resized, format-converted version of David Revoy's **Poster for Capitole du libre 2023**, retaining the original seven painting layers and group. The source page states CC BY 4.0 and also carries an “AI derivation prohibited” statement, retained in LICENSES/capitole-artwork-NOTICE.txt. No generative image editing is involved. Layer names are translated; the image itself is only resized/normalized for the browser. The source archive is hash-pinned and conversion is reproducible with scripts/prepare_artwork.py. The artwork is not covered by this project's MIT license.
 
 Inter (rsms/inter) and Instrument Serif (Google Fonts) are bundled locally. Their SIL Open Font License notices are included under LICENSES/font-*.txt. No remote font service is needed at runtime.
+
+
+## Additional layered samples and practice variants
+
+The sample collection also includes David Revoy's *In Bloom*, *Spooky Cute House* and *Rain City*, converted from the author's original layered KRA sources. Artwork remains under its own stated CC BY 4.0 terms and the author's additional notice. Source archive hashes, conversion details, rasterized adjustment effects and deliberately modified practice variants are documented in LICENSES/sample-artworks-NOTICE.txt and fixtures/sample-validation.json. The practice background replacement is extracted from the original Capitole background layer. No image-generation model is used to create or separate artwork layers.

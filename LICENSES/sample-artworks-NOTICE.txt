@@ -1,0 +1,58 @@
+Additional original layered artwork by David Revoy
+
+In Bloom (2022-03-02)
+https://www.peppercarrot.com/en/viewer/artworks__2022-03-02_In-Bloom_by-David-Revoy.html
+Source zip:
+https://www.peppercarrot.com/0_sources/0ther/artworks/zip/2022-03-02_In-Bloom_by-David-Revoy.zip
+SHA-256: d5f8eaf52ca88219509ee77d0c6dd1ff9efa512ddc88c5d6ea8cc95c959cdc44
+
+Spooky Cute House (2021-05-19)
+https://www.peppercarrot.com/en/viewer/artworks__2021-05-19_Spooky-Cute-House_by-David-Revoy.html
+Source zip:
+https://www.peppercarrot.com/0_sources/0ther/artworks/zip/2021-05-19_Spooky-Cute-House_by-David-Revoy.zip
+SHA-256: 3d37b530d10c7ba686bbd54d7da0870896996a4c58f7d7d6bc5ae5e886af4f73
+
+Rain City (2022-12-06)
+https://www.peppercarrot.com/en/viewer/artworks__2022-12-06_Rain-City_by-David-Revoy.html
+Source zip:
+https://www.peppercarrot.com/0_sources/0ther/artworks/zip/2022-12-06_Rain-City_by-David-Revoy.zip
+SHA-256: b4fdccfd7858544bbb5dbc9ca3b89dc5a3897f714d06788b2c8010ba7f64ab92
+
+The artwork pages state Creative Commons Attribution 4.0 International:
+https://creativecommons.org/licenses/by/4.0/
+Full license: https://creativecommons.org/licenses/by/4.0/legalcode.en
+The author's additional "AI derivation prohibited" statement is retained:
+https://www.davidrevoy.com/article1178/license-update-ai-derivation-prohibited-on-all-my-art-lore-stories-and-comics
+No generative image models were used to invent, split, repaint or complete
+these original artwork layers. No endorsement by the artist is implied.
+
+Original-mode conversions: export the author's KRA with Krita 5.3.4, convert
+to 8-bit sRGB raster OpenRaster, resize layers/offsets proportionally to a
+maximum canvas side of 768 pixels, translate layer names, and regenerate
+previews and thumbnails with MoonOpenRaster. All PNG layers in these samples
+come from Krita's export of the original source artwork. Rain City's original
+two adjustment-layer effects are baked by Krita into the exported raster
+result; it has nine editable raster layers, not full KRA filter semantics.
+The KRA versus ORA stored previews and independently rendered web-sized
+variants are checked; see fixtures/sample-validation.json.
+
+Practice-mode modifications are deliberate and separately labelled: change
+visibility, opacity or offsets of existing layers; In Bloom's reference
+result exposes its original grayscale underpainting; Rain City's reference
+result reduces its rain layer. House restores the original visual arrangement.
+The Capitole exercise uses the existing artwork credited separately in
+capitole-artwork-NOTICE.txt, with a flat green tint applied to the original
+white background as an exercise defect. Its replacement PNG is the original
+white background layer. These practice variants are not presented as the
+unaltered originals or as the author's preferred revisions.
+
+Covered files: web/assets/samples/* artwork, the artwork thumbnails/reference
+images in fixtures/samples/, and embedded raster artwork within their ORA
+archives. These retain the source terms and are not relicensed under MIT.
+Exercise instructions, sample metadata and processing scripts are project code.
+
+Reproduction: download the three pinned zips into ../.tools/artwork/, build
+the JS core, then run scripts/prepare_samples.py with the Krita executable.
+The existing Capitole source sample is prepared by scripts/prepare_artwork.py.
+scripts/build_sample_catalog.mjs creates the practice variants by replaying
+real MoonBit document edits; it does not flatten the file into a mock editor.

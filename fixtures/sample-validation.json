@@ -1,0 +1,237 @@
+[
+  {
+    "id": "bloom",
+    "stem": "2022-03-02_In-Bloom_by-David-Revoy",
+    "sha256": "d5f8eaf52ca88219509ee77d0c6dd1ff9efa512ddc88c5d6ea8cc95c959cdc44",
+    "original_kra_ora_max_error": 0,
+    "layers": [
+      {
+        "original": "signature",
+        "name": "署名",
+        "size": [
+          107,
+          35
+        ]
+      },
+      {
+        "original": "paint-over2",
+        "name": "细节补绘",
+        "size": [
+          768,
+          768
+        ]
+      },
+      {
+        "original": "paint-over1",
+        "name": "轮廓补绘",
+        "size": [
+          768,
+          768
+        ]
+      },
+      {
+        "original": "drawing",
+        "name": "铅笔线稿",
+        "size": [
+          768,
+          768
+        ]
+      },
+      {
+        "original": "precolor",
+        "name": "预设色彩",
+        "size": [
+          768,
+          768
+        ]
+      },
+      {
+        "original": "value",
+        "name": "明暗底稿",
+        "size": [
+          768,
+          768
+        ]
+      },
+      {
+        "original": "---",
+        "name": "纸张底色",
+        "size": [
+          768,
+          768
+        ]
+      }
+    ],
+    "web_ora_krita_max_error": 0
+  },
+  {
+    "id": "house",
+    "stem": "2021-05-19_Spooky-Cute-House_by-David-Revoy",
+    "sha256": "3d37b530d10c7ba686bbd54d7da0870896996a4c58f7d7d6bc5ae5e886af4f73",
+    "original_kra_ora_max_error": 0,
+    "layers": [
+      {
+        "original": "z__parralal_verti_8K_BLUE.png",
+        "name": "蓝色透视线",
+        "size": [
+          757,
+          381
+        ]
+      },
+      {
+        "original": "y__distant_4K_GREEN.png",
+        "name": "绿色透视线",
+        "size": [
+          768,
+          381
+        ]
+      },
+      {
+        "original": "x__distant_4K_RED.png",
+        "name": "红色透视线",
+        "size": [
+          768,
+          381
+        ]
+      },
+      {
+        "original": "hl",
+        "name": "辅助水平线",
+        "size": [
+          768,
+          1
+        ]
+      },
+      {
+        "original": "sign",
+        "name": "署名",
+        "size": [
+          52,
+          16
+        ]
+      },
+      {
+        "original": "post",
+        "name": "后期修饰",
+        "size": [
+          978,
+          628
+        ]
+      },
+      {
+        "original": "over",
+        "name": "前景绘制",
+        "size": [
+          965,
+          628
+        ]
+      },
+      {
+        "original": "under",
+        "name": "基础绘制",
+        "size": [
+          965,
+          628
+        ]
+      },
+      {
+        "original": "---",
+        "name": "背景底稿",
+        "size": [
+          768,
+          381
+        ]
+      },
+      {
+        "original": "thumb",
+        "name": "构图小稿",
+        "size": [
+          250,
+          130
+        ]
+      }
+    ],
+    "web_ora_krita_max_error": 1
+  },
+  {
+    "id": "rain",
+    "stem": "2022-12-06_Rain-City_by-David-Revoy",
+    "sha256": "b4fdccfd7858544bbb5dbc9ca3b89dc5a3897f714d06788b2c8010ba7f64ab92",
+    "original_kra_ora_max_error": 1,
+    "layers": [
+      {
+        "original": "persp",
+        "name": "透视参考线",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "composition",
+        "name": "构图检查",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "rain",
+        "name": "雨幕",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "vignette",
+        "name": "暗角",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "fix",
+        "name": "修饰",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "enhancing",
+        "name": "细节增强",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "theme change",
+        "name": "色调绘制",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "block 1",
+        "name": "场景铺色",
+        "size": [
+          768,
+          409
+        ]
+      },
+      {
+        "original": "idea",
+        "name": "构思底稿",
+        "size": [
+          768,
+          409
+        ]
+      }
+    ],
+    "web_ora_krita_max_error": 1
+  }
+]

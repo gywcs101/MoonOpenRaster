@@ -1,0 +1,305 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "capitole",
+      "title": "自由之都",
+      "subtitle": "把一张错位的插画整理干净",
+      "file": "assets/capitole.ora",
+      "cover": "assets/capitole-preview.png",
+      "source": "https://www.peppercarrot.com/zh/viewer/misc__2023-06-30_Poster-for-Capitole-du-libre-2023_by-David-Revoy.html",
+      "sourceTitle": "Poster for Capitole du libre 2023",
+      "note": "7 个原始绘画图层。练习起点故意移动线稿、显示草稿，并把背景染成浅绿；参考图恢复原稿的干净状态。",
+      "width": 1000,
+      "height": 1000,
+      "layerCount": 7,
+      "author": "David Revoy",
+      "license": "CC BY 4.0 · 禁止 AI 衍生（作者标注）",
+      "practice": {
+        "file": "assets/samples/capitole-practice.ora",
+        "start": "assets/samples/capitole-practice.png",
+        "goal": "assets/capitole-preview.png",
+        "goalFile": "assets/capitole.ora",
+        "steps": [
+          {
+            "title": "对齐线稿",
+            "text": "选择“线稿”，把线条移回底色上。参考位置：X 127，Y 107。",
+            "checks": [
+              {
+                "name": "线稿",
+                "type": "properties",
+                "expected": {
+                  "x": 127,
+                  "y": 107
+                },
+                "tolerance": 3
+              }
+            ],
+            "suggestion": "应用参考位置"
+          },
+          {
+            "title": "隐藏草稿",
+            "text": "关闭“草稿”旁的眼睛，让未完成的线条不再干扰画面。",
+            "checks": [
+              {
+                "name": "草稿",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              }
+            ],
+            "suggestion": "隐藏草稿"
+          },
+          {
+            "title": "换回干净背景",
+            "text": "将“背景”替换成原稿的白底 PNG。也可下载素材后用右侧“替换 PNG”导入。",
+            "checks": [
+              {
+                "name": "背景",
+                "type": "image",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAARElEQVR4nO3OMQHAIADAsA3/ngEFPD3gSBTkn9v3sHG/cCZYCVaClWAlWAlWgpVgJVgJVoKVYCVYCVaClWAlWAlWgtUCPuoETMxcrJMAAAAASUVORK5CYII=",
+                "width": 1000,
+                "height": 1000,
+                "asset": "assets/samples/capitole-original-background.png"
+              }
+            ],
+            "suggestion": "使用原稿白底"
+          },
+          {
+            "title": "导出你的作品",
+            "text": "前三项完成后，导出 PNG 与朋友分享；也可以保存 ORA，保留图层继续修改。",
+            "type": "export"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bloom",
+      "title": "花间少女",
+      "subtitle": "从完成稿里找回铅笔与明暗",
+      "sourceTitle": "In Bloom",
+      "source": "https://www.peppercarrot.com/en/viewer/artworks__2022-03-02_In-Bloom_by-David-Revoy.html",
+      "note": "保留原稿的补绘、线稿、预色与明暗层。练习通过隐藏完成稿层，制作保留明暗的素描版本。",
+      "file": "assets/samples/bloom.ora",
+      "cover": "assets/samples/bloom.png",
+      "width": 768,
+      "height": 768,
+      "layerCount": 7,
+      "author": "David Revoy",
+      "license": "CC BY 4.0 · 禁止 AI 衍生（作者标注）",
+      "practice": {
+        "file": "assets/samples/bloom-practice.ora",
+        "start": "assets/samples/bloom-practice.png",
+        "goal": "assets/samples/bloom-goal.png",
+        "goalFile": "assets/samples/bloom-goal.ora",
+        "steps": [
+          {
+            "title": "收起完成稿补绘",
+            "text": "依次隐藏“细节补绘”和“轮廓补绘”，露出下面的铅笔绘制。署名保持显示。",
+            "checks": [
+              {
+                "name": "细节补绘",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              },
+              {
+                "name": "轮廓补绘",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              }
+            ],
+            "suggestion": "隐藏当前补绘层"
+          },
+          {
+            "title": "去掉预设色彩",
+            "text": "隐藏“预设色彩”，保留“明暗底稿”，得到有体积感的素描。",
+            "checks": [
+              {
+                "name": "预设色彩",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              }
+            ],
+            "suggestion": "隐藏预设色彩"
+          },
+          {
+            "title": "让线条清楚一些",
+            "text": "选择“铅笔线稿”，把不透明度调到 80% 左右，再应用。",
+            "checks": [
+              {
+                "name": "铅笔线稿",
+                "type": "properties",
+                "expected": {
+                  "opacity": 0.8
+                },
+                "tolerance": 0.08
+              }
+            ],
+            "suggestion": "使用 80% 线稿"
+          },
+          {
+            "title": "导出你的作品",
+            "text": "前三项完成后，导出 PNG 与朋友分享；也可以保存 ORA，保留图层继续修改。",
+            "type": "export"
+          }
+        ]
+      }
+    },
+    {
+      "id": "house",
+      "title": "林间小屋",
+      "subtitle": "去掉参考线，修复前景与气氛",
+      "sourceTitle": "Spooky Cute House",
+      "source": "https://www.peppercarrot.com/en/viewer/artworks__2021-05-19_Spooky-Cute-House_by-David-Revoy.html",
+      "note": "保留原稿的透视辅助组和绘画组。练习起点显示辅助线、移动前景并减弱后期层，参考图恢复原稿气氛。",
+      "file": "assets/samples/house.ora",
+      "cover": "assets/samples/house.png",
+      "width": 768,
+      "height": 381,
+      "layerCount": 10,
+      "author": "David Revoy",
+      "license": "CC BY 4.0 · 禁止 AI 衍生（作者标注）",
+      "practice": {
+        "file": "assets/samples/house-practice.ora",
+        "start": "assets/samples/house-practice.png",
+        "goal": "assets/samples/house.png",
+        "goalFile": "assets/samples/house.ora",
+        "steps": [
+          {
+            "title": "关掉透视参考组",
+            "text": "隐藏整个“透视参考组”，一次收起所有彩色辅助线。不要逐个删除子层。",
+            "checks": [
+              {
+                "name": "透视参考组",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              }
+            ],
+            "suggestion": "隐藏参考组"
+          },
+          {
+            "title": "把前景移回去",
+            "text": "选择“前景绘制”，让道路与房屋重新衔接。参考位置：X -101，Y -133。",
+            "checks": [
+              {
+                "name": "前景绘制",
+                "type": "properties",
+                "expected": {
+                  "x": -101,
+                  "y": -133
+                },
+                "tolerance": 3
+              }
+            ],
+            "suggestion": "应用参考位置"
+          },
+          {
+            "title": "恢复后期气氛",
+            "text": "选择“后期修饰”，将不透明度提高到 90%–100%，让光影与整体色调更完整。",
+            "checks": [
+              {
+                "name": "后期修饰",
+                "type": "properties",
+                "expected": {
+                  "opacity": 1
+                },
+                "tolerance": 0.1
+              }
+            ],
+            "suggestion": "恢复后期修饰"
+          },
+          {
+            "title": "导出你的作品",
+            "text": "前三项完成后，导出 PNG 与朋友分享；也可以保存 ORA，保留图层继续修改。",
+            "type": "export"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rain",
+      "title": "雨城",
+      "subtitle": "把大雨改成更清楚的小雨场景",
+      "sourceTitle": "Rain City",
+      "source": "https://www.peppercarrot.com/en/viewer/artworks__2022-12-06_Rain-City_by-David-Revoy.html",
+      "note": "9 个栅格层与后期组。原 KRA 的两项调整效果由 Krita 烘焙后导出；练习保留这些结果，调节雨幕与辅助层。",
+      "file": "assets/samples/rain.ora",
+      "cover": "assets/samples/rain.png",
+      "width": 768,
+      "height": 409,
+      "layerCount": 9,
+      "author": "David Revoy",
+      "license": "CC BY 4.0 · 禁止 AI 衍生（作者标注）",
+      "practice": {
+        "file": "assets/samples/rain-practice.ora",
+        "start": "assets/samples/rain-practice.png",
+        "goal": "assets/samples/rain-goal.png",
+        "goalFile": "assets/samples/rain-goal.ora",
+        "steps": [
+          {
+            "title": "退出构图检查",
+            "text": "隐藏“构图检查”，从黑白检查图切回彩色画面。这个辅助层保留下来即可。",
+            "checks": [
+              {
+                "name": "构图检查",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              }
+            ],
+            "suggestion": "隐藏构图检查"
+          },
+          {
+            "title": "收起透视线",
+            "text": "隐藏“透视参考线”，让建筑上的辅助线退出最终画面。",
+            "checks": [
+              {
+                "name": "透视参考线",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              }
+            ],
+            "suggestion": "隐藏透视参考线"
+          },
+          {
+            "title": "把大雨调成小雨",
+            "text": "展开“后期效果”，选择“雨幕”，将不透明度调到 20%–35%，让人物和建筑更清楚。",
+            "checks": [
+              {
+                "name": "雨幕",
+                "type": "properties",
+                "expected": {
+                  "opacity": 0.28
+                },
+                "ranges": {
+                  "opacity": [
+                    0.2,
+                    0.35
+                  ]
+                }
+              }
+            ],
+            "suggestion": "使用 28% 雨幕"
+          },
+          {
+            "title": "导出你的作品",
+            "text": "前三项完成后，导出 PNG 与朋友分享；也可以保存 ORA，保留图层继续修改。",
+            "type": "export"
+          }
+        ]
+      }
+    }
+  ]
+}
