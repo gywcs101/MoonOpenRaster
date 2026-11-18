@@ -130,17 +130,18 @@ def verify_saved(path):
 
 def check_input_variants(cli):
     """Check color markers, low-bit palette/gray normalization and error boundaries."""
-    from PIL import Image
-    palette = Image.new("P", (1, 1), 1)
-    palette.putpalette([0, 0, 0, 19, 29, 39])
-    buf = BytesIO()
-    palette.save(buf, format="PNG", bits=1, transparency=bytes([255, 101]))
+    palette = (
+        SIGNATURE + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 1, 3, 0, 0, 0))
+        + chunk(b"PLTE", bytes([0, 0, 0, 19, 29, 39]))
+        + chunk(b"tRNS", bytes([255, 101]))
+        + chunk(b"IDAT", zlib.compress(bytes([0, 128]))) + chunk(b"IEND", b"")
+    )
     chroma = struct.pack(">8I", 31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
     srgb = chunk(b"gAMA", struct.pack(">I", 45455)) + chunk(b"cHRM", chroma)
     narrow = (19, 29, 39, 101)
     wide = (10001, 20002, 30003, 65535)
     cases = [
-        (buf.getvalue(), 8, narrow, None),
+        (palette, 8, narrow, None),
         (png(1, 1, 16, lambda x, y: wide, srgb), 16, wide, None),
         (png(1, 1, 16, lambda x, y: wide, chunk(b"gAMA", struct.pack(">I", 100000))), 16, wide, "Non-sRGB PNG gamma"),
         (png(1, 1, 16, lambda x, y: wide, chunk(b"iCCP", b"sRGB-elle-V2-srgbtrc.icc\0\0" + zlib.compress(b"not the approved profile"))), 16, wide, "ICC-profiled PNG"),

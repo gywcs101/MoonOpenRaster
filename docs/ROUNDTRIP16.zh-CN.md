@@ -20,7 +20,7 @@ moon run cmd/main --target js -- edit fixtures/gradient16.ora gradient16-edited.
 
 ## Krita 5.3.4 重开
 
-用实际 Krita 5.3.4 对修改结果重新打开和导出。为避免 Krita 针对每张 16 位图层询问配置，测试命令可传入 Krita 安装自带的 `sRGB-elle-V2-srgbtrc.icc`。脚本只在临时副本中把 sRGB 标记改为对应 ICC，独立确认修改前后样本一致。打开 MoonBit 原始输出时如果弹出配置框，选择同名非线性 sRGB 配置。
+用实际 Krita 5.3.4 对修改结果重新打开和导出。为避免 Krita 针对每张 16 位图层询问配置，测试命令可传入 Krita 安装自带的 `sRGB-elle-V2-srgbtrc.icc`。Krita 对照需要 Python Pillow。脚本只在临时副本中把 sRGB 标记改为对应 ICC，独立确认修改前后样本一致。打开 MoonBit 原始输出时如果弹出配置框，选择同名非线性 sRGB 配置。
 
 ```sh
 python scripts/check_rgba16.py --krita PATH_TO_KRITA --krita-profile PATH_TO_SRGB_ICC
