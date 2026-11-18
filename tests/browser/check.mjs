@@ -108,6 +108,15 @@ try {
   await page.locator('#file').setInputFiles({ name: 'broken.ora', mimeType: 'image/openraster', buffer: Buffer.from('broken') }); await idle();
   assert.equal(await page.locator('#canvas').getAttribute('src'), savedImage);
   await page.locator('#sample').click(); await idle();
+  // Compatibility feedback remains visible after an edit and undo/redo.
+  await page.locator('#op').selectOption('svg:plus');
+  await page.locator('.apply-button').click(); await idle();
+  assert.match(await page.locator('#status').innerText(), /相加模式.*W3C.*Krita/);
+  await page.locator('#undo').click(); await idle();
+  assert.equal((await page.locator('#status').innerText()).includes('Krita'), false);
+  await page.locator('#redo').click(); await idle();
+  assert.match(await page.locator('#status').innerText(), /Krita/);
+  await page.locator('#undo').click(); await idle();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.setViewportSize({ width: 1500, height: 1000 });

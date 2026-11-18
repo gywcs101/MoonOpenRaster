@@ -12,6 +12,9 @@ fn inspect_tree(
     let path = prefix.copy()
     path.push(i)
     let p = properties(child)
+    if child.name == "stack" {
+      ignore(isolation(child))
+    }
     nodes.push({
       "name": p.name,
       "path": path,
@@ -48,11 +51,15 @@ pub fn inspect(data : Bytes) -> Json raise {
   if children.length() != 1 || children[0].name != "stack" {
     raise InvalidDocument("Expected one root stack")
   }
+  let width = int_attr(root, "w", 0)
+  ignore(isolation(children[0]))
+  let height = int_attr(root, "h", 0)
+  ignore(Document::new(width, height, []))
   let preview = resource(entries, "mergedimage.png")
   {
     "name": root.attr("name").unwrap_or("Untitled"),
-    "width": int_attr(root, "w", 0),
-    "height": int_attr(root, "h", 0),
+    "width": width,
+    "height": height,
     "tree": inspect_tree(children[0], [], 0),
     "png": @base64.encode(preview[:]),
   }

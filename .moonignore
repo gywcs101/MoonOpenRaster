@@ -1,0 +1,13 @@
+# Core library distribution; the full workbench remains in GitHub.
+/bridge/
+/web/
+/fixtures/
+/tests/
+/scripts/
+/design/
+/screenshots/
+/docs/design/
+/PERFORMANCE.md
+/DESIGN_OPTIONS.md
+/VALIDATION.md
+/docs/performance/

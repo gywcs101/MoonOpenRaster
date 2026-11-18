@@ -1,8 +1,8 @@
 ///|
 fn copy_node(node : Node) -> Node {
   match node {
-    Layer(p, i) =>
-      Layer(p, { width: i.width, height: i.height, pixels: i.pixels.copy(), })
+    // Private pixel storage is immutable after construction and can be shared.
+    Layer(p, i) => Layer(p, i)
     Group(p, s, c) => Group(p, s, c.map(copy_node))
   }
 }
@@ -16,8 +16,7 @@ fn change_at(
   if path.length() == 0 || path[0] < 0 || path[0] >= nodes.length() {
     raise InvalidDocument("Invalid layer path")
   }
-  validate_nodes(nodes, 0, Ref(0L), Ref(0))
-  let result = nodes.map(copy_node)
+  let result = nodes.copy()
   let index = path[0]
   if path.length() == 1 {
     result[index] = change(result[index])
@@ -79,7 +78,7 @@ pub fn Document::replace_children(
   self : Document,
   children : Array[Node],
 ) -> Document raise OraError {
-  checked_document(self, children)
+  checked_document(self, children.map(copy_node))
 }
 
 ///|
@@ -88,7 +87,7 @@ fn checked_document(
   children : Array[Node],
 ) -> Document raise OraError {
   validate_nodes(children, 0, Ref(0L), Ref(0))
-  { ..document, children: children.map(copy_node), }
+  { ..document, children, }
 }
 
 ///|

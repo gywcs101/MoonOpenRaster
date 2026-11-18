@@ -10,7 +10,31 @@ fn parse_number(s : String) -> Double raise {
 fn int_attr(e : @dom.Element, key : String, fallback : Int32) -> Int32 raise {
   match e.attr(key) {
     None => fallback
-    Some(s) => parse_number(s).to_int()
+    Some(s) => {
+      let text = s[:].trim()
+      let digits = if text.has_prefix("+") || text.has_prefix("-") {
+        text[1:]
+      } else {
+        text
+      }
+      if digits.is_empty() || !digits.all(c => c >= '0' && c <= '9') {
+        raise InvalidDocument("Expected integer attribute " + key + ": " + s)
+      }
+      // Accumulate with a checked bound before conversion, including long strings.
+      let mut n = 0
+      for c in digits {
+        let digit = c.to_int() - 48
+        if n > (2147483647 - digit) / 10 {
+          raise InvalidDocument("Integer attribute out of range: " + key)
+        }
+        n = n * 10 + digit
+      }
+      if text.has_prefix("-") {
+        -n
+      } else {
+        n
+      }
+    }
   }
 }
 
@@ -24,7 +48,11 @@ fn properties(e : @dom.Element) -> Properties raise {
     e.attr("name").unwrap_or(""),
     x=int_attr(e, "x", 0),
     y=int_attr(e, "y", 0),
-    visible=e.attr("visibility").unwrap_or("visible") == "visible",
+    visible=match e.attr("visibility").unwrap_or("visible") {
+      "visible" => true
+      "hidden" => false
+      other => raise InvalidDocument("Unknown visibility: " + other)
+    },
     opacity~,
     composite_op=e.attr("composite-op").unwrap_or("svg:src-over"),
   )
@@ -32,6 +60,15 @@ fn properties(e : @dom.Element) -> Properties raise {
     "name", "x", "y", "visibility", "opacity", "composite-op", "src", "isolation",
   ]
   { ..p, extra: e.attrs.filter(a => !known.contains(a.0)), }
+}
+
+///|
+fn isolation(e : @dom.Element) -> Isolation raise OraError {
+  match e.attr("isolation").unwrap_or("isolate") {
+    "isolate" => Isolate
+    "auto" => Auto
+    other => raise InvalidDocument("Unknown isolation: " + other)
+  }
 }
 
 ///|
@@ -65,11 +102,7 @@ fn parse_nodes(
         result.push(
           Group(
             p,
-            if child.attr("isolation").unwrap_or("isolate") == "isolate" {
-              Isolate
-            } else {
-              Auto
-            },
+            isolation(child),
             parse_nodes(child, entries, depth + 1, decoded_bytes),
           ),
         )
@@ -101,16 +134,11 @@ pub fn read(data : Bytes) -> Document raise {
     name=root.attr("name").unwrap_or("Untitled"),
   )
   let layer_paths : Array[String] = []
+  ignore(isolation(children[0]))
   collect_paths(children[0], layer_paths)
   {
     ..doc,
     root_properties: Some(properties(children[0])),
-    root_isolation: if children[0].attr("isolation").unwrap_or("isolate") ==
-      "isolate" {
-      Isolate
-    } else {
-      Auto
-    },
     image_attributes: root.attrs.filter(a => {
       !["w", "h", "name", "version"].contains(a.0)
     }),

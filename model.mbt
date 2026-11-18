@@ -8,7 +8,7 @@ pub(all) suberror OraError {
 pub struct Image {
   width : Int32
   height : Int32
-  pixels : Array[Byte]
+  priv pixels : Array[Byte]
 }
 
 ///|
@@ -59,7 +59,7 @@ pub struct Properties {
   visible : Bool
   opacity : Double
   composite_op : String
-  extra : Array[(String, String)]
+  priv extra : Array[(String, String)]
 }
 
 ///|
@@ -91,11 +91,10 @@ pub struct Document {
   width : Int32
   height : Int32
   name : String
-  children : Array[Node]
-  root_properties : Properties?
-  root_isolation : Isolation
-  image_attributes : Array[(String, String)]
-  resources : Array[(String, Bytes)]
+  priv children : Array[Node]
+  priv root_properties : Properties?
+  priv image_attributes : Array[(String, String)]
+  priv resources : Array[(String, Bytes)]
 }
 
 ///|
@@ -119,7 +118,6 @@ pub fn Document::new(
     name,
     children: children.map(copy_node),
     root_properties: None,
-    root_isolation: Auto,
     image_attributes: [],
     resources: [],
   }

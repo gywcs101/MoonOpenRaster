@@ -1,0 +1,7 @@
+import {
+  "gywcs101/MoonOpenRaster" @ora,
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+}
+
+pkgtype(kind: "executable")

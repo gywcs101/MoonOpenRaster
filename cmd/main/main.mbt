@@ -36,6 +36,9 @@ fn run() -> Unit raise {
   if @fs.path_exists(args[3]) {
     raise @ora.InvalidDocument("Output exists: " + args[3])
   }
+  for warning in doc.compatibility_warnings() {
+    eprintln("Warning: " + warning)
+  }
   let output = match args[1] {
     "render" => doc.render().encode_png()
     "edit" => {
@@ -57,29 +60,44 @@ fn run() -> Unit raise {
                 })
               _ => raise @ora.InvalidDocument("Missing path")
             }
+            let previous = match current.node(path) {
+              Layer(p, _) => p
+              Group(p, _, _) => p
+            }
             let name = match item {
               { "name": String(n), .. } => n
-              _ => "Layer"
+              { "name": _, .. } =>
+                raise @ora.InvalidDocument("name must be a string")
+              _ => previous.name
             }
             let x = match item {
-              { "x": Number(n, ..), .. } => n.to_int()
-              _ => 0
+              { "x": Number(n, ..), .. } => integer(n)
+              { "x": _, .. } => raise @ora.InvalidDocument("x must be a number")
+              _ => previous.x
             }
             let y = match item {
-              { "y": Number(n, ..), .. } => n.to_int()
-              _ => 0
+              { "y": Number(n, ..), .. } => integer(n)
+              { "y": _, .. } => raise @ora.InvalidDocument("y must be a number")
+              _ => previous.y
             }
             let opacity = match item {
               { "opacity": Number(n, ..), .. } => n
-              _ => 1.0
+              { "opacity": _, .. } =>
+                raise @ora.InvalidDocument("opacity must be a number")
+              _ => previous.opacity
             }
             let visible = match item {
               { "visible": False, .. } => false
-              _ => true
+              { "visible": True, .. } => true
+              { "visible": _, .. } =>
+                raise @ora.InvalidDocument("visible must be a boolean")
+              _ => previous.visible
             }
             let op = match item {
               { "composite_op": String(s), .. } => s
-              _ => "svg:src-over"
+              { "composite_op": _, .. } =>
+                raise @ora.InvalidDocument("composite_op must be a string")
+              _ => previous.composite_op
             }
             current = current.set_properties(
               path,
@@ -94,6 +112,9 @@ fn run() -> Unit raise {
             )
           }
         _ => raise @ora.InvalidDocument("Edits must be an array")
+      }
+      for warning in current.compatibility_warnings() {
+        eprintln("Warning: " + warning)
       }
       current.write()
     }

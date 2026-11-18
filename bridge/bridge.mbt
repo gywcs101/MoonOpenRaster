@@ -58,17 +58,7 @@ fn thumbnail(image : @ora.Image) -> String raise {
   let scale = 40.0 / w.max(h).to_double()
   let tw = (w.to_double() * scale).to_int().max(1)
   let th = (h.to_double() * scale).to_int().max(1)
-  let source = image.pixels()
-  let target : Array[Byte] = Array::make(tw * th * 4, 0)
-  for y in 0..<th {
-    for x in 0..<tw {
-      for c in 0..<4 {
-        target[(y * tw + x) * 4 + c] = source[(y * h / th * w + x * w / tw) * 4 +
-          c]
-      }
-    }
-  }
-  let png = @ora.Image::new(tw, th, target).encode_png()
+  let png = image.resize_nearest(tw, th).encode_png()
   @base64.encode(png[:])
 }
 
@@ -85,6 +75,7 @@ fn snapshot(doc : @ora.Document) -> Json raise {
     "canUndo": !undo_stack.val.is_empty(),
     "canRedo": !redo_stack.val.is_empty(),
     "revision": revision.val,
+    "warning": doc.compatibility_warnings().join(" "),
   }
 }
 
@@ -324,7 +315,8 @@ pub fn request(input : String) -> String {
                 opacity~,
                 visible=match visible {
                   True => true
-                  _ => false
+                  False => false
+                  _ => raise @ora.InvalidDocument("visible must be a boolean")
                 },
                 composite_op=op,
               ),

@@ -80,23 +80,7 @@ fn indices(value : Json) -> Array[Int32] raise {
 
 ///|
 fn node_at(doc : @ora.Document, path : Array[Int32]) -> @ora.Node raise {
-  let mut nodes = doc.children()
-  let mut found : @ora.Node? = None
-  for index in path {
-    if index < 0 || index >= nodes.length() {
-      raise @ora.InvalidDocument("Invalid layer path")
-    }
-    let node = nodes[index]
-    found = Some(node)
-    nodes = match node {
-      Group(_, _, c) => c
-      _ => []
-    }
-  }
-  match found {
-    Some(n) => n
-    None => raise @ora.InvalidDocument("Select a layer first")
-  }
+  doc.node(path)
 }
 
 ///|
@@ -115,15 +99,7 @@ fn scaled_nodes(
       Some(i) => {
         let w = (i.width().to_double() * scale).round().to_int().max(1)
         let h = (i.height().to_double() * scale).round().to_int().max(1)
-        let source = i.pixels()
-        let pixels = Array::makei(w * h * 4, n => {
-          source[(
-            n / 4 / w * i.height() / h * i.width() + n / 4 % w * i.width() / w
-          ) *
-          4 +
-          n % 4]
-        })
-        @ora.Node::Layer(props, @ora.Image::new(w, h, pixels))
+        @ora.Node::Layer(props, i.resize_nearest(w, h))
       }
     }
   })
@@ -158,36 +134,6 @@ fn scale_offsets(
     result = scale_offsets(result, children, path, scale)
   }
   result
-}
-
-///|
-fn export_layers(
-  nodes : Array[@ora.Node],
-  entries : Array[@zip.Entry],
-  manifest : Array[Json],
-  prefix : Array[Int32],
-) -> Unit raise {
-  for index, node in nodes {
-    let path = prefix.copy()
-    path.push(index)
-    match node {
-      Group(_, _, children) => export_layers(children, entries, manifest, path)
-      Layer(p, image) => {
-        let file = "layer-" + manifest.length().to_string() + ".png"
-        entries.push(@zip.Entry::new(file, image.encode_png(), kind=Stored))
-        manifest.push({
-          "file": file,
-          "name": p.name,
-          "path": path,
-          "x": p.x,
-          "y": p.y,
-          "opacity": p.opacity,
-          "visible": p.visible,
-          "op": p.composite_op,
-        })
-      }
-    }
-  }
 }
 
 ///|
@@ -271,24 +217,11 @@ fn editor_request(
       }
     }
     ("layer-png", { "path": path, .. }) => {
-      let png = match node_at(doc, indices(path)) {
-        Layer(_, i) => i.encode_png()
-        _ => raise @ora.InvalidDocument("Expected raster layer")
-      }
+      let png = doc.layer_png(indices(path))
       { "ok": true, "data": @base64.encode(png[:]) }
     }
     ("layers-zip", _) => {
-      let entries = []
-      let manifest = []
-      export_layers(doc.children(), entries, manifest, [])
-      entries.push(
-        @zip.Entry::new(
-          "layers.json",
-          @utf8.encode(Json::array(manifest).stringify()),
-          kind=Stored,
-        ),
-      )
-      let bytes = @zip.zip(entries[:])
+      let bytes = doc.layers_zip()
       { "ok": true, "data": @base64.encode(bytes[:]) }
     }
     ("replace", { "path": path, "data": String(data), .. }) =>
@@ -336,58 +269,12 @@ fn editor_request(
         Layer(p, _) => p
         Group(p, _, _) => p
       }
-      let copied = doc.insert(
-        path[:path.length() - 1].to_owned(),
-        path[path.length() - 1],
-        node,
-      )
-      let named = copied.set_properties(
-        path,
-        @ora.Properties::new(
-          p.name + " 副本",
-          x=p.x,
-          y=p.y,
-          visible=p.visible,
-          opacity=p.opacity,
-          composite_op=p.composite_op,
-        ),
-      )
-      commit_document(doc, named)
+      commit_document(doc, doc.duplicate(path, name=p.name + " 副本"))
     }
     ("move", { "path": path, "parent": parent, .. }) => {
       let from = indices(path)
       let dest = indices(parent)
-      let mut is_descendant = dest.length() >= from.length()
-      for i in 0..<from.length().min(dest.length()) {
-        if from[i] != dest[i] {
-          is_descendant = false
-        }
-      }
-      if is_descendant {
-        raise @ora.InvalidDocument("Cannot move a group into itself")
-      }
-      let node = node_at(doc, from)
-      // Resolve destination in the original tree, then adjust after removing a preceding sibling.
-      if !dest.is_empty() {
-        match node_at(doc, dest) {
-          Group(_, _, _) => ()
-          _ => raise @ora.InvalidDocument("Parent must be a group")
-        }
-      }
-      let adjusted = dest.copy()
-      let depth = from.length() - 1
-      if dest.length() > depth {
-        let mut same_parent = true
-        for i in 0..<depth {
-          if from[i] != dest[i] {
-            same_parent = false
-          }
-        }
-        if same_parent && dest[depth] > from[depth] {
-          adjusted[depth] -= 1
-        }
-      }
-      commit_document(doc, doc.remove(from).insert(adjusted, 0, node))
+      commit_document(doc, doc.move_to(from, dest, 0))
     }
     _ => raise @ora.InvalidDocument("Invalid editor request")
   }

@@ -1,4 +1,4 @@
-import { SampleStudio } from './samples.js?v=guided-20261117-1';
+import { SampleStudio } from './samples.js?v=acceptance-20261118-1';
 const $ = id => document.getElementById(id);
 const modes = {
   'src-over': '正常', multiply: '正片叠底', screen: '滤色', overlay: '叠加',
@@ -8,7 +8,7 @@ const modes = {
   'dst-in': '保留底图重合部分', 'dst-out': '用上层擦除底图',
   'src-atop': '将上层限制在底图内', 'dst-atop': '将底图限制在上层内'
 };
-const worker = new Worker('./worker.js?v=editor-20261117-3', { type: 'module' });
+const worker = new Worker('./worker.js?v=acceptance-20261118-1', { type: 'module' });
 const pending = new Map();
 let requestId = 0;
 worker.onmessage = ({ data: { id, result } }) => {
@@ -53,6 +53,7 @@ function status(message = '') {
     'Rendering buffer budget exceeded': '合成所需内存超出限制。',
     'Decoded layer pixels exceed 128 MiB budget': '图层像素数据超过 128 MiB 限制。',
     'Cannot move a group into itself': '不能把图层组移入它自己或它的子组。',
+    'svg:plus uses W3C compositing; Krita Addition may display different pixels.': '相加模式采用 W3C 合成规则；在 Krita 中打开时，部分像素可能有差异。',
     'No history available': '没有可撤销或重做的操作。'
   })) text = text.replace(source, target);
   $('status').textContent = text;

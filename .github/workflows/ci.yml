@@ -1,5 +1,7 @@
 name: CI
 on: [push, pull_request]
+env:
+  PYTHONUTF8: '1'
 jobs:
   check:
     runs-on: ubuntu-24.04
@@ -22,7 +24,9 @@ jobs:
       - run: python -m pip install Pillow==11.1.0
       - run: python scripts/check_licenses.py
       - run: python scripts/check_interop.py
+      - run: python scripts/check_acceptance.py
       - run: python scripts/check_krita.py
+      - run: python scripts/check_plus.py
       - run: python scripts/build_web.py
       - run: node scripts/check_bridge.mjs
       - run: node scripts/check_editor.mjs
@@ -35,7 +39,43 @@ jobs:
       - run: node tests/browser/samples.mjs
       - run: python scripts/check_web_server.py
       - run: python scripts/check_package.py
-      - run: python scripts/package_web.py
+      - run: python scripts/check_native.py
       - run: moon run examples/basic --target native
+      - run: moon run examples/roundtrip --target native
       - run: moon fmt --check
       - run: moon info && git diff --exit-code
+  native-platforms:
+    name: Native / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Install MoonBit (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "$HOME/.moon/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Install MoonBit (macOS)
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - run: moon version --all
+      - run: moon update
+      - run: moon check --target all --deny-warn
+      - run: moon test --target native --deny-warn
+      - run: moon build --target native --deny-warn
+      - run: python scripts/check_native.py
+      - run: python scripts/check_package.py --target native

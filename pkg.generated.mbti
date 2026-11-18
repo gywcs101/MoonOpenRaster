@@ -30,21 +30,24 @@ pub struct Document {
   width : Int32
   height : Int32
   name : String
-  children : Array[Node]
-  root_properties : Properties?
-  root_isolation : Isolation
-  image_attributes : Array[(String, String)]
-  resources : Array[(String, Bytes)]
+  // private fields
 }
 pub fn Document::children(Self) -> Array[Node]
+pub fn Document::compatibility_warnings(Self) -> Array[String]
+pub fn Document::duplicate(Self, Array[Int32], name~ : String) -> Self raise
 pub fn Document::height(Self) -> Int32
 pub fn Document::insert(Self, Array[Int32], Int32, Node) -> Self raise
+pub fn Document::layer_png(Self, Array[Int32]) -> Bytes raise
+pub fn Document::layers_zip(Self) -> Bytes raise
+pub fn Document::move_to(Self, Array[Int32], Array[Int32], Int32) -> Self raise
 pub fn Document::name(Self) -> String
 pub fn Document::new(Int32, Int32, Array[Node], name? : String) -> Self raise OraError
+pub fn Document::node(Self, Array[Int32]) -> Node raise OraError
 pub fn Document::remove(Self, Array[Int32]) -> Self raise
 pub fn Document::render(Self) -> Image raise OraError
 pub fn Document::reorder(Self, Array[Int32], Int32) -> Self raise
 pub fn Document::replace_children(Self, Array[Node]) -> Self raise OraError
+pub fn Document::replace_extra(Self, Array[Int32], Array[(String, String)]) -> Self raise
 pub fn Document::replace_image(Self, Array[Int32], Image) -> Self raise
 pub fn Document::set_properties(Self, Array[Int32], Properties) -> Self raise
 pub fn Document::width(Self) -> Int32
@@ -53,12 +56,13 @@ pub fn Document::write(Self) -> Bytes raise
 pub struct Image {
   width : Int32
   height : Int32
-  pixels : Array[Byte]
+  // private fields
 }
 pub fn Image::encode_png(Self) -> Bytes raise
 pub fn Image::height(Self) -> Int32
 pub fn Image::new(Int32, Int32, Array[Byte]) -> Self raise OraError
 pub fn Image::pixels(Self) -> Array[Byte]
+pub fn Image::resize_nearest(Self, Int32, Int32) -> Self raise OraError
 pub fn Image::width(Self) -> Int32
 
 pub(all) enum Isolation {
@@ -78,8 +82,9 @@ pub struct Properties {
   visible : Bool
   opacity : Double
   composite_op : String
-  extra : Array[(String, String)]
+  // private fields
 }
+pub fn Properties::extra(Self) -> Array[(String, String)]
 pub fn Properties::new(String, x? : Int32, y? : Int32, visible? : Bool, opacity? : Double, composite_op? : String) -> Self raise OraError
 
 // Type aliases

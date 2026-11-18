@@ -28,16 +28,19 @@ fn write_nodes(
   for node in nodes {
     match node {
       Layer(p, image) => {
-        let path = "data/moonopenraster-layer" +
-          entries.length().to_string() +
-          ".png"
+        let mut serial = entries.length()
+        let mut path = "data/moonopenraster-layer" + serial.to_string() + ".png"
+        while entries.any(e => e.name == path) {
+          serial += 1
+          path = "data/moonopenraster-layer" + serial.to_string() + ".png"
+        }
         entries.push(@zip.Entry::new(path, image.encode_png(), kind=Stored))
         let a = attrs(p)
         a.push(("src", path))
         result.push(ElementNode(@dom.Element::new("layer", attrs=a)))
       }
       Group(p, isolation, children) => {
-        let a = attrs(p)
+        let a = attrs(p).filter(a => a.0 != "x" && a.0 != "y")
         a.push(
           (
             "isolation",
@@ -70,17 +73,8 @@ pub fn Document::write(self : Document) -> Bytes raise {
   }
   let root_props = match self.root_properties {
     None => []
-    Some(p) => attrs(p)
+    Some(p) => p.extra.copy()
   }
-  root_props.push(
-    (
-      "isolation",
-      match self.root_isolation {
-        Auto => "auto"
-        Isolate => "isolate"
-      },
-    ),
-  )
   let stack = @dom.Element::new(
     "stack",
     attrs=root_props,
@@ -89,7 +83,7 @@ pub fn Document::write(self : Document) -> Bytes raise {
   let root = @dom.Element::new(
     "image",
     attrs=[
-      ("version", "0.0.3"),
+      ("version", "0.0.6"),
       ("w", self.width.to_string()),
       ("h", self.height.to_string()),
       ("name", self.name),
@@ -133,5 +127,22 @@ pub fn Document::write(self : Document) -> Bytes raise {
   entries.push(
     @zip.Entry::new("Thumbnails/thumbnail.png", thumb.encode_png(), kind=Stored),
   )
-  @zip.zip(entries[:])
+  if entries.length() > 4096 {
+    raise InvalidDocument("Output archive exceeds entry limit")
+  }
+  let mut total = 0L
+  for entry in entries {
+    if entry.data.length() > 67108864 {
+      raise InvalidDocument("Output resource exceeds 64 MiB: " + entry.name)
+    }
+    total += entry.data.length().to_int64()
+  }
+  if total > 268435456L {
+    raise InvalidDocument("Output resources exceed 256 MiB")
+  }
+  let data = @zip.zip(entries[:])
+  if data.length() > 268435456 {
+    raise InvalidDocument("Output archive exceeds 256 MiB")
+  }
+  data
 }
