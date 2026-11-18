@@ -107,7 +107,19 @@ try {
   assert.equal(await page.locator('#undo').isDisabled(), true);
   await page.locator('#file').setInputFiles({ name: 'broken.ora', mimeType: 'image/openraster', buffer: Buffer.from('broken') }); await idle();
   assert.equal(await page.locator('#canvas').getAttribute('src'), savedImage);
-  await page.locator('#sample').click(); await idle();
+  // The same file and edit must agree with the public library and CLI.
+  await page.locator('#file').setInputFiles(path.join(root, 'fixtures/krita-5.3.4.ora')); await idle();
+  await page.locator('#name').fill('接口一致性 · 中文');
+  await page.locator('#x').fill('-3'); await page.locator('#y').fill('7');
+  await page.locator('#visible').check();
+  await page.locator('#opacity').evaluate(el => { el.value = '0.5'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#op').selectOption('svg:multiply');
+  await page.locator('.apply-button').click(); await idle();
+  const parityDownload = page.waitForEvent('download'); await page.locator('#png').click();
+  await (await parityDownload).saveAs(path.join(temp, 'parity.png')); await idle();
+  assert.deepEqual(fs.readFileSync(path.join(temp, 'parity.png')), fs.readFileSync(path.join(root, '_build/consistency/edited.png')));
+  await page.locator('#sample').click();
+  await page.locator('#discard-dialog button[value=discard]').click(); await idle();
   // Compatibility feedback remains visible after an edit and undo/redo.
   await page.locator('#op').selectOption('svg:plus');
   await page.locator('.apply-button').click(); await idle();

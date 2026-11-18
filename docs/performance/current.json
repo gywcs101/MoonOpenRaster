@@ -1,0 +1,46 @@
+{
+  "node": "v24.13.0",
+  "platform": "win32",
+  "generated_at": "2026-11-18T02:43:14.056Z",
+  "results": [
+    {
+      "name": "1000px-8layers-2groups",
+      "width": 1000,
+      "height": 1000,
+      "layers": 8,
+      "import_ms": 2339.7758999999996,
+      "commit_median_ms": 1039.1744999999996,
+      "preview_cache_ms": 45.64720000000034,
+      "preview_median_ms": 90.90210000000025,
+      "export_ms": 4330.946400000001,
+      "peak_process_rss_mib": 324.96484375,
+      "archive_bytes": 61006
+    },
+    {
+      "name": "2048px-4layers-2groups",
+      "width": 2048,
+      "height": 2048,
+      "layers": 4,
+      "import_ms": 9893.788199999999,
+      "commit_median_ms": 4080.899500000003,
+      "preview_cache_ms": 28.037899999999354,
+      "preview_median_ms": 57.88160000000062,
+      "export_ms": 9625.295099999996,
+      "peak_process_rss_mib": 557.60546875,
+      "archive_bytes": 113241
+    },
+    {
+      "name": "512px-4layers-24groups",
+      "width": 512,
+      "height": 512,
+      "layers": 4,
+      "import_ms": 770.2632999999987,
+      "commit_median_ms": 423.5308999999979,
+      "preview_cache_ms": 28.848600000004808,
+      "preview_median_ms": 169.55890000000363,
+      "export_ms": 805.3355999999985,
+      "peak_process_rss_mib": 557.60546875,
+      "archive_bytes": 16589
+    }
+  ]
+}

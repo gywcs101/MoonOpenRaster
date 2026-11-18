@@ -55,6 +55,7 @@ Install Pillow in your test environment, then run the generated independent fixt
 ```sh
 python scripts/check_interop.py
 python scripts/check_acceptance.py
+python scripts/check_consistency.py
 python scripts/check_plus.py
 python scripts/build_web.py
 node scripts/check_bridge.mjs

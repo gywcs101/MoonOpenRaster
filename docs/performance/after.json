@@ -1,0 +1,33 @@
+{
+  "node": "v24.13.0",
+  "platform": "win32",
+  "generated_at": "2026-11-18T02:29:14.363Z",
+  "results": [
+    {
+      "name": "1000px-8layers-2groups",
+      "width": 1000,
+      "height": 1000,
+      "layers": 8,
+      "import_ms": 1943.2154,
+      "commit_median_ms": 876.9820999999997,
+      "preview_cache_ms": 33.47410000000036,
+      "preview_median_ms": 73.3676000000005,
+      "export_ms": 2799.1531000000004,
+      "peak_process_rss_mib": 324.71484375,
+      "archive_bytes": 61004
+    },
+    {
+      "name": "2048px-4layers-2groups",
+      "width": 2048,
+      "height": 2048,
+      "layers": 4,
+      "import_ms": 5986.5814,
+      "commit_median_ms": 3056.2116000000024,
+      "preview_cache_ms": 21.063200000000506,
+      "preview_median_ms": 44.534200000001874,
+      "export_ms": 7267.701499999999,
+      "peak_process_rss_mib": 558.55859375,
+      "archive_bytes": 113239
+    }
+  ]
+}

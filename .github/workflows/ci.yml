@@ -25,6 +25,7 @@ jobs:
       - run: python scripts/check_licenses.py
       - run: python scripts/check_interop.py
       - run: python scripts/check_acceptance.py
+      - run: python scripts/check_consistency.py
       - run: python scripts/check_krita.py
       - run: python scripts/check_plus.py
       - run: python scripts/build_web.py
