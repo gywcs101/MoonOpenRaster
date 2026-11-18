@@ -10,9 +10,9 @@ const tasks = [
     steps: [
       ['image', '照片窗口', 'tide.jpg', '替换照片', '用 JPEG 替换照片窗口，保留原位置。'],
       ['insert', 'stamp', 'stamp.webp', '加上透明邮戳', '导入透明 WebP，观察邮戳边缘与底图的叠加。'],
-      ['properties', 'stamp', { x: 345, y: 85, opacity: .85 }, '安排邮戳位置', '把邮戳移到右侧，再将不透明度调为 85%。'],
+      ['properties', 'stamp', { x: 345, y: 85, opacity: .85 }, '安排邮戳位置', '把邮戳移到 X=345、Y=85，再将不透明度调为 85%。'],
       ['insert', 'tide-mark', 'tide-mark.png', '加入波形标记', '导入透明 PNG 标记，观察底图如何透过空白处显示。'],
-      ['properties', 'tide-mark', { x: 366, y: 173 }, '对齐标记', '把波形移到邮戳下方。'],
+      ['properties', 'tide-mark', { x: 366, y: 173 }, '对齐标记', '把波形移到邮戳下方，参考位置 X=366、Y=173。'],
     ],
   },
   {
@@ -21,7 +21,7 @@ const tasks = [
     steps: [
       ['image', '高程窗口', 'elevation.tiff', '换入 16 位地形', '用 TIFF 替换高程窗口，检查图层和画布的位深。'],
       ['insert', 'legend', 'legend.bmp', '导入图例', '添加 BMP 图例，底板与高程层保持独立。'],
-      ['properties', 'legend', { x: 389, y: 62 }, '靠右对齐', '把图例摆到高程图右侧。'],
+      ['properties', 'legend', { x: 389, y: 62 }, '靠右对齐', '把图例摆到高程图右侧，参考位置 X=389、Y=62。'],
       ['properties', '高程窗口', { opacity: .82 }, '调整高程层', '将高程层的不透明度调为 82%，再导出 16 位画面。'],
     ],
   },
@@ -31,7 +31,7 @@ const tasks = [
     steps: [
       ['image', '灯牌', 'departures.gif', '换上发车灯牌', '用 GIF 替换灯牌，工作台会导入动画第一帧。'],
       ['insert', 'station', 'station.ico', '加入车站标志', '导入 ICO，使用其中最大的图标。'],
-      ['properties', 'station', { x: 360, y: 151 }, '移动站标', '把站标移动到右下位置。'],
+      ['properties', 'station', { x: 360, y: 151 }, '移动站标', '把站标移动到右下方，参考位置 X=360、Y=151。'],
       ['properties', '灯牌', { visible: false }, '切换灯牌显隐', '隐藏灯牌，保留它的像素数据以便稍后恢复。'],
     ],
   },

@@ -36,12 +36,12 @@ def seed(name, base, layer_name, overlay, x, y):
     preview = base.copy()
     preview.alpha_composite(overlay, (x, y))
     with zipfile.ZipFile(OUT / (name + ".ora"), "w") as archive:
-        archive.writestr("mimetype", "image/openraster")
-        archive.writestr("stack.xml", f'<image version="0.0.6" name="{name}" w="{W}" h="{H}"><stack><layer name="{layer_name}" x="{x}" y="{y}" src="data/panel.png"/><layer name="底板" src="data/base.png"/></stack></image>')
-        archive.writestr("data/base.png", png(base))
-        archive.writestr("data/panel.png", png(overlay))
-        archive.writestr("mergedimage.png", png(preview))
-        archive.writestr("Thumbnails/thumbnail.png", png(preview.resize((256, 153))))
+        archive.writestr(zipfile.ZipInfo("mimetype"), "image/openraster")
+        archive.writestr(zipfile.ZipInfo("stack.xml"), f'<image version="0.0.6" name="{name}" w="{W}" h="{H}"><stack><layer name="{layer_name}" x="{x}" y="{y}" src="data/panel.png"/><layer name="底板" src="data/base.png"/></stack></image>')
+        archive.writestr(zipfile.ZipInfo("data/base.png"), png(base))
+        archive.writestr(zipfile.ZipInfo("data/panel.png"), png(overlay))
+        archive.writestr(zipfile.ZipInfo("mergedimage.png"), png(preview))
+        archive.writestr(zipfile.ZipInfo("Thumbnails/thumbnail.png"), png(preview.resize((256, 153))))
 
 
 def postcard():
@@ -59,7 +59,7 @@ def postcard():
     draw = ImageDraw.Draw(photo)
     draw.polygon([(0, 129), (36, 112), (69, 105), (119, 105), (141, 121), (109, 146), (0, 159)], fill="#233b48")
     draw.ellipse((176, 70, 198, 92), fill="#ffdb96")
-    photo.save(OUT / "tide.jpg", quality=93, progressive=True)
+    photo.save(OUT / "tide.jpg", quality=93, progressive=False)
     stamp = Image.new("RGBA", (95, 107))
     draw = ImageDraw.Draw(stamp)
     draw.rounded_rectangle((4, 4, 91, 102), radius=13, fill=(239, 190, 139, 215), outline="#ffe0b8", width=2)

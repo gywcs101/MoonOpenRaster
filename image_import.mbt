@@ -10,7 +10,7 @@ pub fn decode_image(data : Bytes) -> Image raise {
     return decode_png(data)
   }
   let image = if bytes.has_prefix(b"\xff\xd8"[:]) {
-    check_jpeg_profile(bytes)
+    check_jpeg_import(bytes)
     @jpeg.decode(bytes, limits=image_limits, orient=true)
   } else if data.length() >= 12 &&
     bytes[:4].equal_to_bytes(b"RIFF") &&
@@ -65,7 +65,7 @@ fn read_image_uint(
 }
 
 ///|
-fn check_jpeg_profile(bytes : BytesView) -> Unit raise OraError {
+fn check_jpeg_import(bytes : BytesView) -> Unit raise OraError {
   // The JPEG decoder currently does not surface APP2 ICC metadata.
   let mut i = 2
   while i + 1 < bytes.length() && bytes[i] == 255 {
@@ -86,7 +86,45 @@ fn check_jpeg_profile(bytes : BytesView) -> Unit raise OraError {
       bytes[i + 4:i + 16].equal_to_bytes(b"ICC_PROFILE\x00") {
       raise Unsupported("JPEG ICC color management is unsupported")
     }
+    if marker == 0xC2 {
+      check_progressive_jpeg(bytes[i + 4:i + 2 + count])
+    }
     i += count + 2
+  }
+}
+
+///|
+fn check_progressive_jpeg(frame : BytesView) -> Unit raise OraError {
+  if frame.length() < 6 {
+    raise InvalidDocument("Truncated progressive JPEG frame")
+  }
+  let height = read_image_uint(frame, 1, 2, false).to_int()
+  let width = read_image_uint(frame, 3, 2, false).to_int()
+  let components = frame[5].to_int()
+  if components == 0 || frame.length() < 6 + components * 3 {
+    raise InvalidDocument("Invalid progressive JPEG component header")
+  }
+  let mut hmax = 1
+  let mut vmax = 1
+  for i in 0..<components {
+    let factor = frame[7 + i * 3].to_int()
+    hmax = hmax.max(factor >> 4)
+    vmax = vmax.max(factor & 15)
+  }
+  let mcu_w = (width + 8 * hmax - 1) / (8 * hmax)
+  let mcu_h = (height + 8 * vmax - 1) / (8 * vmax)
+  for i in 0..<components {
+    let factor = frame[7 + i * 3].to_int()
+    let h = factor >> 4
+    let v = factor & 15
+    // moonimage 0.2.0 uses the padded component grid even for progressive
+    // scans that omit padding, shifting coefficients into the wrong blocks.
+    if (width * h + 8 * hmax - 1) / (8 * hmax) != mcu_w * h ||
+      (height * v + 8 * vmax - 1) / (8 * vmax) != mcu_h * v {
+      raise Unsupported(
+        "Progressive JPEG edge sampling is unsupported; export as baseline JPEG or PNG",
+      )
+    }
   }
 }
 

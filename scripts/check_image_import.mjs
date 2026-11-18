@@ -43,7 +43,7 @@ for (const [name, width, height, bitDepth] of formats) {
   assert.equal(run({ action: 'layer-png', path: [0, 0] }).data, png);
   state = run({ action: 'open', data: file('', 'fixtures/gradient16.ora') });
 }
-for (const data of [file('animated.webp'), Buffer.from('unknown image').toString('base64')]) {
+for (const data of [file('animated.webp'), file('progressive-edge.jpg'), Buffer.from('unknown image').toString('base64')]) {
   assert.equal(command({ action: 'insert', parent: [], index: 0, name: 'rejected', data }).ok, false);
   assert.equal(run({ action: 'export' }).data, original);
 }

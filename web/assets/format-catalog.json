@@ -35,7 +35,7 @@
                 "type": "image",
                 "insert": false,
                 "asset": "assets/import-samples/tide.jpg",
-                "thumbnail": "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",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAXCAYAAAB50g0VAAAFSUlEQVR4nK1WXY4cNRCutt0zs7uKULSJ0EogiMQbXIInDpGLcBPEUXjgiafcAV4ihFCilSA72Zntbrf5vipXt2dJolWU0Xrdtsuur776sbvvf/ypyCf4dfWU0p2OH/LzPe/6pSDravcewe49C+18+N/c/AFIJl2KWdFK+twKMKxKYqPQFNnWUyPw3c0LkPt9qOd3HXbdM8yVl0pZrvvWefYYz7bOcYrwxarENnQAZlP4rkDZx2WML8qxVUR0qc8pUHd1A5IKtVWDfaygdD42c1wPBGh0uzI7L0gIgeK2hm+uO5MLOAxD3U9ZlYGs7bGxA5/rWQoADC1g0XIFOKvIumYujo17MHBFqgCjUBkmIwaqVPCrq1cjTZZrlOE0jVKAMyBiy5wJaAW3uBvRxJUZOyiLPwOogBQcWTLXsI91bA1UO0AAp1ISRXMIwkE6QBrF2NaQqF4hkIxWEpiC8pmMETTmyK4xG5XNjDOVWawlILHDcRCTJFT3uYvJqq0ZAHAqIdp60HXILSBXN6ssDQNQzk0FMAAssycogMslriArYPhEDaDsBC+ntICjIgdH31d3uUvJLkMAclzXNbqQTKqcMR1RuDyZfJ3f/QxzyApYYj9hbICS9hMCsAAwXc0kZiMByaw3cARCV7as6BjaDaDNGyg0MgkwqFXqUp1v2GN8yybJBvVkKlnyZHE2YZyQoTOYI0tzxhlApKziDIJXIyjHmOPhBKIgcShZMwDOnAEDOWaEG7OA4h6O7ayIQ9QLmNuVvTz/7lrKtJWf/3giaQwyQHAGY3T7TPAByaHujspkXxkNAfxqLLEpQEsSHkyw1sylvcYds4os2xzX1AAY1asRaJgw1g30829vRI5wY/dGvu57edU9lQgAIwBEMDVFuHFCT1BdVgMJtIOvzaNgS9nDPwdHEFSkzFB5ZZOM+Tzr0wrM3G170WPCGfzl96/kh6uXktNncrN5Jtv4r+ScwBJdWBQocKqLR7qZjGKOuCxJUtKy0FshVEAB/7o4Q3GRjYKKxqqDYyJgvqf1QEmZTsESaI/e5Iz1Ir+++UZGgHnUjzLEM8RikUFdmCUye3UMoxCLmZUAKJkX8LCk3168WIqzVVsEav2M+DjmA+gesXlQ11iWozoBdB+Tyo1hi328WesPCjQzpwmxNS23AiujEoLqyzNUlGWLicJaqSUG+jMSig0xmm4Ot8tkR7ohuJkHOT8eJYzYGQEOCuy6qvqZfeiPNIKlA/RdP3pc7251Cwxg24JNu7cVAGQPAJ3vmMlHzd7CuqglpdZeGM69qd9ayDDwzuJGposoF/u3Mv7zN9zNCmQVPelVpOatl/76CXD2mHi6v5bxy2cyjSsD4zjKrRbiyiBrowKIstueW3LWu1trJPaQ9XEc5Hg82GumIAPSq9fSlyMYrJd9RspHZFR99jzkN8La/c0B7NF9KC+7nQK5/+Ra3FcNuA++R6b7Xr2LL/76c3ml8E4MvC8Rhw8Gh6Ae4rmMl5coyLwhUEKg+HA4aOi8603oLLpL/eHAfUeElo/1otBXCcExDj7i8T9//gUMQryRiU0nO62R1vwx2rLkc2TQXi0W2ZxvWfd9KD8WAwHB6rZmvlj4jkNjjPW8HxHsrEsTLT47E+bPxLfb7R0OHE4OdUAtUDWmAmrXfU3fgw1Y35t2uBP1LYZEeQsnP7m6klsUtLE+NjMMKEMtG3w4ANQGYHf1gPZt176oXSGZagG5a/2N6LLtXt/HPr1+fHlyyMub/Yk7rGTYoQSnpWK4WwLdlZyEZQ14rXlNpjJDh2Gw+tgw2f48Pr39B0I7Cu40qbtSAAAAAElFTkSuQmCC",
                 "width": 296,
                 "height": 171,
                 "bitDepth": 8
@@ -62,7 +62,7 @@
           },
           {
             "title": "安排邮戳位置",
-            "text": "把邮戳移到右侧，再将不透明度调为 85%。",
+            "text": "把邮戳移到 X=345、Y=85，再将不透明度调为 85%。",
             "checks": [
               {
                 "name": "stamp",
@@ -95,7 +95,7 @@
           },
           {
             "title": "对齐标记",
-            "text": "把波形移到邮戳下方。",
+            "text": "把波形移到邮戳下方，参考位置 X=366、Y=173。",
             "checks": [
               {
                 "name": "tide-mark",
@@ -176,7 +176,7 @@
           },
           {
             "title": "靠右对齐",
-            "text": "把图例摆到高程图右侧。",
+            "text": "把图例摆到高程图右侧，参考位置 X=389、Y=62。",
             "checks": [
               {
                 "name": "legend",
@@ -271,7 +271,7 @@
           },
           {
             "title": "移动站标",
-            "text": "把站标移动到右下位置。",
+            "text": "把站标移动到右下方，参考位置 X=360、Y=151。",
             "checks": [
               {
                 "name": "station",

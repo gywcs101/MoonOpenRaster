@@ -1,4 +1,4 @@
-import { SampleStudio } from './samples.js?v=format-exercises-20261118-1';
+import { SampleStudio } from './samples.js?v=format-exercises-20261118-2';
 const $ = id => document.getElementById(id);
 const modes = {
   'src-over': '正常', multiply: '正片叠底', screen: '滤色', overlay: '叠加',
@@ -8,7 +8,7 @@ const modes = {
   'dst-in': '保留底图重合部分', 'dst-out': '用上层擦除底图',
   'src-atop': '将上层限制在底图内', 'dst-atop': '将底图限制在上层内'
 };
-const worker = new Worker('./worker.js?v=format-exercises-20261118-1', { type: 'module' });
+const worker = new Worker('./worker.js?v=format-exercises-20261118-2', { type: 'module' });
 const pending = new Map();
 let requestId = 0;
 worker.onmessage = ({ data: { id, result } }) => {
@@ -51,6 +51,7 @@ function status(message = '') {
     'SVG layer cannot be recomposited: ': '无法重新合成 SVG 图层：',
     'ICC-profiled image requires color management': '图片包含尚不支持的 ICC 色彩配置。',
     'Image format is unsupported (PNG, JPEG, WebP, GIF, BMP, TIFF, ICO)': '请选择 PNG、JPEG、WebP、GIF、BMP、TIFF 或 ICO 图片。',
+    'Progressive JPEG edge sampling is unsupported; export as baseline JPEG or PNG': '这张渐进式 JPEG 的边缘采样不受支持，请另存为普通 JPEG 或 PNG 再导入。',
     'Animated WebP is unsupported; import a still frame': '动画 WebP 请先导出为静态图片再导入。',
     'Unknown composite operation: ': '暂不支持的混合方式：', 'Unknown layer element: ': '暂不支持的图层类型：',
     'Expected an integer coordinate or layer index': '位置和图层编号必须是范围内的整数。',
