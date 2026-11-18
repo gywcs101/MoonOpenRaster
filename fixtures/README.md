@@ -9,3 +9,6 @@ See scripts/check_krita.py for a live edit/export/reopen workflow. Krita itself 
 The `capitole-krita.png` reference is Krita 5.3.4's independent rendering of the web-sized source-layer artwork in `web/assets/capitole.ora`. `artwork-validation.json` records the pinned source, original layer names, translations, converted extents and measured pixel error. These artwork files retain David Revoy's source terms; see `LICENSES/capitole-artwork-NOTICE.txt`. Regenerate from the original zip with `scripts/prepare_artwork.py` and verify with `scripts/check_artwork.py`.
 
 The additional `samples/*-krita.png` files are independent Krita renderings of the normalized originals, not screenshots of the workbench. Their provenance and pixel measurements are in `sample-validation.json`; see LICENSES/sample-artworks-NOTICE.txt.
+
+
+`gradient16.ora` is an original procedural gradient fixture created for MoonOpenRaster and distributed under the project MIT license. The independent generator is `python scripts/check_rgba16.py --generate-fixture`. The fixture uses PNG sRGB markers and two true 16-bit layers. `gradient16-edits.json` moves the nested foreground layer and adjusts its opacity. See [the 16-bit workflow and Krita results](../docs/ROUNDTRIP16.zh-CN.md).

@@ -90,9 +90,12 @@ fn parse_nodes(
           Some(s) => s
           None => raise InvalidDocument("Layer is missing src")
         }
-        let image = decode_png(resource(entries, path))
-        decoded_bytes.val = decoded_bytes.val +
-          image.width.to_int64() * image.height.to_int64() * 4L
+        let payload = resource(entries, path)
+        if path.to_lower().has_suffix(".svg") {
+          raise Unsupported("SVG layer cannot be recomposited: " + path)
+        }
+        let image = decode_png(payload)
+        decoded_bytes.val = decoded_bytes.val + image.pixels.length().to_int64()
         if decoded_bytes.val > 134217728L {
           raise InvalidDocument("Decoded layer pixels exceed 128 MiB budget")
         }

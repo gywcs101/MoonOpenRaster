@@ -110,22 +110,14 @@ pub fn Document::write(self : Document) -> Bytes raise {
   } else {
     let w = (self.width.to_double() * scale).to_int().max(1)
     let h = (self.height.to_double() * scale).to_int().max(1)
-    let pixels : Array[Byte] = Array::make(w * h * 4, 0)
-    for y in 0..<h {
-      for x in 0..<w {
-        for c in 0..<4 {
-          pixels[(y * w + x) * 4 + c] = image.pixels[(
-              y * self.height / h * self.width + x * self.width / w
-            ) *
-            4 +
-            c]
-        }
-      }
-    }
-    Image::new(w, h, pixels)
+    image.resize_nearest(w, h)
   }
   entries.push(
-    @zip.Entry::new("Thumbnails/thumbnail.png", thumb.encode_png(), kind=Stored),
+    @zip.Entry::new(
+      "Thumbnails/thumbnail.png",
+      thumb.as_preview().encode_png(),
+      kind=Stored,
+    ),
   )
   if entries.length() > 4096 {
     raise InvalidDocument("Output archive exceeds entry limit")

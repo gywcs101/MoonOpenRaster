@@ -3,6 +3,7 @@ fn inspect_tree(
   parent : @dom.Element,
   prefix : Array[Int32],
   depth : Int32,
+  entries : Array[(String, Bytes)],
 ) -> Json raise {
   if depth > 128 {
     raise InvalidDocument("Layer tree exceeds depth limit")
@@ -11,6 +12,12 @@ fn inspect_tree(
   for i, child in parent.child_elements() {
     let path = prefix.copy()
     path.push(i)
+    if child.name == "layer" {
+      match child.attr("src") {
+        Some(path) => ignore(resource(entries, path))
+        None => raise InvalidDocument("Layer is missing src")
+      }
+    }
     let p = properties(child)
     if child.name == "stack" {
       ignore(isolation(child))
@@ -29,7 +36,7 @@ fn inspect_tree(
       "visible": p.visible,
       "opacity": p.opacity,
       "op": p.composite_op,
-      "children": inspect_tree(child, path, depth + 1),
+      "children": inspect_tree(child, path, depth + 1, entries),
     })
   }
   Json::array(nodes)
@@ -60,7 +67,20 @@ pub fn inspect(data : Bytes) -> Json raise {
     "name": root.attr("name").unwrap_or("Untitled"),
     "width": width,
     "height": height,
-    "tree": inspect_tree(children[0], [], 0),
+    "tree": inspect_tree(children[0], [], 0, entries),
     "png": @base64.encode(preview[:]),
+  }
+}
+
+///|
+/// Validate an archived PNG preview before offering browser read-only mode.
+pub fn validate_preview(
+  data : Bytes,
+  width : Int32,
+  height : Int32,
+) -> Unit raise {
+  let image = decode_raster(data)
+  if image.width != width || image.height != height {
+    raise InvalidDocument("Archived preview dimensions do not match the canvas")
   }
 }

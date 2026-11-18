@@ -10,6 +10,9 @@ fn paint(
 ) -> Unit raise OraError {
   // Validate once, then avoid allocating channel arrays for each separable pixel.
   ignore(composite_pixel([0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], op))
+  let src_max = if source.bits == 8 { 255.0 } else { 65535.0 }
+  let dst_max = if target.bits == 8 { 255.0 } else { 65535.0 }
+  let promote = if source.bits != target.bits { 257 } else { 1 }
   let full_canvas = op == "svg:dst-in" || op == "svg:dst-atop"
   let left = if full_canvas { 0 } else { x.max(0).min(target.width) }
   let top = if full_canvas { 0 } else { y.max(0).min(target.height) }
@@ -35,11 +38,11 @@ fn paint(
       let inside = sx >= 0 && sy >= 0 && sx < source.width && sy < source.height
       let s = if inside { (sy * source.width + sx) * 4 } else { 0 }
       let a = if inside {
-        source.pixels[s + 3].to_int().to_double() / 255.0 * opacity
+        source.sample(s + 3).to_double() / src_max * opacity
       } else {
         0.0
       }
-      let ab = target.pixels[b + 3].to_int().to_double() / 255.0
+      let ab = target.sample(b + 3).to_double() / dst_max
       if a == 0.0 && !full_canvas {
         continue
       }
@@ -50,30 +53,30 @@ fn paint(
         let alpha = a + ab * (1.0 - a)
         if a == 1.0 || ab == 0.0 {
           for i in 0..<3 {
-            target.pixels[b + i] = source.pixels[s + i]
+            target.put_sample(b + i, source.sample(s + i) * promote)
           }
         } else {
           for i in 0..<3 {
-            let cb = target.pixels[b + i].to_int().to_double() / 255.0
-            let cs = source.pixels[s + i].to_int().to_double() / 255.0
+            let cb = target.sample(b + i).to_double() / dst_max
+            let cs = source.sample(s + i).to_double() / src_max
             // Keep the same operation order as the independent pixel oracle.
             let blended = (1.0 - ab) * cs + ab * cs
             let value = ((a * blended + ab * (1.0 - a) * cb).min(1.0) / alpha)
               .max(0.0)
               .min(1.0)
-            target.pixels[b + i] = (value * 255.0 + 0.5).to_int().to_byte()
+            target.put_sample(b + i, (value * dst_max + 0.5).to_int())
           }
         }
-        target.pixels[b + 3] = (alpha * 255.0 + 0.5).to_int().to_byte()
+        target.put_sample(b + 3, (alpha * dst_max + 0.5).to_int())
         continue
       }
       if nonseparable {
         let back = Array::makei(4, i => {
-          target.pixels[b + i].to_int().to_double() / 255.0
+          target.sample(b + i).to_double() / dst_max
         })
         let front = Array::makei(4, i => {
           if inside {
-            source.pixels[s + i].to_int().to_double() / 255.0
+            source.sample(s + i).to_double() / src_max
           } else {
             0.0
           }
@@ -97,7 +100,7 @@ fn paint(
           pixel[3] = ab
         }
         for i in 0..<4 {
-          target.pixels[b + i] = (pixel[i] * 255.0 + 0.5).to_int().to_byte()
+          target.put_sample(b + i, (pixel[i] * dst_max + 0.5).to_int())
         }
       } else {
         let (fa, fb) = match op {
@@ -110,9 +113,9 @@ fn paint(
         }
         let alpha = (a * fa + ab * fb).min(1.0)
         for i in 0..<3 {
-          let cb = target.pixels[b + i].to_int().to_double() / 255.0
+          let cb = target.sample(b + i).to_double() / dst_max
           let cs = if inside {
-            source.pixels[s + i].to_int().to_double() / 255.0
+            source.sample(s + i).to_double() / src_max
           } else {
             0.0
           }
@@ -138,13 +141,12 @@ fn paint(
           } else {
             0.0
           }
-          target.pixels[b + i] = (value * 255.0 + 0.5).to_int().to_byte()
+          target.put_sample(b + i, (value * dst_max + 0.5).to_int())
         }
-        target.pixels[b + 3] = ((if preserve_alpha { ab } else { alpha }) *
-          255.0 +
-          0.5)
-          .to_int()
-          .to_byte()
+        target.put_sample(
+          b + 3,
+          ((if preserve_alpha { ab } else { alpha }) * dst_max + 0.5).to_int(),
+        )
       }
     }
   }
@@ -161,7 +163,7 @@ fn render_nodes(
     (depth + 2).to_int64() *
     canvas.width.to_int64() *
     canvas.height.to_int64() *
-    4L >
+    (canvas.bits / 2).to_int64() >
     268435456L {
     raise InvalidDocument("Rendering buffer budget exceeded")
   }
@@ -185,11 +187,7 @@ fn render_nodes(
             Auto =>
               render_nodes(children, canvas, opacity * p.opacity, depth + 1)
             Isolate => {
-              let buffer = Image::new(
-                canvas.width,
-                canvas.height,
-                Array::make(canvas.width * canvas.height * 4, 0),
-              )
+              let buffer = blank_image(canvas.width, canvas.height, canvas.bits)
               render_nodes(children, buffer, 1.0, depth + 1)
               paint(
                 canvas,
@@ -209,11 +207,7 @@ fn render_nodes(
 
 ///|
 pub fn Document::render(self : Document) -> Image raise OraError {
-  let image = Image::new(
-    self.width,
-    self.height,
-    Array::make(self.width * self.height * 4, 0),
-  )
+  let image = blank_image(self.width, self.height, self.bit_depth())
   render_nodes(self.children, image, 1.0, 0)
   image
 }

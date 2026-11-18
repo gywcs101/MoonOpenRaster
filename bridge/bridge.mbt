@@ -29,13 +29,14 @@ fn tree(nodes : Array[@ora.Node], prefix : Array[Int32]) -> Json raise {
       Layer(_, image) => thumbnail(image)
       Group(_, _, _) => ""
     }
-    let (width, height) = match node {
-      Layer(_, image) => (image.width(), image.height())
-      Group(_, _, _) => (0, 0)
+    let (width, height, bits) = match node {
+      Layer(_, image) => (image.width(), image.height(), image.bit_depth())
+      Group(_, _, _) => (0, 0, 0)
     }
     result.push({
       "thumbnail": preview,
       "width": width,
+      "bitDepth": bits,
       "height": height,
       "name": p.name,
       "path": path,
@@ -68,6 +69,7 @@ fn snapshot(doc : @ora.Document) -> Json raise {
   {
     "ok": true,
     "width": doc.width(),
+    "bitDepth": doc.bit_depth(),
     "height": doc.height(),
     "name": doc.name(),
     "tree": tree(doc.children(), []),
@@ -198,8 +200,8 @@ pub fn request(input : String) -> String {
         let inspected = @ora.inspect(bytes)
         let response = try {
           let d = @ora.read(bytes)
-          reset_editor(d)
           let result = snapshot(d)
+          reset_editor(d)
           let fields = match result {
             Object(fields) => fields
             _ => abort("Expected object")
@@ -209,25 +211,41 @@ pub fn request(input : String) -> String {
             _ => ()
           }
           fields["editable"] = true
+          fields["canUndo"] = false
+          fields["canRedo"] = false
+          fields["revision"] = Json::number(revision.val.to_double())
           result
         } catch {
-          e => {
+          @ora.Unsupported(message) => {
             let fields = match inspected {
-              Object(fields) => fields
-              _ => abort("Expected object")
+              {
+                "png": String(preview),
+                "width": Number(w, ..),
+                "height": Number(h, ..),
+                ..
+              } => {
+                @ora.validate_preview(
+                  @base64.decode(preview),
+                  w.to_int(),
+                  h.to_int(),
+                )
+                match inspected {
+                  Object(fields) => fields
+                  _ => abort("Expected object")
+                }
+              }
+              _ => raise @ora.InvalidDocument("Missing archived preview")
             }
             fields["ok"] = true
             fields["editable"] = false
-            fields["warning"] = match e {
-              @ora.Unsupported(s) => Json::string(s)
-              _ => Json::string(e.to_string())
-            }
+            fields["warning"] = Json::string(message)
             current.val = None
             undo_stack.val = []
             redo_stack.val = []
             preview_cache.val = None
             inspected
           }
+          e => raise e
         }
         original_source.val = Some(bytes)
         response.stringify()

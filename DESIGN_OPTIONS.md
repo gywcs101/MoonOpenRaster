@@ -1,9 +1,17 @@
-# Selected workbench design
+# 工作台界面设计
 
-The user selected the professional studio design. Alternative styles and the style selector were removed.
+工作台采用石墨灰界面和低饱和强调色，以画面为中心：左侧查看文档与图层，中间显示画布，右侧编辑所选图层。操作区域与作品展示区域保持清晰分隔。
 
-The selected interface follows the locally installed ui-design Product UI guidance: a dominant work surface, a quiet left layer rail and a fixed-width right inspector. Inter Variable is used for controls, with Instrument Serif for the product wordmark and a serif Chinese fallback for the selected-layer title. The separate M emblem is removed. Fonts are bundled for offline use. Layer selection, thumbnail, dimensions and visibility share one consistent row.
+## 布局与字体
 
-The default artwork is David Revoy’s Capitole du libre illustration, converted from its original layered KRA source with Krita. The gallery contains four authentic source-layer works and separate guided practice variants. No fabricated title/shape layers are overlaid on a flat poster. Source terms and conversion details are in LICENSES and fixtures. X/Y and dragging move the complete selected raster layer. Group offsets are disabled according to OpenRaster semantics.
+图层列表统一显示缩略图、名称、尺寸和可见性，并通过缩进与折叠表现分组。右侧按基本信息、位置、叠加效果、顺序和图层管理划分属性区域。
 
-Launch with `python scripts/serve_web.py`. The launcher compiles the core, anchors the web directory to this repository and disables browser caching. CSS, entry script and compiled core URLs also carry a revision identifier so earlier cached resources do not mix with this layout.
+控件采用 Inter，产品名称采用 Instrument Serif，中文重点标题使用衬线后备字体。字体随仓库提供，来源和许可见 [许可索引](LICENSES/README.md)。
+
+## 样例与交互
+
+默认展示 David Revoy 的 Capitole du libre 原始分层插画，样例库还提供另外三份作品。每份作品区分原稿和练习状态，并给出定位、修改、对照与导出指引。素材来源及转换范围见 [第三方说明](THIRD_PARTY.md)。
+
+蓝色选框表示当前绘画层的整体范围；拖动与 X/Y 属性移动整个图层。组坐标不参与合成，避免把组坐标误解为其子层的偏移。拖动期间先显示预览，松手后按完整分辨率重新合成。具体操作见 [网页使用说明](docs/WORKBENCH.zh-CN.md)。
+
+文件在本机处理，页面明确呈现只读限制与跨软件差异。工作台不把图层名修改解释成画面文字编辑，也不把练习参考条件作为艺术质量评分。

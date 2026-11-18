@@ -204,15 +204,15 @@ pub fn Image::resize_nearest(
     width.to_int64() * height.to_int64() > 16777216 {
     raise InvalidDocument("Image dimensions exceed limits")
   }
-  let pixels = Array::makei(width * height * 4, n => {
-    self.pixels[(
-      n / 4 / width * self.height / height * self.width +
-      n / 4 % width * self.width / width
-    ) *
-    4 +
-    n % 4]
+  let bytes_per_pixel = self.bits / 2
+  let pixels = Array::makei(width * height * bytes_per_pixel, i => {
+    let x = i / bytes_per_pixel % width
+    let y = i / bytes_per_pixel / width
+    self.pixels[(y * self.height / height * self.width + x * self.width / width) *
+    bytes_per_pixel +
+    i % bytes_per_pixel]
   })
-  { width, height, pixels, }
+  { width, height, pixels, bits: self.bits, }
 }
 
 ///|

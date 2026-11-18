@@ -1,40 +1,77 @@
 # MoonOpenRaster
 
-MoonBit library for OpenRaster layered documents, with a command-line interface and a local browser workspace.
+MoonOpenRaster 是用 MoonBit 编写的 **OpenRaster（`.ora`）16 位与 8 位分层栅格图像读写、编辑与合成库**，配有命令行和本地网页工作台。
 
-Core read/edit/render/write paths have independent Krita and Pillow validation. See [VALIDATION.md](VALIDATION.md) for exact compatibility, resource limits and platform evidence.
+普通 PNG 只保留最终画面；ORA 还保存独立图层、分组、位置、透明度和混合方式。本项目可以读取这些图层，修改后重新计算画面，再保存为仍可编辑的 ORA。例如：批量隐藏草稿层并导出预览、替换海报中的独立图片层，或为绘图程序添加 ORA 导入与导出功能。
 
-## Quick start
+[Mooncakes 包与接口文档](https://mooncakes.io/docs/gywcs101/MoonOpenRaster) · [网页使用说明](docs/WORKBENCH.zh-CN.md) · [库 API 说明](docs/API.zh-CN.md)
 
-Use MoonBit 0.10.20 or newer, Node.js and Python 3.
+## 能做什么
+
+- 读取与写入 ORA，保存嵌套图层树、图层属性和可保留的扩展资源。
+- 创建、删除、重命名、复制、重排和跨组移动图层，替换图层像素。
+- 调整可见性、整数位置、不透明度和混合方式，支持 20 种基线 SVG 合成操作及组隔离。
+- 导出整张 PNG、单层 PNG 或全部图层素材；保存 ORA 时重新生成合并预览和缩略图。
+- 在网页中实时预览拖动、撤销重做，并通过四份真实分层作品的练习了解图层编辑。
+
+## 体验网页
+
+需要 **MoonBit 0.10.20、Node.js 和 Python 3**，以下步骤在完整 GitHub 仓库中运行：
 
 ```sh
+git clone https://github.com/gywcs101/MoonOpenRaster.git
+cd MoonOpenRaster
 moon update
-moon check --target all --deny-warn
-moon test --target js --deny-warn
 python scripts/serve_web.py
 ```
 
-Final distribution packaging and Mooncakes publication are deferred until user acceptance. The development server works directly from this checkout; no release download is required.
+浏览器打开 **http://127.0.0.1:8765/**，保持终端运行；按 `Ctrl+C` 停止。端口已占用时可使用 `python scripts/serve_web.py --port 8766`，并访问相应端口。Windows 使用 PowerShell 也可以直接运行这些命令。
 
-The launcher builds the JavaScript core and serves from the correct web directory with browser caching disabled. Stop older servers before starting it.
+启动后会载入 David Revoy 的真实分层插画。选择图层后，可以拖动蓝色选框、切换眼睛、修改属性，或在“样例与练习”中跟随指引完成改图，再导出 PNG 或保存 ORA。拖动移动的是**整个选中图层**，不会自动拆分层内物体；修改图层名称也不会改变画面里的文字。
 
-Open http://127.0.0.1:8765 in a browser. The workbench loads a real source-layer illustration by David Revoy (7 original painting layers, translated names, resized to 1000 × 1000). Drag layers with live previews, undo/redo, zoom/pan, import/replace PNG layers, manage groups, extract layer PNGs and save PNG or ORA. The sample gallery offers four authentic layered works, each with a separately labelled practice starting point, reference result and four-step guide. Completion follows actual layer state and the current exported revision. See the [中文使用说明](docs/WORKBENCH.zh-CN.md). Processing happens locally. The browser import limit is 32 MiB.
+字体和样例随仓库提供，处理期间图像不会上传服务器。浏览器导入上限为 32 MiB。更多操作见 [网页使用说明](docs/WORKBENCH.zh-CN.md)。
 
-## Library
+## 在 MoonBit 项目中使用
 
-```moonbit
-let image = @ora.Image::new(1, 1, [255, 0, 0, 255])
-let layer = @ora.Node::Layer(@ora.Properties::new("Red"), image)
-let document = @ora.Document::new(1, 1, [layer])
-let archive = document.write()
-let reopened = @ora.read(archive)
-let png = reopened.render().encode_png()
+Mooncakes 上的 0.1.0 提供 8 位工作流。仓库当前源码增加了 16 位编辑能力，试用 16 位时请克隆仓库或在工作区引用本地源码。已有 8 位入口可按下面的方式安装。
+
+```sh
+moon add gywcs101/MoonOpenRaster@0.1.0
 ```
 
-Import `gywcs101/MoonOpenRaster` with alias `ora` in your package configuration. Public interfaces are in `pkg.generated.mbti`. See [中文 API 与错误约定](docs/API.zh-CN.md) and run `moon run examples/roundtrip --target js` for nested edits, PNG replacement, duplication, cross-group movement, rendering and an ORA round trip. This version has not been published to Mooncakes yet.
+在使用它的包的 `moon.pkg` 中添加导入：
 
-## Command line
+```moonbit
+import {
+  "gywcs101/MoonOpenRaster" @ora,
+}
+```
+
+下面的例子创建一个图层、修改名称和位置、合成 PNG，并保存与重新读取 ORA。代码中的 `archive` 和 `png` 都是字节数据，文件保存由调用程序处理。
+
+```moonbit
+fn main raise {
+  let image = @ora.Image::new(1, 1, [255, 0, 0, 255])
+  let layer = @ora.Node::Layer(@ora.Properties::new("红色图层"), image)
+  let document = @ora.Document::new(4, 4, [layer])
+  let edited = document.set_properties(
+    [0],
+    @ora.Properties::new("移动后的图层", x=1, y=1),
+  )
+  let archive = edited.write()
+  let reopened = @ora.read(archive)
+  let png = reopened.render().encode_png()
+  println(png.length())
+}
+```
+
+这是可执行包示例；在 `moon.pkg` 中另加 `pkgtype(kind: "executable")`，然后运行 `moon run . --target js`。在现有库函数中使用时，无需将包改为可执行类型。
+
+编辑方法返回新文档，原文档保持不变。路径从栈顶按 0 编号：`[0]` 表示最上面的节点，`[0,2]` 表示第一个组内的第三个节点。完整方法、错误约定与更多示例见 [库 API 说明](docs/API.zh-CN.md)。
+
+## 命令行使用
+
+在克隆的仓库根目录运行，输入路径替换为自己的文件：
 
 ```sh
 moon run cmd/main --target js -- inspect drawing.ora
@@ -42,42 +79,35 @@ moon run cmd/main --target js -- render drawing.ora composite.png
 moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 ```
 
-Outputs must not already exist. The edit file is an array of property edits (omitted fields retain their existing values; explicitly wrong types are rejected). Paths use zero-based indices from the top of the layer stack. Group children append another index.
+三条命令分别查看图层结构、合成整张 PNG，以及按 JSON 指令修改后保存 ORA。输出路径必须尚不存在。
+
+`edits.json` 示例：将第一个组里的第一层改名、移动并设为半透明。省略的属性保留原值，坐标必须为范围内整数。
 
 ```json
-[{"path":[0,0],"name":"Moved layer","x":20,"y":10,"visible":true,"opacity":0.5,"composite_op":"svg:src-over"}]
+[{"path":[0,0],"name":"移动后的图层","x":20,"y":10,"visible":true,"opacity":0.5,"composite_op":"svg:src-over"}]
 ```
 
-## Independent validation
+## 16 位 ORA 往返
 
-Install Pillow in your test environment, then run the generated independent fixture and pixel comparison.
+在克隆的仓库根目录运行：
 
 ```sh
-python scripts/check_interop.py
-python scripts/check_acceptance.py
-python scripts/check_consistency.py
-python scripts/check_plus.py
-python scripts/build_web.py
-node scripts/check_bridge.mjs
-node scripts/check_editor.mjs
-node scripts/check_samples.mjs
-python scripts/check_sample_pixels.py
-python scripts/check_artwork.py
-python scripts/check_krita.py
-python scripts/check_package.py
+python scripts/check_rgba16.py
 ```
 
-The last command checks the slim core file list and consumes a temporary source-tree copy. It also verifies that external packages cannot access private mutable storage. It produces no final release artifact. Use `python scripts/check_native.py` on a configured native compiler to exercise the actual CLI and Unicode paths.
+该命令读取 [16 位渐变样例](https://github.com/gywcs101/MoonOpenRaster/blob/main/fixtures/gradient16.ora)，把嵌套组中的 Light 图层移到 X=9、Y=6 并设为 50% 不透明度，再生成 `_build/rgba16/edited.ora` 和 `edited.png`。脚本独立解码输出，检查两个源图层的 16 位样本、重新合成的画面、图层结构与 8 位缩略图。也可以在网页打开同一个样例，手动应用上述属性后保存，重开会保留图层与位深。Krita 重开步骤和结果见 [16 位案例与复现说明](docs/ROUNDTRIP16.zh-CN.md)。
 
-## Format support
+## 兼容性与限制
 
-The current renderer accepts 8-bit raster PNG layers, clipped canvas placement, nested groups and the 20 baseline SVG composite operators. It implements isolated and pass-through group paths, and Krita’s `alpha-preserve="true"` blending extension. Unknown operations are rejected when rendering. The editing reader rejects unsupported PNG bit depths and unknown layer elements. Structural inspection and the browser can show their original preview and export the original archive unchanged. Extension attributes and additional archive resources are preserved for supported documents.
+- 目标为 **OpenRaster 0.0.6 的栅格编辑工作流**，包括 8 位与 16 位每通道的 sRGB 图层、混合位深、嵌套组、负偏移及 20 种基线合成操作。各图层按原精度保存，含 16 位层时重新生成 16 位合成，归档缩略图为 8 位。
+- 未标记色彩的 PNG 按 sRGB 处理。支持标准 sRGB 标记与经指纹核验的 Krita 非线性 sRGB 配置。线性 RGB、其他 ICC、SVG、文本及未知渲染功能的行为见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
+- `svg:plus` 遵循 W3C 规则，和 Krita Addition 可能有像素差异。Krita 5.3.4 可重开本项目的案例，但实测其 ORA 重存会将图层变回 8 位。
+- 单图和画布最多 16,777,216 像素、单边 16,384，解码图层总预算为 128 MiB。16 位 RGBA 每像素占 8 字节，文件还受归档和渲染缓冲区限制。详见 [兼容性与验证记录](VALIDATION.md)。
 
-The core format work follows the [OpenRaster baseline specification](https://www.openraster.org/baseline/baseline.html). ZIP, XML and PNG processing reuse MoonBit ecosystem components. See [THIRD_PARTY.md](THIRD_PARTY.md).
+## 文档与许可
 
-MIT License. Copyright 2026 gywcs101.
+- [网页使用说明](docs/WORKBENCH.zh-CN.md)：工作台操作、图层含义与练习。
+- [库 API 说明](docs/API.zh-CN.md)：文档模型、编辑接口、导出与错误处理。
+- [开发与贡献](CONTRIBUTING.md)：构建、回归测试、浏览器验证和分发检查。
 
-Krita 5.3.4 differs from the standard `svg:plus` alpha rule in the tested sample. Additive-layer visual equality across these implementations is not guaranteed; numerical evidence is recorded in VALIDATION.md. The workbench and CLI explicitly warn for affected documents.
-
-
-The project code is MIT; bundled artwork, fonts and compiled dependencies retain their own licenses. Complete texts, per-file applicability, source links and modification notices are in [LICENSES/README.md](LICENSES/README.md). Run `python scripts/check_licenses.py` to verify redistribution metadata; the same check is applied to source and offline-web packages.
+项目代码使用 [MIT 许可证](LICENSE)。网页中的作品、字体与第三方组件各自遵循其许可，完整文本、来源及修改说明见 [LICENSES](LICENSES/README.md) 和 [THIRD_PARTY.md](THIRD_PARTY.md)。ZIP、XML 与 PNG 处理复用 MoonBit 生态组件，OpenRaster 文档语义、编辑与合成在本项目实现。

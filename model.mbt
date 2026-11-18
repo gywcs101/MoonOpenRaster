@@ -9,6 +9,7 @@ pub struct Image {
   width : Int32
   height : Int32
   priv pixels : Array[Byte]
+  priv bits : Int32
 }
 
 ///|
@@ -17,6 +18,15 @@ pub fn Image::new(
   height : Int32,
   pixels : Array[Byte],
 ) -> Image raise OraError {
+  check_image_size(width, height)
+  if pixels.length() != width * height * 4 {
+    raise InvalidDocument("RGBA length mismatch")
+  }
+  { width, height, pixels: pixels.copy(), bits: 8, }
+}
+
+///|
+fn check_image_size(width : Int32, height : Int32) -> Unit raise OraError {
   if width <= 0 ||
     height <= 0 ||
     width > 16384 ||
@@ -24,10 +34,72 @@ pub fn Image::new(
     width.to_int64() * height.to_int64() > 16777216 {
     raise InvalidDocument("Image dimensions exceed limits")
   }
-  if pixels.length() != width * height * 4 {
+}
+
+///|
+/// Construct straight RGBA from unsigned 16-bit channel values.
+pub fn Image::new_rgba16(
+  width : Int32,
+  height : Int32,
+  samples : Array[Int32],
+) -> Image raise OraError {
+  check_image_size(width, height)
+  if samples.length() != width * height * 4 {
     raise InvalidDocument("RGBA length mismatch")
   }
-  { width, height, pixels: pixels.copy(), }
+  if samples.any(v => v < 0 || v > 65535) {
+    raise InvalidDocument("16-bit RGBA samples must be in 0..65535")
+  }
+  let image = blank_image(width, height, 16)
+  for i, value in samples {
+    image.put_sample(i, value)
+  }
+  image
+}
+
+///|
+fn blank_image(width : Int32, height : Int32, bits : Int32) -> Image {
+  { width, height, bits, pixels: Array::make(width * height * (bits / 2), 0), }
+}
+
+///|
+pub fn Image::bit_depth(self : Image) -> Int32 {
+  self.bits
+}
+
+///|
+fn Image::sample(self : Image, i : Int32) -> Int32 {
+  if self.bits == 8 {
+    self.pixels[i].to_int()
+  } else {
+    self.pixels[2 * i].to_int() * 256 + self.pixels[2 * i + 1].to_int()
+  }
+}
+
+///|
+fn Image::put_sample(self : Image, i : Int32, value : Int32) -> Unit {
+  if self.bits == 8 {
+    self.pixels[i] = value.to_byte()
+  } else {
+    self.pixels[2 * i] = (value / 256).to_byte()
+    self.pixels[2 * i + 1] = (value % 256).to_byte()
+  }
+}
+
+///|
+/// Copy full-precision samples, promoting 8-bit values by multiplication by 257.
+pub fn Image::pixels_rgba16(self : Image) -> Array[Int32] {
+  let scale = if self.bits == 8 { 257 } else { 1 }
+  Array::makei(self.width * self.height * 4, i => self.sample(i) * scale)
+}
+
+///|
+fn Image::as_preview(self : Image) -> Image {
+  if self.bits == 8 {
+    self
+  } else {
+    { ..self, pixels: self.pixels(), bits: 8, }
+  }
 }
 
 ///|
@@ -42,7 +114,13 @@ pub fn Image::height(self : Image) -> Int32 {
 
 ///|
 pub fn Image::pixels(self : Image) -> Array[Byte] {
-  self.pixels.copy()
+  if self.bits == 8 {
+    self.pixels.copy()
+  } else {
+    Array::makei(self.width * self.height * 4, i => {
+      ((self.sample(i) + 128) / 257).to_byte()
+    })
+  }
 }
 
 ///|
@@ -169,13 +247,30 @@ fn validate_nodes(
     }
     match node {
       Layer(_, image) => {
-        bytes.val = bytes.val +
-          image.width.to_int64() * image.height.to_int64() * 4L
+        bytes.val = bytes.val + image.pixels.length().to_int64()
         if bytes.val > 134217728L {
           raise InvalidDocument("Decoded layer pixels exceed 128 MiB budget")
         }
       }
       Group(_, _, children) => validate_nodes(children, depth + 1, bytes, count)
     }
+  }
+}
+
+///|
+/// Precision of the composite, including the depth of hidden layers.
+pub fn Document::bit_depth(self : Document) -> Int32 {
+  fn wide(nodes : Array[Node]) -> Bool {
+    nodes.any(node => {
+      match node {
+        Layer(_, image) => image.bits == 16
+        Group(_, _, children) => wide(children)
+      }
+    })
+  }
+  if wide(self.children) {
+    16
+  } else {
+    8
   }
 }

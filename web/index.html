@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MoonOpenRaster — 海报图层工作台</title>
-<link rel="stylesheet" href="style.css?v=acceptance-20261118-1">
+<link rel="stylesheet" href="style.css?v=rgba16-20261118-1">
 </head>
 <body>
 <header class="app-header">
@@ -27,7 +27,7 @@
   </section>
   <div class="canvas-toolbar"><div><span class="canvas-tab">当前合成</span><label class="compare"><input id="original" name="original" type="checkbox"><span id="compare-label">对照导入时画面</span></label></div><div class="zoom-tools"><button type="button" id="hand" aria-pressed="false" title="平移画布，也可按住空格拖动">手形</button><button type="button" id="zoom-out" aria-label="缩小">−</button><span id="zoom">适应画布</span><button type="button" id="zoom-in" aria-label="放大">＋</button><button type="button" id="actual-size">100%</button><button type="button" id="fit">适应</button></div></div>
   <div class="canvas-area" id="canvas-area"><div class="artboard" id="artboard"><img id="canvas" alt="当前图层合成画面"><canvas id="live-preview" aria-label="实时拖动预览" hidden></canvas><div id="selection" class="selection" hidden><span class="selection-label" id="selection-label"></span><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div></div><div class="loading" id="loading" role="status">正在读取原始分层作品…</div></div>
-  <div class="canvas-footer"><span id="dimensions"></span><span id="canvas-hint">选择一个图层，查看它在海报中的位置</span><span>8 位 sRGB</span></div>
+  <div class="canvas-footer"><span id="dimensions"></span><span id="canvas-hint">选择一个图层，查看它在海报中的位置</span><span id="bit-depth"></span></div>
  </section>
  <aside class="panel inspector-panel" aria-label="选中图层属性">
   <div class="inspector-heading"><span class="section-kicker">选中图层</span><h2 id="selected-title">线稿</h2><p id="selected-size">独立像素图层</p></div>
@@ -57,6 +57,6 @@ window.addEventListener('error', function (event) {
   if (loading) { loading.hidden = false; loading.textContent = '界面资源未能载入，请重新启动服务并刷新页面。'; }
 }, true);
 </script>
-<script type="module" src="app.js?v=acceptance-20261118-1"></script>
+<script type="module" src="app.js?v=rgba16-20261118-1"></script>
 </body>
 </html>

@@ -4,7 +4,9 @@
 
 ## 引入与可运行示例
 
-模块名为 `gywcs101/MoonOpenRaster`，版本准备为 `0.1.0`，尚未正式发布到 Mooncakes。当前从 GitHub 获取源码，用工作区引用；正式发布后才能按注册表版本安装。包中写 `import { "gywcs101/MoonOpenRaster" @ora }`。
+模块名为 `gywcs101/MoonOpenRaster`，已发布的 `0.1.0` 提供 8 位接口。以下的 16 位接口适用于当前仓库源码。在自己的模块中运行 `moon add gywcs101/MoonOpenRaster@0.1.0`，再在包中添加 `import { "gywcs101/MoonOpenRaster" @ora }`。
+
+以下 `examples/` 与 `web/` 路径的命令在克隆的 GitHub 仓库根目录运行；通过 Mooncakes 安装核心库不包含网页样例。
 
 最小示例：`moon run examples/basic --target js`。
 完整示例：`moon run examples/roundtrip --target js`。它创建带嵌套组的文档，修改属性、替换像素、复制、跨组移动、合成、保存到字节并重开，还检查旧版本不被修改。
@@ -19,7 +21,7 @@ moon run examples/roundtrip --target js -- web/assets/capitole.ora edited.ora
 
 ## 数据和路径
 
-`Image::new(w,h,pixels)` 接收连续 RGBA 字节，四个字节表示一个像素。输入数组会被复制。`image.pixels()` 返回副本。`Properties::new` 创建名称、坐标、可见性、不透明度和混合方式；标量可读，扩展属性通过 `extra()` 取得副本。
+`Image::new(w,h,pixels)` 接收连续 RGBA 字节，四个字节表示一个像素。输入数组会被复制。`image.pixels()` 返回 8 位副本，16 位输入采用就近舍入映射到 8 位，适合界面预览。用 `Image::new_rgba16(w,h,samples)` 创建每通道 0～65535 的图像。用 `image.bit_depth()` 查询存储位深，`image.pixels_rgba16()` 获取完整样本副本。读取 8 位图像的 16 位样本时，每个值精确乘 257。`Properties::new` 创建名称、坐标、可见性、不透明度和混合方式；标量可读，扩展属性通过 `extra()` 取得副本。
 
 `Node::Layer(properties,image)` 表示独立像素图层；`Node::Group(properties,isolation,children)` 表示组。`Document::new` 会分离传入的组数组。`document.children()`、`document.node(path)` 也会分离可变数组。已创建的图像和属性内部存储不对外公开；旧文档、撤销版本之间可以安全共享不可变像素。
 
@@ -50,12 +52,12 @@ moon run examples/roundtrip --target js -- web/assets/capitole.ora edited.ora
 
 所有编辑是持久化操作：失败会抛出错误，不改变旧文档。`OraError::message()` 给出可读说明。结构、尺寸、坐标、资源和枚举错误应拒绝；不能通过小数取整或错误类型默认值悄悄修改数据。CLI 的编辑项允许省略标准属性，省略项保留原值；显式错误类型拒绝。
 
-编辑范围是 8 位 sRGB RGBA。未知混合方式在合成时抛出 `Unsupported`。矢量、ICC 色彩配置和不支持位深不能保证重算；`inspect(bytes)` 可查看结构和已有预览，网页进入只读并原样保存。只读并不等于能够正确合成。未知扩展属性和未引用资源可以保存，但未知属性的应用语义不因此得到支持。
+编辑范围包括 8 位、16 位和混合位深的 sRGB RGBA。含 16 位层的文档会用 16 位缓冲合成，`document.bit_depth()` 返回合成位深。图层 PNG 保留各自的位深，`render().encode_png()` 保留合成位深。详细色彩和保留边界见 [兼容矩阵](COMPATIBILITY.zh-CN.md)。未知混合方式在合成时抛出 `Unsupported`。矢量、未知 ICC 配置和其他不支持的渲染特性；`inspect(bytes)` 可查看结构和已有预览，网页进入只读并原样保存。只读并不等于能够正确合成。未知扩展属性和未引用资源可以保存，但未知属性的应用语义不因此得到支持。
 
 尺寸每边最多 16,384、总像素最多 16,777,216；坐标为 ±1,000,000 内整数；不透明度 0～1。文档最多 4096 节点、128 层嵌套，解码图层预算 128 MiB；归档和渲染还有独立预算。运行时实际内存包括数组和编码缓冲区，会高于逻辑 RGBA 字节数。
 
 `svg:plus` 保持 W3C 规则，网页和 CLI 会提示它与 Krita Addition 可能不同。不要把有提示的跨软件像素差异理解为无条件兼容。
 
-## 分发状态
+## 安装内容
 
-核心文件清单由 `.moonignore` 控制，排除网页、演示素材、浏览器桥接与开发脚本，保留核心、CLI、示例、核心测试、说明和完整许可证。`python scripts/check_package.py` 验证清单和独立源码消费者，临时文件自动清理；当前不生成供用户下载的最终发行物。正式归档、注册表安装和发行验证留在用户验收后。
+Mooncakes 提供核心库、CLI、示例、核心测试、说明和完整许可证。完整网页、演示素材及贡献者工具保留在 GitHub 仓库；需要体验网页时按 [README](../README.md) 克隆并启动即可。开发检查方法见 [开发与贡献](../CONTRIBUTING.md)。

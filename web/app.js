@@ -1,4 +1,4 @@
-import { SampleStudio } from './samples.js?v=acceptance-20261118-1';
+import { SampleStudio } from './samples.js?v=rgba16-20261118-1';
 const $ = id => document.getElementById(id);
 const modes = {
   'src-over': '正常', multiply: '正片叠底', screen: '滤色', overlay: '叠加',
@@ -8,7 +8,7 @@ const modes = {
   'dst-in': '保留底图重合部分', 'dst-out': '用上层擦除底图',
   'src-atop': '将上层限制在底图内', 'dst-atop': '将底图限制在上层内'
 };
-const worker = new Worker('./worker.js?v=acceptance-20261118-1', { type: 'module' });
+const worker = new Worker('./worker.js?v=rgba16-20261118-1', { type: 'module' });
 const pending = new Map();
 let requestId = 0;
 worker.onmessage = ({ data: { id, result } }) => {
@@ -46,7 +46,9 @@ function status(message = '') {
   let text = message || state?.warning || '';
   for (const [source, target] of Object.entries({
     'Invalid document: ': '文档无法处理：', 'Unsupported feature: ': '暂不支持：',
-    'Only 8-bit PNG input is currently supported': '此文档超出 8 位编辑范围，已显示原始预览。可保存原文件。',
+    'Non-sRGB PNG gamma requires color management': '此 PNG 使用未支持的色调曲线，已显示原始预览。',
+    'Non-sRGB PNG chromaticities require color management': '此 PNG 的色度与 sRGB 不同，已显示原始预览。',
+    'SVG layer cannot be recomposited: ': '无法重新合成 SVG 图层：',
     'ICC-profiled PNG requires color management': '此文档包含 ICC 色彩配置，已显示原始预览。可保存原文件。',
     'Unknown composite operation: ': '暂不支持的混合方式：', 'Unknown layer element: ': '暂不支持的图层类型：',
     'Expected an integer coordinate or layer index': '位置和图层编号必须是范围内的整数。',
@@ -132,7 +134,7 @@ function drawTree() {
       const label = document.createElement('span'); label.className = 'layer-label';
       const name = document.createElement('strong'); name.textContent = node.name || '未命名图层';
       const detail = document.createElement('small');
-      detail.textContent = (locked(node) ? '已锁定 · ' : '') + (node.kind === 'group' ? '图层组' : `${node.width || '—'} × ${node.height || '—'} 像素`);
+      detail.textContent = (locked(node) ? '已锁定 · ' : '') + (node.kind === 'group' ? '图层组' : `${node.width || '—'} × ${node.height || '—'} 像素${node.bitDepth === 16 ? ' · 16 位' : ''}`);
       label.append(name, detail); select.append(label); select.onclick = () => { if (!busy && !drag) choose(node); }; row.append(select);
       if (node.kind === 'group') {
         const fold = document.createElement('button'); const folded = collapsed.has(key(node.path));
@@ -155,7 +157,7 @@ function choose(node) {
   for (const id of ['name', 'x', 'y', 'opacity', 'op']) $(id).value = node[id];
   $('visible').checked = node.visible; $('opacityValue').value = Math.round(node.opacity * 100) + '%';
   $('selected-title').textContent = node.name || '未命名图层';
-  $('selected-size').textContent = node.kind === 'group' ? `${node.children.length} 个子图层` : `${node.width || '—'} × ${node.height || '—'} 像素`;
+  $('selected-size').textContent = node.kind === 'group' ? `${node.children.length} 个子图层` : `${node.width || '—'} × ${node.height || '—'} 像素${node.bitDepth === 16 ? ' · 16 位' : ''}`;
   $('position-help').textContent = locked(node) ? '此图层或上级组已锁定，解锁后可编辑。' : node.kind === 'group' ? '请选择组内图层移动；组可整体调整透明度、复制或移入其他组。' : '拖动画面中的蓝色框，整层内容实时移动。';
   const targets = $('move-target'); targets.replaceChildren(new Option('文档最外层', '[]'));
   for (const group of findNodes().filter(n => n.kind === 'group')) {
@@ -234,6 +236,7 @@ function show(result, reset = false, selectionPath = selected?.path) {
     document.querySelector('.source-section a').textContent = sample.author + ' · ' + sample.sourceTitle;
     document.querySelector('.source-section p').textContent = sample.note + ' ' + sample.license;
   }
+  $('bit-depth').textContent = result.bitDepth ? result.bitDepth + ' 位 sRGB' : '原始预览';
   $('dimensions').textContent = result.width + ' × ' + result.height + ' 像素';
   $('canvas').src = 'data:image/png;base64,' + ($('original').checked ? original : result.png);
   $('compare-label').textContent = sampleStudio?.active?.mode === 'practice' ? '对照练习起点' : '对照导入时画面';

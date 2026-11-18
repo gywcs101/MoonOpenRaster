@@ -16,6 +16,8 @@ pub fn inspect(Bytes) -> @json.Json raise
 
 pub fn read(Bytes) -> Document raise
 
+pub fn validate_preview(Bytes, Int32, Int32) -> Unit raise
+
 pub fn version() -> String
 
 // Errors
@@ -32,6 +34,7 @@ pub struct Document {
   name : String
   // private fields
 }
+pub fn Document::bit_depth(Self) -> Int32
 pub fn Document::children(Self) -> Array[Node]
 pub fn Document::compatibility_warnings(Self) -> Array[String]
 pub fn Document::duplicate(Self, Array[Int32], name~ : String) -> Self raise
@@ -58,10 +61,13 @@ pub struct Image {
   height : Int32
   // private fields
 }
+pub fn Image::bit_depth(Self) -> Int32
 pub fn Image::encode_png(Self) -> Bytes raise
 pub fn Image::height(Self) -> Int32
 pub fn Image::new(Int32, Int32, Array[Byte]) -> Self raise OraError
+pub fn Image::new_rgba16(Int32, Int32, Array[Int32]) -> Self raise OraError
 pub fn Image::pixels(Self) -> Array[Byte]
+pub fn Image::pixels_rgba16(Self) -> Array[Int32]
 pub fn Image::resize_nearest(Self, Int32, Int32) -> Self raise OraError
 pub fn Image::width(Self) -> Int32
 

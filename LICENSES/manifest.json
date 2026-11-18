@@ -198,11 +198,12 @@
     {
       "patterns": [
         "fixtures/krita-5.3.4.ora",
-        "fixtures/krita-5.3.4.png"
+        "fixtures/krita-5.3.4.png",
+        "fixtures/gradient16.ora"
       ],
       "license": "MIT",
       "license_file": "LICENSE",
-      "source": "Project-generated Light study, exported and rewritten by Krita 5.3.4; see fixtures/README.md"
+      "source": "Project-generated Light study and 16-bit gradient fixtures; see fixtures/README.md"
     }
   ],
   "development_dependencies_note": "Playwright and Pillow are installed separately for validation; their implementation code is not redistributed in the repository or the two bundles. node_modules and .mooncakes must be excluded.",

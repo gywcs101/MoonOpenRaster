@@ -1,6 +1,6 @@
 # 编辑与预览性能记录
 
-2026-11-18，同一台 Windows 主机、Node v24.13.0、MoonBit 0.10.20，比较修复前 `5240585` 与本轮核心修改。数值是一次可复现运行的观测，不是跨机器性能保证。原始记录位于 [before](docs/performance/before.json)、[after](docs/performance/after.json)，补充深层组运行见 [current](docs/performance/current.json)。
+2026-11-18，同一台 Windows 主机、Node v24.13.0、MoonBit 0.10.20，比较 `5240585` 与应用不可变像素共享、按路径更新和缩略图优化后的实现。所有历史样例均为 8 位，数据适用于该次测试的实现。数值是一次可复现运行的观测，不是跨机器性能保证。原始记录位于 [before](docs/performance/before.json)、[after](docs/performance/after.json)，补充深层组运行见 [current](docs/performance/current.json)。
 
 ## 相同样例的前后对照
 
