@@ -78,7 +78,9 @@ pub fn Document::replace_children(
   self : Document,
   children : Array[Node],
 ) -> Document raise OraError {
-  checked_document(self, children.map(copy_node))
+  // Caller-owned trees can be cyclic: validate before recursively detaching.
+  validate_nodes(children, 0, Ref(0L), Ref(0))
+  { ..self, children: children.map(copy_node), }
 }
 
 ///|
@@ -97,7 +99,7 @@ fn edit_children(
   edit : (Array[Node]) -> Array[Node] raise,
 ) -> Document raise {
   if parent.is_empty() {
-    return checked_document(document, edit(document.children.map(copy_node)))
+    return checked_document(document, edit(document.children.copy()))
   }
   checked_document(
     document,

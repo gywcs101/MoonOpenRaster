@@ -15,4 +15,9 @@ test "cyclic externally built groups fail before cloning" {
   children.push(Group(Properties::new("cycle"), Isolate, children))
   let result = Ok(Document::new(1, 1, children)) catch { e => Err(e) }
   assert_true(result is Err(_))
+  let doc = Document::new(1, 1, [])
+  let replacement = Ok(doc.replace_children(children)) catch { e => Err(e) }
+  assert_true(replacement is Err(_))
+  let insertion = Ok(doc.insert([], 0, children[0])) catch { e => Err(e) }
+  assert_true(insertion is Err(_))
 }
