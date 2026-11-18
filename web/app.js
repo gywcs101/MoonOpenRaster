@@ -1,4 +1,4 @@
-import { SampleStudio } from './samples.js?v=rgba16-20261118-1';
+import { SampleStudio } from './samples.js?v=format-exercises-20261118-1';
 const $ = id => document.getElementById(id);
 const modes = {
   'src-over': '正常', multiply: '正片叠底', screen: '滤色', overlay: '叠加',
@@ -8,7 +8,7 @@ const modes = {
   'dst-in': '保留底图重合部分', 'dst-out': '用上层擦除底图',
   'src-atop': '将上层限制在底图内', 'dst-atop': '将底图限制在上层内'
 };
-const worker = new Worker('./worker.js?v=rgba16-20261118-1', { type: 'module' });
+const worker = new Worker('./worker.js?v=format-exercises-20261118-1', { type: 'module' });
 const pending = new Map();
 let requestId = 0;
 worker.onmessage = ({ data: { id, result } }) => {
@@ -49,7 +49,9 @@ function status(message = '') {
     'Non-sRGB PNG gamma requires color management': '此 PNG 使用未支持的色调曲线，已显示原始预览。',
     'Non-sRGB PNG chromaticities require color management': '此 PNG 的色度与 sRGB 不同，已显示原始预览。',
     'SVG layer cannot be recomposited: ': '无法重新合成 SVG 图层：',
-    'ICC-profiled PNG requires color management': '此文档包含 ICC 色彩配置，已显示原始预览。可保存原文件。',
+    'ICC-profiled image requires color management': '图片包含尚不支持的 ICC 色彩配置。',
+    'Image format is unsupported (PNG, JPEG, WebP, GIF, BMP, TIFF, ICO)': '请选择 PNG、JPEG、WebP、GIF、BMP、TIFF 或 ICO 图片。',
+    'Animated WebP is unsupported; import a still frame': '动画 WebP 请先导出为静态图片再导入。',
     'Unknown composite operation: ': '暂不支持的混合方式：', 'Unknown layer element: ': '暂不支持的图层类型：',
     'Expected an integer coordinate or layer index': '位置和图层编号必须是范围内的整数。',
     'Rendering buffer budget exceeded': '合成所需内存超出限制。',
@@ -244,7 +246,7 @@ function show(result, reset = false, selectionPath = selected?.path) {
   $('canvas-hint').textContent = state.editable === false ? '原始预览模式 · 可保存原文件' : '滚轮缩放 · 空格拖动画布 · 蓝框内拖动整层';
   if (selected) choose(selected);
   else {
-    drawTree(); $('selection').hidden = true; $('selected-title').textContent = '未选择图层'; $('selected-size').textContent = '可导入 PNG 或新建图层组';
+    drawTree(); $('selection').hidden = true; $('selected-title').textContent = '未选择图层'; $('selected-size').textContent = '可导入图片或新建图层组';
     updateActions();
   }
   fitCanvas(); status();
@@ -381,7 +383,7 @@ $('layer-file').onchange = () => {
       if (mode === 'replace') await mutate({ action: 'replace', path: node.path, data });
       else {
         const parent = node?.kind === 'group' ? node.path : node?.path.slice(0, -1) || [];
-        await mutate({ action: 'insert', parent, index: 0, name: file.name.replace(/\.png$/i, ''), data }, [...parent, 0]);
+        await mutate({ action: 'insert', parent, index: 0, name: file.name.replace(/\.(png|jpe?g|webp|gif|bmp|tiff?|ico)$/i, ''), data }, [...parent, 0]);
       }
     } finally { $('layer-file').value = ''; }
   });
@@ -411,6 +413,7 @@ sampleStudio = new SampleStudio({
   getNodes: findNodes, getState: () => state, isBusy: () => busy || !!drag, isDirty: dirty,
   edit: editNode,
   replace: async (node, file) => mutate({ action: 'replace', path: node.path, data: await encodedFile(file) }),
+  insert: async (name, file) => mutate({ action: 'insert', parent: [], index: 0, name, data: await encodedFile(file) }, [0]),
   exportPNG: () => $('png').click(),
 });
 $('sample').onclick = () => guard(() => sampleStudio.reload());

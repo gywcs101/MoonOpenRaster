@@ -6,7 +6,10 @@ export function checkTask(step, nodes) {
     const matches = nodes.filter(node => node.name === check.name);
     if (matches.length !== 1) return false;
     const node = matches[0];
-    if (check.type === 'image') return node.thumbnail === check.thumbnail && node.width === check.width && node.height === check.height;
+    if (check.type === 'image') {
+      return node.thumbnail === check.thumbnail && node.width === check.width && node.height === check.height &&
+        (check.bitDepth === undefined || check.bitDepth === node.bitDepth);
+    }
     return Object.entries(check.expected).every(([property, value]) => {
       if (typeof value === 'number') {
         const range = check.ranges?.[property];
@@ -21,6 +24,7 @@ export class SampleStudio {
   constructor(callbacks) {
     this.callbacks = callbacks;
     this.samples = [];
+    this.formatSamples = [];
     this.active = null;
     this.focusIndex = null;
     this.exportRevision = null;
@@ -47,22 +51,30 @@ export class SampleStudio {
       const check = this.pendingCheck(step);
       if (!check) { this.focusIndex = null; this.refresh(); return; }
       const node = callbacks.getNodes().find(n => n.name === check.name);
-      if (!node) return;
+      if (!node && !check.insert) return;
       callbacks.run(async () => {
-        callbacks.select(node);
+        if (node) callbacks.select(node);
         if (check.type === 'image') {
           const response = await fetch(check.asset);
           if (!response.ok) throw Error('练习素材读取失败，请重新启动服务。');
-          await callbacks.replace(node, new File([await response.blob()], '原稿背景.png', { type: 'image/png' }));
+          const name = check.asset.split('/').at(-1);
+          const file = new File([await response.blob()], name);
+          if (node) await callbacks.replace(node, file);
+          else await callbacks.insert(check.name, file);
         } else await callbacks.edit(node, check.expected);
       });
     };
   }
 
   async init() {
-    const response = await fetch('assets/sample-catalog.json');
-    if (!response.ok) throw Error('样例目录读取失败，请重新启动服务。');
-    this.samples = (await response.json()).samples;
+    const load = async name => {
+      const response = await fetch('assets/' + name);
+      if (!response.ok) throw Error('样例目录读取失败，请重新启动服务。');
+      return (await response.json()).samples;
+    };
+    [this.samples, this.formatSamples] = await Promise.all([
+      load('sample-catalog.json'), load('format-catalog.json')
+    ]);
     this.buildGallery();
   }
 
@@ -71,26 +83,28 @@ export class SampleStudio {
   }
 
   buildGallery() {
-    const grid = $('sample-grid'); grid.replaceChildren();
-    for (const sample of this.samples) {
-      const card = document.createElement('article'); card.className = 'sample-card'; card.dataset.sample = sample.id;
-      const image = document.createElement('img'); image.src = sample.cover; image.alt = sample.title + '的原稿预览'; image.loading = 'lazy';
-      const info = document.createElement('div'); info.className = 'sample-card-info';
-      const meta = document.createElement('span'); meta.className = 'sample-meta'; meta.textContent = `${sample.layerCount} 个绘画层 · ${sample.width} × ${sample.height}`;
-      const title = document.createElement('h3'); title.textContent = sample.title;
-      const text = document.createElement('p'); text.textContent = sample.subtitle;
-      const actions = document.createElement('div'); actions.className = 'sample-card-actions';
-      for (const [label, mode] of [['查看原稿', 'original'], ['开始练习', 'practice']]) {
-        const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.dataset.mode = mode;
-        if (mode === 'practice') button.className = 'primary';
-        button.onclick = () => this.callbacks.run(async () => {
-          if (await this.switchTo(sample, mode)) $('sample-gallery').close();
-        });
-        actions.append(button);
-      }
-      const source = document.createElement('a'); source.href = sample.source; source.target = '_blank'; source.rel = 'noopener'; source.textContent = 'David Revoy · 来源与授权'; source.className = 'sample-credit';
-      info.append(meta, title, text, actions, source); card.append(image, info); grid.append(card);
+    $('sample-grid').replaceChildren(...this.samples.map(sample => this.makeCard(sample)));
+    $('format-grid').replaceChildren(...this.formatSamples.map(sample => this.makeCard(sample, true)));
+  }
+
+  makeCard(sample, format = false) {
+    const card = document.createElement('article'); card.className = format ? 'sample-card format-card' : 'sample-card'; card.dataset.sample = sample.id;
+    const image = document.createElement('img'); image.src = sample.cover; image.alt = sample.title + (format ? '的参考成图' : '的原稿预览'); image.loading = 'lazy';
+    const info = document.createElement('div'); info.className = 'sample-card-info';
+    const meta = document.createElement('span'); meta.className = 'sample-meta'; meta.textContent = sample.formats?.join(' · ') || `${sample.layerCount} 个绘画层 · ${sample.width} × ${sample.height}`;
+    const title = document.createElement('h3'); title.textContent = sample.title;
+    const text = document.createElement('p'); text.textContent = sample.subtitle;
+    const actions = document.createElement('div'); actions.className = 'sample-card-actions';
+    for (const [label, mode] of (format ? [['开始练习', 'practice']] : [['查看原稿', 'original'], ['开始练习', 'practice']])) {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.dataset.mode = mode;
+      if (mode === 'practice') button.className = 'primary';
+      button.onclick = () => this.callbacks.run(async () => {
+        if (await this.switchTo(sample, mode)) $('sample-gallery').close();
+      });
+      actions.append(button);
     }
+    const source = document.createElement('a'); source.href = sample.source; source.target = '_blank'; source.rel = 'noopener'; source.textContent = sample.author + ' · 来源与授权'; source.className = 'sample-credit';
+    info.append(meta, title, text, actions, source); card.append(image, info); return card;
   }
 
   async allowSwitch() {
@@ -143,7 +157,7 @@ export class SampleStudio {
   refresh() {
     const busy = this.callbacks.isBusy();
     $('browse-samples').disabled = busy || !this.samples.length;
-    for (const button of $('sample-grid').querySelectorAll('button')) button.disabled = busy;
+    for (const button of $('sample-gallery').querySelectorAll('[data-mode]')) button.disabled = busy;
     $('practice-invite').hidden = !this.active || this.active.mode !== 'original';
     $('practice-panel').hidden = !this.active || this.active.mode !== 'practice';
     $('start-practice').disabled = busy;
@@ -164,18 +178,19 @@ export class SampleStudio {
       nav.append(button);
     });
     const check = this.pendingCheck(step);
-    const missing = check && !this.callbacks.getNodes().some(n => n.name === check.name);
+    const locateCheck = check || step.checks?.[0];
+    const hasTarget = locateCheck && this.callbacks.getNodes().some(n => n.name === locateCheck.name);
+    const missing = check && !check.insert && !hasTarget;
     const allDone = done.every(Boolean);
     $('guide-title').textContent = allDone ? '已完成，作品已导出' : step.title;
     $('guide-text').textContent = allDone ? '可以继续自由调整；改动后再导出，即可得到新的版本。也可以从样例库开始下一幅。' : missing ? `找不到“${check.name}”：它可能被删除或改名了。可撤销修改，或点击“重新练习”。` : step.text;
-    const locateCheck = check || step.checks?.[0];
-    $('guide-locate').hidden = !locateCheck || missing;
+    $('guide-locate').hidden = !hasTarget;
     $('guide-locate').textContent = locateCheck ? '定位“' + locateCheck.name + '”' : '定位图层';
     $('guide-locate').disabled = busy;
     $('guide-action').textContent = allDone ? '再次导出 PNG' : step.type === 'export' ? '导出 PNG' : !check ? '继续下一步' : step.suggestion || '应用参考值';
     $('guide-action').disabled = busy || missing || (step.type === 'export' && !done.slice(0, -1).every(Boolean));
     const download = $('guide-asset'); download.hidden = !check?.asset;
-    if (check?.asset) { download.href = check.asset; download.download = '原稿白底.png'; }
+    if (check?.asset) { download.href = check.asset; download.download = check.asset.split('/').at(-1); }
     $('restart-practice').disabled = busy;
   }
 }

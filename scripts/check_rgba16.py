@@ -144,7 +144,7 @@ def check_input_variants(cli):
         (palette, 8, narrow, None),
         (png(1, 1, 16, lambda x, y: wide, srgb), 16, wide, None),
         (png(1, 1, 16, lambda x, y: wide, chunk(b"gAMA", struct.pack(">I", 100000))), 16, wide, "Non-sRGB PNG gamma"),
-        (png(1, 1, 16, lambda x, y: wide, chunk(b"iCCP", b"sRGB-elle-V2-srgbtrc.icc\0\0" + zlib.compress(b"not the approved profile"))), 16, wide, "ICC-profiled PNG"),
+        (png(1, 1, 16, lambda x, y: wide, chunk(b"iCCP", b"sRGB-elle-V2-srgbtrc.icc\0\0" + zlib.compress(b"not the approved profile"))), 16, wide, "ICC-profiled image"),
     ]
     for index, (layer, bits, expected, error) in enumerate(cases):
         case = OUT / f"variant-{index}.ora"

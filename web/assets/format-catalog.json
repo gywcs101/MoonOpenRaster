@@ -1,0 +1,310 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "postcard",
+      "file": "assets/import-samples/postcard.ora",
+      "cover": "assets/import-samples/postcard-goal.png",
+      "title": "海岸明信片",
+      "subtitle": "换上 JPEG 海岸画面，再叠加两种透明素材。",
+      "formats": [
+        "JPEG",
+        "WebP",
+        "PNG"
+      ],
+      "width": 480,
+      "height": 288,
+      "layerCount": 2,
+      "author": "MoonOpenRaster",
+      "source": "https://github.com/gywcs101/MoonOpenRaster/blob/main/LICENSE",
+      "sourceTitle": "原创格式练习",
+      "note": "用于展示图片导入与图层编辑。",
+      "license": "MIT",
+      "practice": {
+        "file": "assets/import-samples/postcard.ora",
+        "start": "assets/import-samples/postcard-start.png",
+        "goal": "assets/import-samples/postcard-goal.png",
+        "goalFile": "assets/import-samples/postcard-goal.ora",
+        "steps": [
+          {
+            "title": "替换照片",
+            "text": "用 JPEG 替换照片窗口，保留原位置。",
+            "checks": [
+              {
+                "name": "照片窗口",
+                "type": "image",
+                "insert": false,
+                "asset": "assets/import-samples/tide.jpg",
+                "thumbnail": "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",
+                "width": 296,
+                "height": 171,
+                "bitDepth": 8
+              }
+            ],
+            "suggestion": "替换照片"
+          },
+          {
+            "title": "加上透明邮戳",
+            "text": "导入透明 WebP，观察邮戳边缘与底图的叠加。",
+            "checks": [
+              {
+                "name": "stamp",
+                "type": "image",
+                "insert": true,
+                "asset": "assets/import-samples/stamp.webp",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACMAAAAoCAYAAAB0HkOaAAABm0lEQVR4nGMYBTgAIzbB/w92/KebAxQ84G5AcQzIER/uXb5BL4eAgICSrgbMQUzIEvR2CMxOWEzAHUPPqMEFUEJmoAAsRgaFY2Bg1DG4wKhjcIFB5RgWahiSUbVNA8ae0eZFdsFJtmNgDgBZju4AZDmaOwZkGT6LYHKE1KEDktMMKRaA1CFHIVUdQ6pPSXUQ0Y4hxyGkOmhQZW1444rUhlVxyx5VHi7Wv41F9vdA/JnLzkmnRxk9BbFhocDKyvx/cqP7TWLME3Qq1STLMa1TjihU59g8ALGPnH4sYKIn+YmDneUfsprPX34x8/Kw/SXKZ1DHkBVNT55/5kCwP7GjOwQEyjv2qpBqLlmO8bBXegtju9kpvUOX755xXH5aiydR0UOWY5Bzg7+b+msYW0iA8ze62tIMy4f49FPsGHoAoh1DammKTT/VHEOsgdgA1UtgUg1GVk+sJ0iutZGjC58l5DQjyC6B0S1FBuREJ6jQo7ilR0nLDh2MNshxgVHHoAPQGA2IhjsGeQRpoABKyMBcSE+APHI1qMb0BhUAAHLWwH0hf8xyAAAAAElFTkSuQmCC",
+                "width": 95,
+                "height": 107,
+                "bitDepth": 8
+              }
+            ],
+            "suggestion": "加上透明邮戳"
+          },
+          {
+            "title": "安排邮戳位置",
+            "text": "把邮戳移到右侧，再将不透明度调为 85%。",
+            "checks": [
+              {
+                "name": "stamp",
+                "type": "properties",
+                "expected": {
+                  "x": 345,
+                  "y": 85,
+                  "opacity": 0.85
+                }
+              }
+            ],
+            "suggestion": "安排邮戳位置"
+          },
+          {
+            "title": "加入波形标记",
+            "text": "导入透明 PNG 标记，观察底图如何透过空白处显示。",
+            "checks": [
+              {
+                "name": "tide-mark",
+                "type": "image",
+                "insert": true,
+                "asset": "assets/import-samples/tide-mark.png",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAYAAABe3VzdAAAA0ElEQVR4nO1WQQ6AIAxTTz7EL/lKv+RDvGkw0SjZYCtDMKE3E1a6dghdQ8Pfsa3LnpO/TynmxI3TDPE6Pr92QIhywm8aFhiKFomdq4EEUmRorBTf89skYkqcxEW3JtasqmufTCKMc1aagthB9HdC1WlGxPwUx2ZRO7+wQORQIIdLtIl0rmJifEh41BtpnLO4aYIRp4jjoOVgF1uJe/IgHKSDli+USxTa4CePhZTRgG+Cr/ByMPfjE0Ew4tLuOdwCaov2wimiVnEkapzDhoaSOAD4loUVRKSi1QAAAABJRU5ErkJggg==",
+                "width": 48,
+                "height": 36,
+                "bitDepth": 8
+              }
+            ],
+            "suggestion": "加入波形标记"
+          },
+          {
+            "title": "对齐标记",
+            "text": "把波形移到邮戳下方。",
+            "checks": [
+              {
+                "name": "tide-mark",
+                "type": "properties",
+                "expected": {
+                  "x": 366,
+                  "y": 173
+                }
+              }
+            ],
+            "suggestion": "对齐标记"
+          },
+          {
+            "title": "导出成图",
+            "text": "导出 PNG，或保存 ORA 后重开检查图层。",
+            "type": "export"
+          }
+        ]
+      }
+    },
+    {
+      "id": "atlas",
+      "file": "assets/import-samples/atlas.ora",
+      "cover": "assets/import-samples/atlas-goal.png",
+      "title": "地形测绘图",
+      "subtitle": "保留 16 位等高渐变，配上独立的图例。",
+      "formats": [
+        "16 位 TIFF",
+        "BMP"
+      ],
+      "width": 480,
+      "height": 288,
+      "layerCount": 2,
+      "author": "MoonOpenRaster",
+      "source": "https://github.com/gywcs101/MoonOpenRaster/blob/main/LICENSE",
+      "sourceTitle": "原创格式练习",
+      "note": "用于展示图片导入与图层编辑。",
+      "license": "MIT",
+      "practice": {
+        "file": "assets/import-samples/atlas.ora",
+        "start": "assets/import-samples/atlas-start.png",
+        "goal": "assets/import-samples/atlas-goal.png",
+        "goalFile": "assets/import-samples/atlas-goal.ora",
+        "steps": [
+          {
+            "title": "换入 16 位地形",
+            "text": "用 TIFF 替换高程窗口，检查图层和画布的位深。",
+            "checks": [
+              {
+                "name": "高程窗口",
+                "type": "image",
+                "insert": false,
+                "asset": "assets/import-samples/elevation.tiff",
+                "thumbnail": "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",
+                "width": 351,
+                "height": 166,
+                "bitDepth": 16
+              }
+            ],
+            "suggestion": "换入 16 位地形"
+          },
+          {
+            "title": "导入图例",
+            "text": "添加 BMP 图例，底板与高程层保持独立。",
+            "checks": [
+              {
+                "name": "legend",
+                "type": "image",
+                "insert": true,
+                "asset": "assets/import-samples/legend.bmp",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAABEAAAAoCAYAAAAYGBGfAAAAr0lEQVR4nGO8emPPfwYKAROlBlDNEBZ0gcyaiQzfvv9gyIkPYDDVUyfdJfmNUxmmt+SD2SADAtLqSDdkYn02Q/PkJWD2rsNnGL7//EWUIcM5dqSEBUnS/Ozte+q5ZJCGCcyPFBny4dsXkjQLcPGA6eEcsDA/DrxLdl+4SpJmVwNt6rlk8BhClZINJWCb564jSXNtchCYHg1YGrkEJXaC0xpJ0rx2Vj31XDIaO8PeEAC8ITaB4y2BdAAAAABJRU5ErkJggg==",
+                "width": 62,
+                "height": 145,
+                "bitDepth": 8
+              }
+            ],
+            "suggestion": "导入图例"
+          },
+          {
+            "title": "靠右对齐",
+            "text": "把图例摆到高程图右侧。",
+            "checks": [
+              {
+                "name": "legend",
+                "type": "properties",
+                "expected": {
+                  "x": 389,
+                  "y": 62
+                }
+              }
+            ],
+            "suggestion": "靠右对齐"
+          },
+          {
+            "title": "调整高程层",
+            "text": "将高程层的不透明度调为 82%，再导出 16 位画面。",
+            "checks": [
+              {
+                "name": "高程窗口",
+                "type": "properties",
+                "expected": {
+                  "opacity": 0.82
+                }
+              }
+            ],
+            "suggestion": "调整高程层"
+          },
+          {
+            "title": "导出成图",
+            "text": "导出 PNG，或保存 ORA 后重开检查图层。",
+            "type": "export"
+          }
+        ]
+      }
+    },
+    {
+      "id": "signal",
+      "file": "assets/import-samples/signal.ora",
+      "cover": "assets/import-samples/signal-goal.png",
+      "title": "夜间车站",
+      "subtitle": "用 GIF 的第一帧制作灯牌，再添加 ICO 站标。",
+      "formats": [
+        "GIF",
+        "ICO"
+      ],
+      "width": 480,
+      "height": 288,
+      "layerCount": 2,
+      "author": "MoonOpenRaster",
+      "source": "https://github.com/gywcs101/MoonOpenRaster/blob/main/LICENSE",
+      "sourceTitle": "原创格式练习",
+      "note": "用于展示图片导入与图层编辑。",
+      "license": "MIT",
+      "practice": {
+        "file": "assets/import-samples/signal.ora",
+        "start": "assets/import-samples/signal-start.png",
+        "goal": "assets/import-samples/signal-goal.png",
+        "goalFile": "assets/import-samples/signal-goal.ora",
+        "steps": [
+          {
+            "title": "换上发车灯牌",
+            "text": "用 GIF 替换灯牌，工作台会导入动画第一帧。",
+            "checks": [
+              {
+                "name": "灯牌",
+                "type": "image",
+                "insert": false,
+                "asset": "assets/import-samples/departures.gif",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAQCAYAAABk1z2tAAABXklEQVR4nGM0VPb+zzCIAdPAOwE/GPQOZMEmeGCKKr3dAQcOObdR+EMvigcy9LDZj+JAbI4DBfnff6gZ3a/8HsPZm98YQMI+pXcZHr/6BRa/cu8Hw8lrX8HsI5e+MDx8ARH/8/c/Q8filwwdS17iNBOXO8iK4jgPIQZjdS4GJkYGBksdbob5W9+BxSetecVgrsUNZtvo8TDsOPEJzD517RtDqJMAw+GLX0i2i2QH3nnyk8HHmg/O97PhZ9h/7jPD3ac/GW49+omiNj1AhOHbj38MTfOfMyhLszN4WSL00cyBKjLsDJuOfITzNx7+yOBkzAt2gKw4G4ralXvfM9TOfs6Q6icC5mcFijLsA3qGpg4EgSU73jOcuQFJgyeufmVI8BICi2cAQwyUNkEAFL0uJrwMF+98Z3Aw5AGLMQKTxL4zpEUzRlU30LkYBJDLQowQRC8o6Q2GXEE92pqhFAAAjX5/Z/LFIuIAAAAASUVORK5CYII=",
+                "width": 65,
+                "height": 27,
+                "bitDepth": 8
+              }
+            ],
+            "suggestion": "换上发车灯牌"
+          },
+          {
+            "title": "加入车站标志",
+            "text": "导入 ICO，使用其中最大的图标。",
+            "checks": [
+              {
+                "name": "station",
+                "type": "image",
+                "insert": true,
+                "asset": "assets/import-samples/station.ico",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABTUlEQVR4nO2YsRHCMAxFCTNQUFIyAxUrwSCwEhUzUFJSsEPAhe9yiWTpf8sHl8svSWS/fAkl8mrRoh+ri1jk2T967dqu21ftQQeXoDQxsHCABHZ/vdX7D9vN5DcE1H3jGKwEpWkI64Vcw7t8xcCN47wl4nqKvBgLJim7aTlZvDh8yki4LE/KXSluAeddVwVk2kjW9XiBY7T9TAdR91A4a30x7+yfQoI73c6u2FSPUh1SbUaS5hziqJTmEECm5ryaWIqm1wvnSbXUG6scRJxjXaYBmQ2ZGAqwpubQWArQ2zoiRKeYgUwxaFxYH2ylkDeJVVdsi0kKcbBlTYalWINE4N3v4nyjNPCUNIZBPhQ0mQ6ikFkRcEmuT/5WX9RJ1mxiDk2tIL0jqJlith69qprqhoqa8NDhnWozrJvMycJ8zmYkIaMpewz39+eDi2avD67mqEH3Wa8FAAAAAElFTkSuQmCC",
+                "width": 64,
+                "height": 64,
+                "bitDepth": 8
+              }
+            ],
+            "suggestion": "加入车站标志"
+          },
+          {
+            "title": "移动站标",
+            "text": "把站标移动到右下位置。",
+            "checks": [
+              {
+                "name": "station",
+                "type": "properties",
+                "expected": {
+                  "x": 360,
+                  "y": 151
+                }
+              }
+            ],
+            "suggestion": "移动站标"
+          },
+          {
+            "title": "切换灯牌显隐",
+            "text": "隐藏灯牌，保留它的像素数据以便稍后恢复。",
+            "checks": [
+              {
+                "name": "灯牌",
+                "type": "properties",
+                "expected": {
+                  "visible": false
+                }
+              }
+            ],
+            "suggestion": "切换灯牌显隐"
+          },
+          {
+            "title": "导出成图",
+            "text": "导出 PNG，或保存 ORA 后重开检查图层。",
+            "type": "export"
+          }
+        ]
+      }
+    }
+  ]
+}

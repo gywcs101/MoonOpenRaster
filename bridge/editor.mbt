@@ -229,7 +229,10 @@ fn editor_request(
     ("replace", { "path": path, "data": String(data), .. }) =>
       commit_document(
         doc,
-        doc.replace_image(indices(path), @ora.decode_png(@base64.decode(data))),
+        doc.replace_image(
+          indices(path),
+          @ora.decode_image(@base64.decode(data)),
+        ),
       )
     (
       "insert",
@@ -248,7 +251,7 @@ fn editor_request(
           integer(index),
           @ora.Node::Layer(
             @ora.Properties::new(name),
-            @ora.decode_png(@base64.decode(data)),
+            @ora.decode_image(@base64.decode(data)),
           ),
         ),
       )

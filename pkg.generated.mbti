@@ -10,6 +10,8 @@ pub fn archive_entries(Bytes) -> Array[(String, Bytes)] raise
 
 pub fn composite_pixel(Array[Double], Array[Double], String) -> Array[Double] raise OraError
 
+pub fn decode_image(Bytes) -> Image raise
+
 pub fn decode_png(Bytes) -> Image raise
 
 pub fn inspect(Bytes) -> @json.Json raise

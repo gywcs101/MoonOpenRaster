@@ -35,6 +35,7 @@ moon info
 ```sh
 python -m pip install Pillow==11.1.0
 python scripts/build_web.py
+python scripts/check_image_import.py
 python scripts/check_interop.py
 python scripts/check_rgba16.py
 python scripts/check_acceptance.py
@@ -73,3 +74,8 @@ python scripts/check_web_server.py
 网页源码、样例和核心库保留在同一个 GitHub 仓库中。`scripts/package_web.py` 仅用于按需生成独立离线网页 ZIP，不是使用核心库或发布 Mooncakes 的前置步骤。
 
 性能复测方法及测量限制见 [PERFORMANCE.md](PERFORMANCE.md)。
+
+
+## 重新生成格式练习
+
+安装 Pillow 后运行 `python scripts/build_web.py` 和 `python scripts/build_format_samples.py`。脚本生成海岸明信片、地形测绘图与夜间车站的原始素材和练习起点，再调用 MoonBit 生成参考结果。浏览器样例测试逐步重放三套练习，并将下载的 PNG 与参考成图比较。授权见 [许可索引](LICENSES/README.md)。

@@ -60,7 +60,7 @@ for (const sample of definitions) {
     steps = [
       step('对齐线稿', `选择“线稿”，把线条移回底色上。参考位置：X ${ink.x}，Y ${ink.y}。`, [check('线稿', 'properties', { expected: { x: ink.x, y: ink.y }, tolerance: 3 })], '应用参考位置'),
       step('隐藏草稿', '关闭“草稿”旁的眼睛，让未完成的线条不再干扰画面。', [hidden('草稿')], '隐藏草稿'),
-      step('换回干净背景', '将“背景”替换成原稿的白底 PNG。也可下载素材后用右侧“替换 PNG”导入。', [check('背景', 'image', { thumbnail: background.thumbnail, width: background.width, height: background.height, asset: 'assets/samples/capitole-original-background.png' })], '使用原稿白底'),
+      step('换回干净背景', '将“背景”替换成原稿的白底 PNG。也可下载素材后用右侧“替换图片”导入。', [check('背景', 'image', { thumbnail: background.thumbnail, width: background.width, height: background.height, asset: 'assets/samples/capitole-original-background.png' })], '使用原稿白底'),
     ];
     edit('线稿', { x: ink.x + 40, y: ink.y - 24 });
     edit('草稿', { visible: true, opacity: .38 });

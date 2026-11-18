@@ -9,10 +9,10 @@ MoonOpenRaster 是用 MoonBit 编写的 **OpenRaster（`.ora`）16 位与 8 位�
 ## 能做什么
 
 - 读取与写入 ORA，保存嵌套图层树、图层属性和可保留的扩展资源。
-- 创建、删除、重命名、复制、重排和跨组移动图层，替换图层像素。
+- 创建、删除、重命名、复制、重排和跨组移动图层，支持用 PNG、JPEG、静态 WebP、GIF、BMP、TIFF 或 ICO 导入和替换图层。
 - 调整可见性、整数位置、不透明度和混合方式，支持 20 种基线 SVG 合成操作及组隔离。
 - 导出整张 PNG、单层 PNG 或全部图层素材；保存 ORA 时重新生成合并预览和缩略图。
-- 在网页中实时预览拖动、撤销重做，并通过四份真实分层作品的练习了解图层编辑。
+- 在网页中实时预览拖动、撤销重做，并通过四份真实分层作品及三套原创图片格式练习了解图层编辑。
 
 ## 体验网页
 
@@ -28,6 +28,8 @@ python scripts/serve_web.py
 浏览器打开 **http://127.0.0.1:8765/**，保持终端运行；按 `Ctrl+C` 停止。端口已占用时可使用 `python scripts/serve_web.py --port 8766`，并访问相应端口。Windows 使用 PowerShell 也可以直接运行这些命令。
 
 启动后会载入 David Revoy 的真实分层插画。选择图层后，可以拖动蓝色选框、切换眼睛、修改属性，或在“样例与练习”中跟随指引完成改图，再导出 PNG 或保存 ORA。拖动移动的是**整个选中图层**，不会自动拆分层内物体；修改图层名称也不会改变画面里的文字。
+
+点击左侧「导入图片」添加新图层，或选择已有图层后在右侧点击「替换图片」。GIF 取第一帧，TIFF 取第一页。保存 ORA 时，导入的图片会存为 PNG 图层。打开「样例与练习 → 图片格式练习」，可直接使用案例素材验证七种格式的导入、替换和编辑。支持范围见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
 
 字体和样例随仓库提供，处理期间图像不会上传服务器。浏览器导入上限为 32 MiB。更多操作见 [网页使用说明](docs/WORKBENCH.zh-CN.md)。
 
@@ -110,4 +112,4 @@ python scripts/check_rgba16.py
 - [库 API 说明](docs/API.zh-CN.md)：文档模型、编辑接口、导出与错误处理。
 - [开发与贡献](CONTRIBUTING.md)：构建、回归测试、浏览器验证和分发检查。
 
-项目代码使用 [MIT 许可证](LICENSE)。网页中的作品、字体与第三方组件各自遵循其许可，完整文本、来源及修改说明见 [LICENSES](LICENSES/README.md) 和 [THIRD_PARTY.md](THIRD_PARTY.md)。ZIP、XML 与 PNG 处理复用 MoonBit 生态组件，OpenRaster 文档语义、编辑与合成在本项目实现。
+项目代码使用 [MIT 许可证](LICENSE)。网页中的作品、字体与第三方组件各自遵循其许可，完整文本、来源及修改说明见 [LICENSES](LICENSES/README.md) 和 [THIRD_PARTY.md](THIRD_PARTY.md)。ZIP、XML 与图片编解码复用 MoonBit 生态组件，OpenRaster 文档语义、编辑与合成在本项目实现。

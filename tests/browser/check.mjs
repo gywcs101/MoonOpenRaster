@@ -151,6 +151,19 @@ try {
   await page.locator('#file').setInputFiles(browserOra); await idle();
   assert.equal(await page.locator('#x').inputValue(), '9');
   assert.equal(await page.locator('#bit-depth').innerText(), '16 位 sRGB');
+  // Standalone formats use the same editor, including a true 16-bit replacement.
+  await page.locator('#add-layer').click();
+  await page.locator('#layer-file').setInputFiles(path.join(root, '_build/image-import/oriented.jpg'));
+  await idle();
+  assert.equal(await page.locator('#name').inputValue(), 'oriented');
+  assert.match(await page.locator('#selected-size').innerText(), /12 × 16/);
+  await page.locator('#replace-layer').click();
+  await page.locator('#layer-file').setInputFiles(path.join(root, '_build/image-import/multi.tiff'));
+  await idle();
+  assert.equal(await page.locator('#name').inputValue(), 'oriented');
+  assert.match(await page.locator('#selected-size').innerText(), /16 × 12.*16 位/);
+  await page.locator('#undo').click(); await idle();
+  assert.match(await page.locator('#selected-size').innerText(), /12 × 16/);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.setViewportSize({ width: 1500, height: 1000 });

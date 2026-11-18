@@ -1,6 +1,12 @@
 import {
   "moonbitstack/moonzip/zip",
   "moonbitstack/moonimage/png",
+  "moonbitstack/moonimage/jpeg",
+  "moonbitstack/moonimage/webp",
+  "moonbitstack/moonimage/gif",
+  "moonbitstack/moonimage/bmp",
+  "moonbitstack/moonimage/tiff",
+  "moonbitstack/moonimage/ico",
   "moonbitstack/mooncrypt/hash/sha2",
   "moonbitstack/moonimage/raster",
   "moonbitstack/moonxml/xml",

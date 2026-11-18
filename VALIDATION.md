@@ -45,6 +45,8 @@ Chromium 回归覆盖并通过：真正的拖动中像素更新、松手只提�
 
 预览最长边 384，拖动事件合并且忽略过期回复，松手才按完整分辨率提交。撤销最多 20 步，按逻辑像素量保守缩短，至少一步；实际运行时内存另含对象、当前/预览文档和编码缓冲。文件切换清空历史；失败导入保留原文档。[性能记录](PERFORMANCE.md) 给出相同机器前后数据及 24 层隔离组观测。
 
+三套原创格式练习覆盖 JPEG、透明 WebP、PNG、16 位 TIFF、BMP、GIF 和 ICO。Chromium 自起点逐步执行真正的新增、替换、属性修改及导出，逐字节比较下载的 PNG 和参考成图，并验证撤销后任务状态更新。地形测绘图的导出 PNG 保留 16 位；独立脚本还检查 TIFF 通道值、GIF 首帧、WebP 透明度、JPEG 方向及七种格式保存 ORA 后的重开。执行 `python scripts/check_image_import.py` 和浏览器样例测试可复现。
+
 ## 平台、分发与发布状态
 
 [GitHub Actions](https://github.com/gywcs101/MoonOpenRaster/actions/workflows/ci.yml) 配置 Linux 的四目标检查/构建/测试、独立互操作、许可、浏览器与原生 CLI；Windows 2022（MSVC）和 macOS 15 的原生测试、中文路径读写及独立消费者。每个提交以自己的实际运行结果为准，不能把历史绿灯当作最新提交的结果。

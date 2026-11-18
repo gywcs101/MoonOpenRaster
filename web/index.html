@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MoonOpenRaster — 海报图层工作台</title>
-<link rel="stylesheet" href="style.css?v=rgba16-20261118-1">
+<link rel="stylesheet" href="style.css?v=format-exercises-20261118-1">
 </head>
 <body>
 <header class="app-header">
  <div class="brand"><div><strong>MoonOpenRaster</strong><span class="brand-subtitle">分层图像工作台</span></div></div>
  <div class="history-actions"><button type="button" id="undo" title="撤销 Ctrl+Z" disabled>撤销</button><button type="button" id="redo" title="重做 Ctrl+Shift+Z" disabled>重做</button></div><div class="header-actions"><button type="button" id="browse-samples">样例与练习</button><button type="button" id="open">打开 ORA</button><button type="button" id="png">导出 PNG</button><button type="button" id="save" class="primary">保存 ORA</button></div>
- <input type="file" id="layer-file" accept=".png,image/png" hidden><input type="file" id="file" name="document" accept=".ora" hidden>
+ <input type="file" id="layer-file" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff,.ico" hidden><input type="file" id="file" name="document" accept=".ora" hidden>
 </header>
 <div class="document-bar"><div><span class="document-dot" aria-hidden="true"></span><span id="document-name">正在载入海报</span><span id="document-meta"></span></div><span class="local-state">文件仅在本机处理</span></div>
 <main class="workspace">
  <aside class="panel layers-panel" aria-label="文档与图层">
   <section class="document-section"><div class="section-title"><h2>当前文档</h2><button type="button" id="sample" class="text-button">重载</button></div><div class="document-preview"><img src="assets/capitole-preview.png" alt=""><div><strong>自由之都</strong><span>David Revoy · 原稿图层</span><small>7 个原始绘画图层</small></div></div></section>
-  <section class="layer-section"><div class="section-title"><h2>图层</h2><span id="count"></span></div><p class="section-description">上方图层覆盖下方图层</p><div class="layer-tools"><button type="button" id="add-layer">导入 PNG</button><button type="button" id="add-group">新建组</button><button type="button" id="all-layers">提取全部层</button></div><div id="tree" role="group" aria-label="图层列表"></div></section>
+  <section class="layer-section"><div class="section-title"><h2>图层</h2><span id="count"></span></div><p class="section-description">上方图层覆盖下方图层</p><div class="layer-tools"><button type="button" id="add-layer">导入图片</button><button type="button" id="add-group">新建组</button><button type="button" id="all-layers">提取全部层</button></div><div id="tree" role="group" aria-label="图层列表"></div></section>
   <section class="source-section"><span>原始分层素材</span><a href="https://www.peppercarrot.com/zh/viewer/misc__2023-06-30_Poster-for-Capitole-du-libre-2023_by-David-Revoy.html" target="_blank" rel="noopener">David Revoy · Capitole du libre 2023</a><p>作者原稿的线稿、底色、阴影与草稿层。仅为网页缩小、转换为 8 位 sRGB；未新增图画内容。CC BY 4.0，保留作者禁止 AI 衍生的说明。</p></section>
  </aside>
  <section class="stage" aria-label="海报画布">
@@ -38,14 +38,21 @@
    <button type="submit" class="apply-button">应用修改</button>
   </form>
   <section class="operation-section"><h3>图层顺序</h3><div class="operation-buttons"><button type="button" id="up">上移一层</button><button type="button" id="down">下移一层</button><button type="button" id="remove">删除</button></div></section>
-  <section class="operation-section"><h3>图层管理</h3><div class="layer-management"><button type="button" id="duplicate">复制图层</button><button type="button" id="lock">锁定图层</button><button type="button" id="replace-layer">替换 PNG</button><button type="button" id="layer-png">导出此层 PNG</button></div><label class="move-label" for="move-target">移入图层组</label><div class="move-controls"><select id="move-target"><option value="[]">文档最外层</option></select><button type="button" id="move-layer">移入</button></div><p class="field-help">提取的 PNG 保留该层原始尺寸，不应用位置、透明度或混合效果；全部层压缩包附带属性清单。</p></section>
+  <section class="operation-section"><h3>图层管理</h3><div class="layer-management"><button type="button" id="duplicate">复制图层</button><button type="button" id="lock">锁定图层</button><button type="button" id="replace-layer">替换图片</button><button type="button" id="layer-png">导出此层 PNG</button></div><label class="move-label" for="move-target">移入图层组</label><div class="move-controls"><select id="move-target"><option value="[]">文档最外层</option></select><button type="button" id="move-layer">移入</button></div><p class="field-help">提取的 PNG 保留该层原始尺寸，不应用位置、透明度或混合效果；全部层压缩包附带属性清单。</p></section>
   <p id="status" class="status" role="status" aria-live="polite"></p>
   <div class="inspector-note"><strong>如何看懂图层？</strong><p>先隐藏“线稿”或“阴影”观察画面变化。选中绘画层可拖动整层；草稿默认隐藏。滚轮缩放，按住空格拖动画布。撤销支持 Ctrl+Z，受内存限制最多保留 20 步。</p></div>
  </aside>
 </main>
 <dialog id="sample-gallery" aria-labelledby="gallery-heading">
- <div class="dialog-heading"><div><span class="section-kicker">样例与练习</span><h2 id="gallery-heading">从原稿，做出你的版本</h2><p>四份真实分层作品。查看原稿，或用四个小步骤练习改图与导出。</p></div><button type="button" id="gallery-close" aria-label="关闭样例库">关闭 ×</button></div>
- <div id="sample-grid" class="sample-grid"></div>
+ <div class="dialog-heading"><div><span class="section-kicker">样例与练习</span><h2 id="gallery-heading">从原稿，做出你的版本</h2><p>查看分层作品的原稿，或通过练习导入、调整和导出图层。</p></div><button type="button" id="gallery-close" aria-label="关闭样例库">关闭 ×</button></div>
+ <section aria-labelledby="format-heading">
+  <h3 id="format-heading" class="gallery-section-title">图片格式练习</h3>
+  <div id="format-grid" class="sample-grid"></div>
+ </section>
+ <section aria-labelledby="art-heading">
+  <h3 id="art-heading" class="gallery-section-title">原始分层作品</h3>
+  <div id="sample-grid" class="sample-grid"></div>
+ </section>
  <p class="gallery-note">练习会故意调整部分位置、显隐或背景，起点与原稿分开提供。画面里的物体能否单独移动，取决于作者原本怎样分层。来源和转换说明在工作台左下角。</p>
 </dialog>
 <dialog id="goal-dialog" aria-labelledby="goal-heading"><div class="dialog-heading"><h2 id="goal-heading">练习前后</h2><button type="button" id="goal-close">关闭 ×</button></div><div class="goal-comparison"><figure><img id="goal-start" alt="练习起点"><figcaption>练习起点</figcaption></figure><figure><img id="goal-result" alt="参考成图"><figcaption>参考成图 · 也可以做出自己的版本</figcaption></figure></div></dialog>
@@ -57,6 +64,6 @@ window.addEventListener('error', function (event) {
   if (loading) { loading.hidden = false; loading.textContent = '界面资源未能载入，请重新启动服务并刷新页面。'; }
 }, true);
 </script>
-<script type="module" src="app.js?v=rgba16-20261118-1"></script>
+<script type="module" src="app.js?v=format-exercises-20261118-1"></script>
 </body>
 </html>

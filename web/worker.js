@@ -1,4 +1,4 @@
-import { request } from './core.js?v=rgba16-20261118-1';
+import { request } from './core.js?v=format-exercises-20261118-1';
 
 // One worker owns the MoonBit document. A preview never commits an edit.
 self.onmessage = ({ data: { id, query } }) => {

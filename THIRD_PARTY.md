@@ -6,7 +6,7 @@ The OpenRaster document model, compositing formulas, editor bridge and CLI are i
 - W3C Compositing and Blending: https://www.w3.org/TR/compositing-1/
 - moonbitstack/moonzip 0.4.0 supplies ZIP archive handling.
 - moonbitstack/moonxml 0.2.0 supplies XML parsing and serialization.
-- moonbitstack/moonimage 0.2.0 supplies PNG decoding and encoding.
+- moonbitstack/moonimage 0.2.0 supplies standalone image decoding (PNG, JPEG, WebP, GIF, BMP, TIFF and ICO) and PNG encoding.
 - moonbitlang/x 0.5.7 supplies CLI filesystem access.
 
 Dependency source is installed through Mooncakes. Each dependency retains its own license. No dependency source is copied into this repository. The resolved runtime versions, full license copies and file-level asset scopes are recorded in LICENSES/manifest.json and LICENSES/README.md. The index identifies the materials and complete license copies required when redistributing them.
@@ -26,6 +26,8 @@ Inter (rsms/inter) and Instrument Serif (Google Fonts) are bundled locally. Thei
 
 The sample collection also includes David Revoy's *In Bloom*, *Spooky Cute House* and *Rain City*, converted from the author's original layered KRA sources. Artwork remains under its own stated CC BY 4.0 terms and the author's additional notice. Source archive hashes, conversion details, rasterized adjustment effects and deliberately modified practice variants are documented in LICENSES/sample-artworks-NOTICE.txt and fixtures/sample-validation.json. The practice background replacement is extracted from the original Capitole background layer. No image-generation model is used to create or separate artwork layers.
 
+
+The three format exercises in `web/assets/import-samples/` use project-original procedural artwork generated with Pillow and the MoonBit editor. They are covered by the project MIT license. The four David Revoy works retain the separate terms above.
 
 ## Full license copies and redistribution checks
 

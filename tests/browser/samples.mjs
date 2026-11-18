@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const catalog = JSON.parse(fs.readFileSync(path.join(root, 'web/assets/sample-catalog.json'), 'utf8'));
+const formatCatalog = JSON.parse(fs.readFileSync(path.join(root, 'web/assets/format-catalog.json'), 'utf8'));
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'moonora-guides-'));
 const server = spawn(process.env.PYTHON || 'python', ['scripts/serve_web.py', '--no-build', '--port', '18766'], { cwd: root, stdio: 'pipe' });
 let browser;
@@ -23,7 +24,8 @@ try {
   const idle = () => page.waitForFunction(() => !document.body.classList.contains('is-busy') && document.querySelector('#loading').hidden);
   await idle();
   await page.locator('#browse-samples').click();
-  assert.equal(await page.locator('.sample-card').count(), 4);
+  assert.equal(await page.locator('#sample-grid .sample-card').count(), 4);
+  assert.equal(await page.locator('#format-grid .sample-card').count(), 3);
   fs.mkdirSync(path.join(root, '_build/editor-test'), { recursive: true });
   await page.screenshot({ path: path.join(root, '_build/editor-test/sample-gallery.png') });
   await page.locator('[data-sample=capitole] [data-mode=practice]').click(); await idle();
@@ -43,7 +45,9 @@ try {
   async function exportGoal(sample) {
     const downloaded = page.waitForEvent('download'); await page.locator('#guide-action').click();
     const target = path.join(temp, sample.id + '.png'); await (await downloaded).saveAs(target); await idle();
-    assert.equal(await page.locator('#practice-progress').innerText(), '4 / 4 已完成');
+    const steps = sample.practice.steps.length;
+    assert.equal(await page.locator('#practice-progress').innerText(), steps + ' / ' + steps + ' 已完成');
+    if (sample.id === 'atlas') assert.equal(fs.readFileSync(target)[24], 16);
     assert.deepEqual(fs.readFileSync(target), fs.readFileSync(path.join(root, 'web', sample.practice.goal)));
   }
   await exportGoal(catalog.samples[0]);
@@ -81,6 +85,28 @@ try {
     assert.equal(await page.locator('#practice-progress').innerText(), '3 / 4 已完成');
     await exportGoal(sample);
     console.log('PASS: guided browser practice and exact downloaded result:', sample.title);
+  }
+  for (const sample of formatCatalog.samples) {
+    await page.locator('#browse-samples').click();
+    await page.locator('#format-grid [data-sample=' + sample.id + '] [data-mode=practice]').click();
+    await page.locator('#discard-dialog [value=discard]').click(); await idle();
+    const count = sample.practice.steps.length;
+    assert.equal(await page.locator('#practice-progress').innerText(), '0 / ' + count + ' 已完成');
+    for (let i = 0; i < count - 1; i++) {
+      assert.equal(await page.locator('#practice-progress').innerText(), i + ' / ' + count + ' 已完成');
+      await page.locator('#guide-action').click(); await idle();
+      if (sample.id === 'postcard' && i === 1) {
+        assert.equal(await page.locator('#name').inputValue(), 'stamp');
+        await page.locator('#undo').click(); await idle();
+        assert.equal(await page.locator('#practice-progress').innerText(), '1 / ' + count + ' 已完成');
+        await page.locator('#redo').click(); await idle();
+      }
+      if (sample.id === 'atlas' && i === 0) {
+        assert.equal(await page.locator('#bit-depth').innerText(), '16 位 sRGB');
+      }
+    }
+    await exportGoal(sample);
+    console.log('PASS: original multi-format exercise and exact export:', sample.title);
   }
   await page.screenshot({ path: path.join(root, '_build/editor-test/guided-practice.png') });
   await page.setViewportSize({ width: 390, height: 844 });

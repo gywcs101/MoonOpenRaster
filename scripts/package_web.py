@@ -19,9 +19,13 @@ with zipfile.ZipFile(out,"w",zipfile.ZIP_DEFLATED) as z:
     z.writestr("README.txt","MoonOpenRaster local workbench\nExtract this archive, run python -m http.server 8765 --bind 127.0.0.1 in that directory and open http://127.0.0.1:8765/.\nAll processing is local. No remote resources are required.\n")
 with zipfile.ZipFile(out) as z:
     names = set(z.namelist())
-    catalog = json.loads(z.read("assets/sample-catalog.json"))
-    for sample in catalog["samples"]:
-        required = [sample["file"], sample["cover"], sample["practice"]["file"], sample["practice"]["start"], sample["practice"]["goal"]]
+    samples = [
+        sample
+        for catalog in ("sample-catalog.json", "format-catalog.json")
+        for sample in json.loads(z.read("assets/" + catalog))["samples"]
+    ]
+    for sample in samples:
+        required = [sample["file"], sample["cover"], sample["practice"]["file"], sample["practice"]["start"], sample["practice"]["goal"], sample["practice"]["goalFile"]]
         for step in sample["practice"]["steps"]:
             required.extend(check["asset"] for check in step.get("checks", []) if "asset" in check)
         assert all(name in names for name in required), sample["id"]

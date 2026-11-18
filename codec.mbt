@@ -34,7 +34,7 @@ fn check_srgb(metadata : @raster.Metadata) -> Unit raise OraError {
   if metadata.icc is Some(profile) {
     if @sha2.hash(profile.profile[:], kind=Sha256) !=
       b"\x59\x91\xc8\xd8\xfc\xb6\x28\xda\xd5\xd0\x52\xd9\x34\x1d\xf8\xa3\x2b\xd3\xc7\xa7\x94\xc9\x13\xa8\xed\xe8\xea\xe4\xb3\x4b\x45\x45" {
-      raise Unsupported("ICC-profiled PNG requires color management")
+      raise Unsupported("ICC-profiled image requires color management")
     }
   }
   if metadata.gamma is Some(gamma) {
@@ -52,7 +52,11 @@ fn check_srgb(metadata : @raster.Metadata) -> Unit raise OraError {
 ///|
 pub fn decode_png(data : Bytes) -> Image raise {
   check_static_png(data)
-  let image = decode_raster(data)
+  normalize_raster(decode_raster(data))
+}
+
+///|
+fn normalize_raster(image : @raster.Image) -> Image raise OraError {
   check_srgb(image.metadata)
   let bits = image.format.bits()
   let format = if bits == 16 {
@@ -71,12 +75,7 @@ pub fn decode_png(data : Bytes) -> Image raise {
 
 ///|
 fn decode_raster(data : Bytes) -> @raster.Image raise {
-  @png.decode(data[:], limits={
-    width: 16384,
-    height: 16384,
-    pixels: 16777216,
-    bytes: 134217728,
-  })
+  @png.decode(data[:], limits=image_limits)
 }
 
 ///|
@@ -106,4 +105,12 @@ fn check_static_png(data : Bytes) -> Unit raise OraError {
       break
     }
   }
+}
+
+///|
+let image_limits : @raster.Limits = {
+  width: 16384,
+  height: 16384,
+  pixels: 16777216,
+  bytes: 134217728,
 }

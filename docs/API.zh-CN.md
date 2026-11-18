@@ -19,6 +19,10 @@ moon run examples/roundtrip --target js -- web/assets/capitole.ora edited.ora
 
 原生目标把 `js` 改为 `native`。Windows 原生需要完整 MSVC 与 Windows SDK；不具备时可先运行 JS 目标。
 
+## 导入单张图片
+
+用 `decode_image(bytes)` 按文件内容识别独立图片，得到可传给 `Node::Layer` 或 `replace_image` 的图像。支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO。JPEG 和 TIFF 应用方向标记，GIF 取第一帧，TIFF 取第一页，ICO 取最大图标。文件上限 32 MiB；支持的 16 位样本保持精度。直接读取 ORA 中的栅格资源时仍使用 `decode_png`。
+
 ## 数据和路径
 
 `Image::new(w,h,pixels)` 接收连续 RGBA 字节，四个字节表示一个像素。输入数组会被复制。`image.pixels()` 返回 8 位副本，16 位输入采用就近舍入映射到 8 位，适合界面预览。用 `Image::new_rgba16(w,h,samples)` 创建每通道 0～65535 的图像。用 `image.bit_depth()` 查询存储位深，`image.pixels_rgba16()` 获取完整样本副本。读取 8 位图像的 16 位样本时，每个值精确乘 257。`Properties::new` 创建名称、坐标、可见性、不透明度和混合方式；标量可读，扩展属性通过 `extra()` 取得副本。
