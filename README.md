@@ -35,10 +35,10 @@ python scripts/serve_web.py
 
 ## 在 MoonBit 项目中使用
 
-Mooncakes 上的 0.1.0 提供 8 位工作流。仓库当前源码增加了 16 位编辑能力，试用 16 位时请克隆仓库或在工作区引用本地源码。已有 8 位入口可按下面的方式安装。
+从 Mooncakes 安装 0.2.0 即可使用 8 位和 16 位图层编辑、自包含静态 SVG 图层及图片格式导入。网页工作台和示例素材随 GitHub 仓库提供。
 
 ```sh
-moon add gywcs101/MoonOpenRaster@0.1.0
+moon add gywcs101/MoonOpenRaster@0.2.0
 ```
 
 在使用它的包的 `moon.pkg` 中添加导入：

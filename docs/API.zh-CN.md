@@ -4,7 +4,7 @@
 
 ## 引入与可运行示例
 
-模块名为 `gywcs101/MoonOpenRaster`，已发布的 `0.1.0` 提供 8 位接口。以下的 16 位接口适用于当前仓库源码。在自己的模块中运行 `moon add gywcs101/MoonOpenRaster@0.1.0`，再在包中添加 `import { "gywcs101/MoonOpenRaster" @ora }`。
+模块名为 `gywcs101/MoonOpenRaster`，`0.2.0` 提供以下 8 位及 16 位接口。在自己的模块中运行 `moon add gywcs101/MoonOpenRaster@0.2.0`，再在包中添加 `import { "gywcs101/MoonOpenRaster" @ora }`。
 
 以下 `examples/` 与 `web/` 路径的命令在克隆的 GitHub 仓库根目录运行；通过 Mooncakes 安装核心库不包含网页样例。
 

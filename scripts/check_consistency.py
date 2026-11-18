@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix="moonora-parity-") as directory:
     (work / "moon.work").write_text('members = [' + json.dumps(str(ROOT).replace("\\", "/")) + ', "consumer"]\n', encoding="utf-8")
     consumer = work / "consumer"
     consumer.mkdir()
-    (consumer / "moon.mod").write_text('name = "local/parity"\nimport { "gywcs101/MoonOpenRaster@0.1.0", "moonbitlang/x@0.5.7" }\n')
+    (consumer / "moon.mod").write_text('name = "local/parity"\nimport { "gywcs101/MoonOpenRaster@0.2.0", "moonbitlang/x@0.5.7" }\n')
     (consumer / "moon.pkg").write_text('import { "gywcs101/MoonOpenRaster" @ora, "moonbitlang/x/fs", "moonbitlang/core/env" }\noptions("is-main":true)\n')
     (consumer / "main.mbt").write_text(f'''fn main raise {{
       let args=@env.args()
