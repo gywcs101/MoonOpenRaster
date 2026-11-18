@@ -1,0 +1,3 @@
+
+# Keep distributed vector sample bytes identical to the archived originals.
+*.svg text eol=lf

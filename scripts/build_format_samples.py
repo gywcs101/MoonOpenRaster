@@ -96,7 +96,7 @@ def atlas():
     (OUT / "contours.svg").write_text(
         '<svg xmlns="http://www.w3.org/2000/svg" width="351" height="166" viewBox="0 0 351 166">'
         '<g fill="none" stroke="#d6f4c4" stroke-width="1.5" opacity=".86">'
-        + "".join(contours) + '</g></svg>\n', encoding="utf-8"
+        + "".join(contours) + '</g></svg>\n', encoding="utf-8", newline="\n"
     )
 
 
