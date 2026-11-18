@@ -38,6 +38,7 @@ python scripts/build_web.py
 python scripts/check_image_import.py
 python scripts/check_interop.py
 python scripts/check_rgba16.py
+python scripts/check_svg.py
 python scripts/check_acceptance.py
 python scripts/check_consistency.py
 python scripts/check_plus.py

@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix="moonora-interop-") as folder:
     with zipfile.ZipFile(p / "vector.ora", "w") as z:
         z.writestr("mimetype", "image/openraster")
         z.writestr("stack.xml", '<image w="4" h="4"><stack><layer name="Vector" src="data/vector.svg"/></stack></image>')
-        z.writestr("data/vector.svg", '<svg xmlns="http://www.w3.org/2000/svg"/>')
+        z.writestr("data/vector.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><text>unsupported layer feature</text></svg>')
         z.writestr("mergedimage.png", png(expected))
     encoded = base64.b64encode((p / "vector.ora").read_bytes()).decode()
     bridge = ROOT / "_build/js/debug/build/bridge/bridge.js"

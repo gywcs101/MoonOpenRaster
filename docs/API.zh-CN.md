@@ -21,7 +21,11 @@ moon run examples/roundtrip --target js -- web/assets/capitole.ora edited.ora
 
 ## 导入单张图片
 
-用 `decode_image(bytes)` 按文件内容识别独立图片，得到可传给 `Node::Layer` 或 `replace_image` 的图像。支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO。JPEG 和 TIFF 应用方向标记，GIF 取第一帧，TIFF 取第一页，ICO 取最大图标。文件上限 32 MiB；支持的 16 位样本保持精度。直接读取 ORA 中的栅格资源时仍使用 `decode_png`。
+用 `decode_image(bytes)` 按文件内容识别独立图片，得到可传给 `Node::Layer` 或 `replace_image` 的图像。支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO 和受支持的静态 SVG。JPEG 和 TIFF 应用方向标记，GIF 取第一帧，TIFF 取第一页，ICO 取最大图标。文件上限 32 MiB；支持的 16 位样本保持精度。直接读取 ORA 中的栅格资源时仍使用 `decode_png`。
+
+## 矢量图层
+
+`decode_svg(bytes)` 返回可作为 `Node::Layer` 内容使用的图像，`image.svg_source()` 返回原始 SVG 字节（普通栅格图像返回空），`image.storage_bytes()` 包含合成用像素和源文件占用。读取 ORA 时会识别 SVG 图层，移动、复制或编辑图层属性后写回仍保留源文件。调用 `encode_png()` 或 `layer_png(path)` 获得渲染后的像素，缩放预览也是栅格图像。具体元素与大小限制见 [兼容矩阵](COMPATIBILITY.zh-CN.md)。
 
 ## 数据和路径
 
@@ -56,7 +60,7 @@ moon run examples/roundtrip --target js -- web/assets/capitole.ora edited.ora
 
 所有编辑是持久化操作：失败会抛出错误，不改变旧文档。`OraError::message()` 给出可读说明。结构、尺寸、坐标、资源和枚举错误应拒绝；不能通过小数取整或错误类型默认值悄悄修改数据。CLI 的编辑项允许省略标准属性，省略项保留原值；显式错误类型拒绝。
 
-编辑范围包括 8 位、16 位和混合位深的 sRGB RGBA。含 16 位层的文档会用 16 位缓冲合成，`document.bit_depth()` 返回合成位深。图层 PNG 保留各自的位深，`render().encode_png()` 保留合成位深。详细色彩和保留边界见 [兼容矩阵](COMPATIBILITY.zh-CN.md)。未知混合方式在合成时抛出 `Unsupported`。矢量、未知 ICC 配置和其他不支持的渲染特性；`inspect(bytes)` 可查看结构和已有预览，网页进入只读并原样保存。只读并不等于能够正确合成。未知扩展属性和未引用资源可以保存，但未知属性的应用语义不因此得到支持。
+编辑范围包括 8 位、16 位和混合位深的 sRGB RGBA。含 16 位层的文档会用 16 位缓冲合成，`document.bit_depth()` 返回合成位深。图层 PNG 保留各自的位深，`render().encode_png()` 保留合成位深。详细色彩和保留边界见 [兼容矩阵](COMPATIBILITY.zh-CN.md)。未知混合方式在合成时抛出 `Unsupported`。未支持的 SVG 特性、未知 ICC 配置和其他渲染特性可能需要查看原始预览。`inspect(bytes)` 可查看结构和已有预览，网页进入只读并原样保存。只读并不等于能够正确合成。未知扩展属性和未引用资源可以保存，但未知属性的应用语义不因此得到支持。
 
 尺寸每边最多 16,384、总像素最多 16,777,216；坐标为 ±1,000,000 内整数；不透明度 0～1。文档最多 4096 节点、128 层嵌套，解码图层预算 128 MiB；归档和渲染还有独立预算。运行时实际内存包括数组和编码缓冲区，会高于逻辑 RGBA 字节数。
 

@@ -1,6 +1,6 @@
 ///|
-/// Decode a standalone image for insertion as a raster layer. ORA layer resources
-/// still use the stricter PNG decoder. GIF and TIFF import their first frame or page.
+/// Decode a standalone raster or supported SVG image for insertion as a layer.
+/// GIF and TIFF import their first frame or page.
 pub fn decode_image(data : Bytes) -> Image raise {
   if data.length() > 33554432 {
     raise InvalidDocument("Image import exceeds 32 MiB")
@@ -8,6 +8,9 @@ pub fn decode_image(data : Bytes) -> Image raise {
   let bytes = data[:]
   if bytes.has_prefix(b"\x89PNG\r\n\x1a\n"[:]) {
     return decode_png(data)
+  }
+  if looks_like_svg_xml(bytes) {
+    return decode_svg(data)
   }
   let image = if bytes.has_prefix(b"\xff\xd8"[:]) {
     check_jpeg_import(bytes)
@@ -40,7 +43,7 @@ pub fn decode_image(data : Bytes) -> Image raise {
     })
   } else {
     raise Unsupported(
-      "Image format is unsupported (PNG, JPEG, WebP, GIF, BMP, TIFF, ICO)",
+      "Image format is unsupported (PNG, JPEG, WebP, GIF, BMP, TIFF, ICO, SVG)",
     )
   }
   normalize_raster(image)

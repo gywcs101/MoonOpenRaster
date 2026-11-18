@@ -8,6 +8,9 @@ The resolved graph is recorded in [manifest.json](manifest.json). The browser bu
 
 | Component | Version / scope | License copy | Attribution notice |
 | --- | --- | --- | --- |
+| [Milky2018/svg](https://github.com/Milky2018/svg) | 0.6.1 | [Apache-2.0](Milky2018-svg-LICENSE) | [svg NOTICE](Milky2018-svg-NOTICE) |
+| Milky2018/css | 0.6.1 | [Apache-2.0](Milky2018-css-LICENSE) | [css NOTICE](Milky2018-css-NOTICE) |
+| Milky2018/xml | 0.6.1 | [Apache-2.0](Milky2018-xml-LICENSE) | No upstream NOTICE in the installed module |
 | [moonbitstack/moonbase](https://github.com/moonbitstack/moonbase) | 0.5.0 | [Apache-2.0](moonbitstack-moonbase-LICENSE) | No upstream NOTICE in the installed module |
 | [moonbitstack/mooncrypt](https://github.com/moonbitstack/mooncrypt) | 0.5.0 | [Apache-2.0](moonbitstack-mooncrypt-LICENSE) | No upstream NOTICE in the installed module |
 | [moonbitstack/moondate](https://github.com/moonbitstack/moondate) | 0.1.7 | [Apache-2.0](moonbitstack-moondate-LICENSE) | No upstream NOTICE in the installed module |

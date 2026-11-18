@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const catalog = JSON.parse(fs.readFileSync(path.join(root, 'web/assets/sample-catalog.json'), 'utf8'));
@@ -106,6 +106,20 @@ try {
       }
     }
     await exportGoal(sample);
+    if (sample.id === 'atlas') {
+      assert.match(await page.locator('#selected-size').innerText(), /SVG 矢量/);
+      const saved = page.waitForEvent('download');
+      await page.locator('#save').click();
+      const mixed = path.join(temp, 'atlas-vector.ora');
+      await (await saved).saveAs(mixed); await idle();
+      execFileSync(process.env.PYTHON || 'python', ['scripts/check_svg.py', '--browser-output', mixed], {cwd: root, stdio: 'inherit'});
+      await page.locator('#file').setInputFiles(mixed); await idle();
+      assert.match(await page.locator('#selected-size').innerText(), /SVG 矢量/);
+      assert.equal(await page.locator('#bit-depth').innerText(), '16 位 sRGB');
+      // Make one ordinary edit so the next exercise exercises the switch dialog.
+      await page.locator('#x').fill('31');
+      await page.locator('.apply-button').click(); await idle();
+    }
     console.log('PASS: original multi-format exercise and exact export:', sample.title);
   }
   await page.screenshot({ path: path.join(root, '_build/editor-test/guided-practice.png') });

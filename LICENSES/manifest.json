@@ -74,6 +74,21 @@
       "id": "MIT",
       "file": "LICENSE",
       "sha256_lf": "b0c793c5f10886aedb5302bf421139d61c4b25628e897661290485b6d16ce1c3"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/Milky2018-svg-LICENSE",
+      "sha256_lf": "8525623b629931849a0e567d9658eacb23ca09dc27f670c30a2c40531e9eeb8b"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/Milky2018-css-LICENSE",
+      "sha256_lf": "8525623b629931849a0e567d9658eacb23ca09dc27f670c30a2c40531e9eeb8b"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/Milky2018-xml-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
     }
   ],
   "runtime_dependencies": [
@@ -151,6 +166,31 @@
       "notice_file": "LICENSES/moonbitlang-core-NOTICE",
       "notice_scope": "Complete upstream NOTICE, including licenses/attributions of code adapted from other projects",
       "notice_sha256_lf": "a20a618afc132a32e340f567fc2fb4296cfbefda7284422b6085afcd394e478d"
+    },
+    {
+      "module": "Milky2018/svg",
+      "version": "0.6.1",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/Milky2018-svg-LICENSE",
+      "source": "https://github.com/Milky2018/svg",
+      "notice_file": "LICENSES/Milky2018-svg-NOTICE",
+      "notice_sha256_lf": "d7a97121d1bcde0b13a2966173deeabb1d73ba367ddbc3a4548f877e120aa08f"
+    },
+    {
+      "module": "Milky2018/css",
+      "version": "0.6.1",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/Milky2018-css-LICENSE",
+      "source": "https://github.com/Milky2018/svg",
+      "notice_file": "LICENSES/Milky2018-css-NOTICE",
+      "notice_sha256_lf": "0e1690947f07a526ca1a1f52c227cb23bd6b4466ac65e0bb17199e73fda0dcf0"
+    },
+    {
+      "module": "Milky2018/xml",
+      "version": "0.6.1",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/Milky2018-xml-LICENSE",
+      "source": "https://github.com/moonbit-community/xml-mbt.git"
     }
   ],
   "asset_groups": [

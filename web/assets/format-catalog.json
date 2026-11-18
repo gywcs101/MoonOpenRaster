@@ -38,7 +38,8 @@
                 "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAXCAYAAAB50g0VAAAFSUlEQVR4nK1WXY4cNRCutt0zs7uKULSJ0EogiMQbXIInDpGLcBPEUXjgiafcAV4ihFCilSA72Zntbrf5vipXt2dJolWU0Xrdtsuur776sbvvf/ypyCf4dfWU0p2OH/LzPe/6pSDravcewe49C+18+N/c/AFIJl2KWdFK+twKMKxKYqPQFNnWUyPw3c0LkPt9qOd3HXbdM8yVl0pZrvvWefYYz7bOcYrwxarENnQAZlP4rkDZx2WML8qxVUR0qc8pUHd1A5IKtVWDfaygdD42c1wPBGh0uzI7L0gIgeK2hm+uO5MLOAxD3U9ZlYGs7bGxA5/rWQoADC1g0XIFOKvIumYujo17MHBFqgCjUBkmIwaqVPCrq1cjTZZrlOE0jVKAMyBiy5wJaAW3uBvRxJUZOyiLPwOogBQcWTLXsI91bA1UO0AAp1ISRXMIwkE6QBrF2NaQqF4hkIxWEpiC8pmMETTmyK4xG5XNjDOVWawlILHDcRCTJFT3uYvJqq0ZAHAqIdp60HXILSBXN6ssDQNQzk0FMAAssycogMslriArYPhEDaDsBC+ntICjIgdH31d3uUvJLkMAclzXNbqQTKqcMR1RuDyZfJ3f/QxzyApYYj9hbICS9hMCsAAwXc0kZiMByaw3cARCV7as6BjaDaDNGyg0MgkwqFXqUp1v2GN8yybJBvVkKlnyZHE2YZyQoTOYI0tzxhlApKziDIJXIyjHmOPhBKIgcShZMwDOnAEDOWaEG7OA4h6O7ayIQ9QLmNuVvTz/7lrKtJWf/3giaQwyQHAGY3T7TPAByaHujspkXxkNAfxqLLEpQEsSHkyw1sylvcYds4os2xzX1AAY1asRaJgw1g30829vRI5wY/dGvu57edU9lQgAIwBEMDVFuHFCT1BdVgMJtIOvzaNgS9nDPwdHEFSkzFB5ZZOM+Tzr0wrM3G170WPCGfzl96/kh6uXktNncrN5Jtv4r+ScwBJdWBQocKqLR7qZjGKOuCxJUtKy0FshVEAB/7o4Q3GRjYKKxqqDYyJgvqf1QEmZTsESaI/e5Iz1Ir+++UZGgHnUjzLEM8RikUFdmCUye3UMoxCLmZUAKJkX8LCk3168WIqzVVsEav2M+DjmA+gesXlQ11iWozoBdB+Tyo1hi328WesPCjQzpwmxNS23AiujEoLqyzNUlGWLicJaqSUG+jMSig0xmm4Ot8tkR7ohuJkHOT8eJYzYGQEOCuy6qvqZfeiPNIKlA/RdP3pc7251Cwxg24JNu7cVAGQPAJ3vmMlHzd7CuqglpdZeGM69qd9ayDDwzuJGposoF/u3Mv7zN9zNCmQVPelVpOatl/76CXD2mHi6v5bxy2cyjSsD4zjKrRbiyiBrowKIstueW3LWu1trJPaQ9XEc5Hg82GumIAPSq9fSlyMYrJd9RspHZFR99jzkN8La/c0B7NF9KC+7nQK5/+Ra3FcNuA++R6b7Xr2LL/76c3ml8E4MvC8Rhw8Gh6Ae4rmMl5coyLwhUEKg+HA4aOi8603oLLpL/eHAfUeElo/1otBXCcExDj7i8T9//gUMQryRiU0nO62R1vwx2rLkc2TQXi0W2ZxvWfd9KD8WAwHB6rZmvlj4jkNjjPW8HxHsrEsTLT47E+bPxLfb7R0OHE4OdUAtUDWmAmrXfU3fgw1Y35t2uBP1LYZEeQsnP7m6klsUtLE+NjMMKEMtG3w4ANQGYHf1gPZt176oXSGZagG5a/2N6LLtXt/HPr1+fHlyyMub/Yk7rGTYoQSnpWK4WwLdlZyEZQ14rXlNpjJDh2Gw+tgw2f48Pr39B0I7Cu40qbtSAAAAAElFTkSuQmCC",
                 "width": 296,
                 "height": 171,
-                "bitDepth": 8
+                "bitDepth": 8,
+                "isVector": false
               }
             ],
             "suggestion": "替换照片"
@@ -55,7 +56,8 @@
                 "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACMAAAAoCAYAAAB0HkOaAAABm0lEQVR4nGMYBTgAIzbB/w92/KebAxQ84G5AcQzIER/uXb5BL4eAgICSrgbMQUzIEvR2CMxOWEzAHUPPqMEFUEJmoAAsRgaFY2Bg1DG4wKhjcIFB5RgWahiSUbVNA8ae0eZFdsFJtmNgDgBZju4AZDmaOwZkGT6LYHKE1KEDktMMKRaA1CFHIVUdQ6pPSXUQ0Y4hxyGkOmhQZW1444rUhlVxyx5VHi7Wv41F9vdA/JnLzkmnRxk9BbFhocDKyvx/cqP7TWLME3Qq1STLMa1TjihU59g8ALGPnH4sYKIn+YmDneUfsprPX34x8/Kw/SXKZ1DHkBVNT55/5kCwP7GjOwQEyjv2qpBqLlmO8bBXegtju9kpvUOX755xXH5aiydR0UOWY5Bzg7+b+msYW0iA8ze62tIMy4f49FPsGHoAoh1DammKTT/VHEOsgdgA1UtgUg1GVk+sJ0iutZGjC58l5DQjyC6B0S1FBuREJ6jQo7ilR0nLDh2MNshxgVHHoAPQGA2IhjsGeQRpoABKyMBcSE+APHI1qMb0BhUAAHLWwH0hf8xyAAAAAElFTkSuQmCC",
                 "width": 95,
                 "height": 107,
-                "bitDepth": 8
+                "bitDepth": 8,
+                "isVector": false
               }
             ],
             "suggestion": "加上透明邮戳"
@@ -88,7 +90,8 @@
                 "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAYAAABe3VzdAAAA0ElEQVR4nO1WQQ6AIAxTTz7EL/lKv+RDvGkw0SjZYCtDMKE3E1a6dghdQ8Pfsa3LnpO/TynmxI3TDPE6Pr92QIhywm8aFhiKFomdq4EEUmRorBTf89skYkqcxEW3JtasqmufTCKMc1aagthB9HdC1WlGxPwUx2ZRO7+wQORQIIdLtIl0rmJifEh41BtpnLO4aYIRp4jjoOVgF1uJe/IgHKSDli+USxTa4CePhZTRgG+Cr/ByMPfjE0Ew4tLuOdwCaov2wimiVnEkapzDhoaSOAD4loUVRKSi1QAAAABJRU5ErkJggg==",
                 "width": 48,
                 "height": 36,
-                "bitDepth": 8
+                "bitDepth": 8,
+                "isVector": false
               }
             ],
             "suggestion": "加入波形标记"
@@ -124,7 +127,8 @@
       "subtitle": "保留 16 位等高渐变，配上独立的图例。",
       "formats": [
         "16 位 TIFF",
-        "BMP"
+        "BMP",
+        "SVG"
       ],
       "width": 480,
       "height": 288,
@@ -152,7 +156,8 @@
                 "thumbnail": "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",
                 "width": 351,
                 "height": 166,
-                "bitDepth": 16
+                "bitDepth": 16,
+                "isVector": false
               }
             ],
             "suggestion": "换入 16 位地形"
@@ -169,7 +174,8 @@
                 "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAABEAAAAoCAYAAAAYGBGfAAAAr0lEQVR4nGO8emPPfwYKAROlBlDNEBZ0gcyaiQzfvv9gyIkPYDDVUyfdJfmNUxmmt+SD2SADAtLqSDdkYn02Q/PkJWD2rsNnGL7//EWUIcM5dqSEBUnS/Ozte+q5ZJCGCcyPFBny4dsXkjQLcPGA6eEcsDA/DrxLdl+4SpJmVwNt6rlk8BhClZINJWCb564jSXNtchCYHg1YGrkEJXaC0xpJ0rx2Vj31XDIaO8PeEAC8ITaB4y2BdAAAAABJRU5ErkJggg==",
                 "width": 62,
                 "height": 145,
-                "bitDepth": 8
+                "bitDepth": 8,
+                "isVector": false
               }
             ],
             "suggestion": "导入图例"
@@ -191,7 +197,7 @@
           },
           {
             "title": "调整高程层",
-            "text": "将高程层的不透明度调为 82%，再导出 16 位画面。",
+            "text": "将高程层的不透明度调为 82%。",
             "checks": [
               {
                 "name": "高程窗口",
@@ -202,6 +208,39 @@
               }
             ],
             "suggestion": "调整高程层"
+          },
+          {
+            "title": "导入矢量等高线",
+            "text": "加入 SVG 等高线，保存为 ORA 时仍保留独立的 SVG 源文件。",
+            "checks": [
+              {
+                "name": "contours",
+                "type": "image",
+                "insert": true,
+                "asset": "assets/import-samples/contours.svg",
+                "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAASCAYAAAApH5ymAAABAUlEQVR4nGMYtuDalyN7gTiECHUSQHybHg5aT0WzlKhl0Ao8cgdJMCceiLlwyJ0jx200BUBHGWIRW0msZnYSLFpFhBqc6Q8o50CsXTANAWj8IyQZQNh8DyximtS04CoO8Q4sYt441EpiETuKjw8T7CfapQg9t0jVA9WnTI4+ugGyykWgpuMUGzLYAdBTFUA8dTA4hIkMPa5EqiM9XQM1zSEg7wBKEkC8B4g3QtmRBPRswyImQ4qjLuAQ9yLaEOLtqqRE8zIC8jOBeCsQ6yKJSQHxIiC+TEAvWcUUPgO9gZiFQjOIbmSAACMllqFZHAakLICYA4hvMDIyTNbktvlPqbkAJtXBUQABPaUAAAAASUVORK5CYII=",
+                "width": 351,
+                "height": 166,
+                "bitDepth": 8,
+                "isVector": true
+              }
+            ],
+            "suggestion": "导入矢量等高线"
+          },
+          {
+            "title": "对齐等高线",
+            "text": "将 SVG 图层对齐到高程窗口，参考位置 X=30、Y=58。",
+            "checks": [
+              {
+                "name": "contours",
+                "type": "properties",
+                "expected": {
+                  "x": 30,
+                  "y": 58
+                }
+              }
+            ],
+            "suggestion": "对齐等高线"
           },
           {
             "title": "导出成图",
@@ -247,7 +286,8 @@
                 "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAQCAYAAABk1z2tAAABXklEQVR4nGM0VPb+zzCIAdPAOwE/GPQOZMEmeGCKKr3dAQcOObdR+EMvigcy9LDZj+JAbI4DBfnff6gZ3a/8HsPZm98YQMI+pXcZHr/6BRa/cu8Hw8lrX8HsI5e+MDx8ARH/8/c/Q8filwwdS17iNBOXO8iK4jgPIQZjdS4GJkYGBksdbob5W9+BxSetecVgrsUNZtvo8TDsOPEJzD517RtDqJMAw+GLX0i2i2QH3nnyk8HHmg/O97PhZ9h/7jPD3ac/GW49+omiNj1AhOHbj38MTfOfMyhLszN4WSL00cyBKjLsDJuOfITzNx7+yOBkzAt2gKw4G4ralXvfM9TOfs6Q6icC5mcFijLsA3qGpg4EgSU73jOcuQFJgyeufmVI8BICi2cAQwyUNkEAFL0uJrwMF+98Z3Aw5AGLMQKTxL4zpEUzRlU30LkYBJDLQowQRC8o6Q2GXEE92pqhFAAAjX5/Z/LFIuIAAAAASUVORK5CYII=",
                 "width": 65,
                 "height": 27,
-                "bitDepth": 8
+                "bitDepth": 8,
+                "isVector": false
               }
             ],
             "suggestion": "换上发车灯牌"
@@ -264,7 +304,8 @@
                 "thumbnail": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABTUlEQVR4nO2YsRHCMAxFCTNQUFIyAxUrwSCwEhUzUFJSsEPAhe9yiWTpf8sHl8svSWS/fAkl8mrRoh+ri1jk2T967dqu21ftQQeXoDQxsHCABHZ/vdX7D9vN5DcE1H3jGKwEpWkI64Vcw7t8xcCN47wl4nqKvBgLJim7aTlZvDh8yki4LE/KXSluAeddVwVk2kjW9XiBY7T9TAdR91A4a30x7+yfQoI73c6u2FSPUh1SbUaS5hziqJTmEECm5ryaWIqm1wvnSbXUG6scRJxjXaYBmQ2ZGAqwpubQWArQ2zoiRKeYgUwxaFxYH2ylkDeJVVdsi0kKcbBlTYalWINE4N3v4nyjNPCUNIZBPhQ0mQ6ikFkRcEmuT/5WX9RJ1mxiDk2tIL0jqJlith69qprqhoqa8NDhnWozrJvMycJ8zmYkIaMpewz39+eDi2avD67mqEH3Wa8FAAAAAElFTkSuQmCC",
                 "width": 64,
                 "height": 64,
-                "bitDepth": 8
+                "bitDepth": 8,
+                "isVector": false
               }
             ],
             "suggestion": "加入车站标志"

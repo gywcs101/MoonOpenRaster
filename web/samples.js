@@ -8,7 +8,8 @@ export function checkTask(step, nodes) {
     const node = matches[0];
     if (check.type === 'image') {
       return node.thumbnail === check.thumbnail && node.width === check.width && node.height === check.height &&
-        (check.bitDepth === undefined || check.bitDepth === node.bitDepth);
+        (check.bitDepth === undefined || check.bitDepth === node.bitDepth) &&
+        (check.isVector === undefined || check.isVector === node.isVector);
     }
     return Object.entries(check.expected).every(([property, value]) => {
       if (typeof value === 'number') {

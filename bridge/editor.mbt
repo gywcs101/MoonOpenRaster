@@ -28,10 +28,7 @@ fn pixel_bytes(nodes : Array[@ora.Node]) -> Int64 {
   let mut size = 0L
   for node in nodes {
     size += match node {
-      Layer(_, image) =>
-        image.width().to_int64() *
-        image.height().to_int64() *
-        (image.bit_depth() / 2).to_int64()
+      Layer(_, image) => image.storage_bytes()
       Group(_, _, children) => pixel_bytes(children)
     }
   }

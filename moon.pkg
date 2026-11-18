@@ -1,4 +1,5 @@
 import {
+  "Milky2018/svg" @vector,
   "moonbitstack/moonzip/zip",
   "moonbitstack/moonimage/png",
   "moonbitstack/moonimage/jpeg",

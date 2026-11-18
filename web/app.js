@@ -1,4 +1,4 @@
-import { SampleStudio } from './samples.js?v=format-exercises-20261118-2';
+import { SampleStudio } from './samples.js?v=svg-layer-20261118-1';
 const $ = id => document.getElementById(id);
 const modes = {
   'src-over': '正常', multiply: '正片叠底', screen: '滤色', overlay: '叠加',
@@ -8,7 +8,7 @@ const modes = {
   'dst-in': '保留底图重合部分', 'dst-out': '用上层擦除底图',
   'src-atop': '将上层限制在底图内', 'dst-atop': '将底图限制在上层内'
 };
-const worker = new Worker('./worker.js?v=format-exercises-20261118-2', { type: 'module' });
+const worker = new Worker('./worker.js?v=svg-layer-20261118-1', { type: 'module' });
 const pending = new Map();
 let requestId = 0;
 worker.onmessage = ({ data: { id, result } }) => {
@@ -48,9 +48,11 @@ function status(message = '') {
     'Invalid document: ': '文档无法处理：', 'Unsupported feature: ': '暂不支持：',
     'Non-sRGB PNG gamma requires color management': '此 PNG 使用未支持的色调曲线，已显示原始预览。',
     'Non-sRGB PNG chromaticities require color management': '此 PNG 的色度与 sRGB 不同，已显示原始预览。',
-    'SVG layer cannot be recomposited: ': '无法重新合成 SVG 图层：',
+    'Unsupported SVG element: ': '此 SVG 使用了尚不支持的元素：',
+    'Unsupported SVG attribute: ': '此 SVG 使用了尚不支持的属性：',
+    'Expected an SVG root element': '请选择有效的 SVG 图片。',
     'ICC-profiled image requires color management': '图片包含尚不支持的 ICC 色彩配置。',
-    'Image format is unsupported (PNG, JPEG, WebP, GIF, BMP, TIFF, ICO)': '请选择 PNG、JPEG、WebP、GIF、BMP、TIFF 或 ICO 图片。',
+    'Image format is unsupported (PNG, JPEG, WebP, GIF, BMP, TIFF, ICO, SVG)': '请选择 PNG、JPEG、WebP、GIF、BMP、TIFF、ICO 或 SVG 图片。',
     'Progressive JPEG edge sampling is unsupported; export as baseline JPEG or PNG': '这张渐进式 JPEG 的边缘采样不受支持，请另存为普通 JPEG 或 PNG 再导入。',
     'Animated WebP is unsupported; import a still frame': '动画 WebP 请先导出为静态图片再导入。',
     'Unknown composite operation: ': '暂不支持的混合方式：', 'Unknown layer element: ': '暂不支持的图层类型：',
@@ -137,7 +139,7 @@ function drawTree() {
       const label = document.createElement('span'); label.className = 'layer-label';
       const name = document.createElement('strong'); name.textContent = node.name || '未命名图层';
       const detail = document.createElement('small');
-      detail.textContent = (locked(node) ? '已锁定 · ' : '') + (node.kind === 'group' ? '图层组' : `${node.width || '—'} × ${node.height || '—'} 像素${node.bitDepth === 16 ? ' · 16 位' : ''}`);
+      detail.textContent = (locked(node) ? '已锁定 · ' : '') + (node.kind === 'group' ? '图层组' : `${node.width || '—'} × ${node.height || '—'} 像素${node.isVector ? ' · SVG 矢量' : node.bitDepth === 16 ? ' · 16 位' : ''}`);
       label.append(name, detail); select.append(label); select.onclick = () => { if (!busy && !drag) choose(node); }; row.append(select);
       if (node.kind === 'group') {
         const fold = document.createElement('button'); const folded = collapsed.has(key(node.path));
@@ -160,7 +162,7 @@ function choose(node) {
   for (const id of ['name', 'x', 'y', 'opacity', 'op']) $(id).value = node[id];
   $('visible').checked = node.visible; $('opacityValue').value = Math.round(node.opacity * 100) + '%';
   $('selected-title').textContent = node.name || '未命名图层';
-  $('selected-size').textContent = node.kind === 'group' ? `${node.children.length} 个子图层` : `${node.width || '—'} × ${node.height || '—'} 像素${node.bitDepth === 16 ? ' · 16 位' : ''}`;
+  $('selected-size').textContent = node.kind === 'group' ? `${node.children.length} 个子图层` : `${node.width || '—'} × ${node.height || '—'} 像素${node.isVector ? ' · SVG 矢量' : node.bitDepth === 16 ? ' · 16 位' : ''}`;
   $('position-help').textContent = locked(node) ? '此图层或上级组已锁定，解锁后可编辑。' : node.kind === 'group' ? '请选择组内图层移动；组可整体调整透明度、复制或移入其他组。' : '拖动画面中的蓝色框，整层内容实时移动。';
   const targets = $('move-target'); targets.replaceChildren(new Option('文档最外层', '[]'));
   for (const group of findNodes().filter(n => n.kind === 'group')) {
@@ -384,7 +386,7 @@ $('layer-file').onchange = () => {
       if (mode === 'replace') await mutate({ action: 'replace', path: node.path, data });
       else {
         const parent = node?.kind === 'group' ? node.path : node?.path.slice(0, -1) || [];
-        await mutate({ action: 'insert', parent, index: 0, name: file.name.replace(/\.(png|jpe?g|webp|gif|bmp|tiff?|ico)$/i, ''), data }, [...parent, 0]);
+        await mutate({ action: 'insert', parent, index: 0, name: file.name.replace(/\.(png|jpe?g|webp|gif|bmp|tiff?|ico|svg)$/i, ''), data }, [...parent, 0]);
       }
     } finally { $('layer-file').value = ''; }
   });

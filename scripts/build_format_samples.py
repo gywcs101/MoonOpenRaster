@@ -86,6 +86,19 @@ def atlas():
     for i, color in enumerate(("#efebcd", "#c5ceb0", "#90a891", "#58756a", "#283e3d")):
         draw.rectangle((9, 30 + 20 * i, 51, 44 + 20 * i), fill=color)
     key.save(OUT / "legend.bmp")
+    # Use the same reference geometry in both the standalone SVG and saved ORA.
+    contours = [
+        '<ellipse cx="172" cy="81" rx="44" ry="20"/>',
+        '<ellipse cx="172" cy="81" rx="83" ry="39"/>',
+        '<ellipse cx="172" cy="81" rx="122" ry="59"/>',
+        '<ellipse cx="172" cy="81" rx="156" ry="75"/>',
+    ]
+    (OUT / "contours.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="351" height="166" viewBox="0 0 351 166">'
+        '<g fill="none" stroke="#d6f4c4" stroke-width="1.5" opacity=".86">'
+        + "".join(contours) + '</g></svg>\n', encoding="utf-8"
+    )
+
 
 
 def signal():

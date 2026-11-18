@@ -70,6 +70,7 @@ fn normalize_raster(image : @raster.Image) -> Image raise OraError {
     height: rgba.height,
     pixels: rgba.pixels.to_array(),
     bits,
+    vector_source: None,
   }
 }
 

@@ -14,6 +14,8 @@ pub fn decode_image(Bytes) -> Image raise
 
 pub fn decode_png(Bytes) -> Image raise
 
+pub fn decode_svg(Bytes) -> Image raise
+
 pub fn inspect(Bytes) -> @json.Json raise
 
 pub fn read(Bytes) -> Document raise
@@ -71,6 +73,8 @@ pub fn Image::new_rgba16(Int32, Int32, Array[Int32]) -> Self raise OraError
 pub fn Image::pixels(Self) -> Array[Byte]
 pub fn Image::pixels_rgba16(Self) -> Array[Int32]
 pub fn Image::resize_nearest(Self, Int32, Int32) -> Self raise OraError
+pub fn Image::storage_bytes(Self) -> Int64
+pub fn Image::svg_source(Self) -> Bytes?
 pub fn Image::width(Self) -> Int32
 
 pub(all) enum Isolation {

@@ -28,13 +28,19 @@ fn write_nodes(
   for node in nodes {
     match node {
       Layer(p, image) => {
+        let (extension, payload) = match image.svg_source() {
+          Some(source) => (".svg", source)
+          None => (".png", image.encode_png())
+        }
         let mut serial = entries.length()
-        let mut path = "data/moonopenraster-layer" + serial.to_string() + ".png"
+        let mut path = "data/moonopenraster-layer" +
+          serial.to_string() +
+          extension
         while entries.any(e => e.name == path) {
           serial += 1
-          path = "data/moonopenraster-layer" + serial.to_string() + ".png"
+          path = "data/moonopenraster-layer" + serial.to_string() + extension
         }
-        entries.push(@zip.Entry::new(path, image.encode_png(), kind=Stored))
+        entries.push(@zip.Entry::new(path, payload, kind=Stored))
         let a = attrs(p)
         a.push(("src", path))
         result.push(ElementNode(@dom.Element::new("layer", attrs=a)))

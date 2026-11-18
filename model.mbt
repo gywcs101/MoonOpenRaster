@@ -10,6 +10,7 @@ pub struct Image {
   height : Int32
   priv pixels : Array[Byte]
   priv bits : Int32
+  priv vector_source : Bytes?
 }
 
 ///|
@@ -22,7 +23,7 @@ pub fn Image::new(
   if pixels.length() != width * height * 4 {
     raise InvalidDocument("RGBA length mismatch")
   }
-  { width, height, pixels: pixels.copy(), bits: 8, }
+  { width, height, pixels: pixels.copy(), bits: 8, vector_source: None, }
 }
 
 ///|
@@ -59,7 +60,13 @@ pub fn Image::new_rgba16(
 
 ///|
 fn blank_image(width : Int32, height : Int32, bits : Int32) -> Image {
-  { width, height, bits, pixels: Array::make(width * height * (bits / 2), 0), }
+  {
+    width,
+    height,
+    bits,
+    pixels: Array::make(width * height * (bits / 2), 0),
+    vector_source: None,
+  }
 }
 
 ///|
@@ -98,7 +105,7 @@ fn Image::as_preview(self : Image) -> Image {
   if self.bits == 8 {
     self
   } else {
-    { ..self, pixels: self.pixels(), bits: 8, }
+    { ..self, pixels: self.pixels(), bits: 8, vector_source: None, }
   }
 }
 
@@ -247,7 +254,7 @@ fn validate_nodes(
     }
     match node {
       Layer(_, image) => {
-        bytes.val = bytes.val + image.pixels.length().to_int64()
+        bytes.val = bytes.val + image.storage_bytes()
         if bytes.val > 134217728L {
           raise InvalidDocument("Decoded layer pixels exceed 128 MiB budget")
         }
@@ -273,4 +280,20 @@ pub fn Document::bit_depth(self : Document) -> Int32 {
   } else {
     8
   }
+}
+
+///|
+/// The original SVG bytes, if this image is backed by a vector layer.
+pub fn Image::svg_source(self : Image) -> Bytes? {
+  self.vector_source
+}
+
+///|
+/// Logical bytes retained by the image and its optional SVG source.
+pub fn Image::storage_bytes(self : Image) -> Int64 {
+  self.pixels.length().to_int64() +
+  (match self.vector_source {
+    Some(data) => data.length().to_int64()
+    None => 0L
+  })
 }

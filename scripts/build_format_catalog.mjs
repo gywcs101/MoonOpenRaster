@@ -17,12 +17,14 @@ const tasks = [
   },
   {
     id: 'atlas', title: '地形测绘图', subtitle: '保留 16 位等高渐变，配上独立的图例。',
-    formats: ['16 位 TIFF', 'BMP'],
+    formats: ['16 位 TIFF', 'BMP', 'SVG'],
     steps: [
       ['image', '高程窗口', 'elevation.tiff', '换入 16 位地形', '用 TIFF 替换高程窗口，检查图层和画布的位深。'],
       ['insert', 'legend', 'legend.bmp', '导入图例', '添加 BMP 图例，底板与高程层保持独立。'],
       ['properties', 'legend', { x: 389, y: 62 }, '靠右对齐', '把图例摆到高程图右侧，参考位置 X=389、Y=62。'],
-      ['properties', '高程窗口', { opacity: .82 }, '调整高程层', '将高程层的不透明度调为 82%，再导出 16 位画面。'],
+      ['properties', '高程窗口', { opacity: .82 }, '调整高程层', '将高程层的不透明度调为 82%。'],
+      ['insert', 'contours', 'contours.svg', '导入矢量等高线', '加入 SVG 等高线，保存为 ORA 时仍保留独立的 SVG 源文件。'],
+      ['properties', 'contours', { x: 30, y: 58 }, '对齐等高线', '将 SVG 图层对齐到高程窗口，参考位置 X=30、Y=58。'],
     ],
   },
   {
@@ -66,8 +68,8 @@ const samples = tasks.map(({ id, title, subtitle, formats, steps }) => {
       state = type === 'insert'
         ? invoke({ action: 'insert', parent: [], index: 0, name, data })
         : invoke({ action: 'replace', path: node.path, data });
-      const { thumbnail, width, height, bitDepth } = state.tree.find(layer => layer.name === name);
-      check = { name, type: 'image', insert: type === 'insert', asset, thumbnail, width, height, bitDepth };
+      const { thumbnail, width, height, bitDepth, isVector } = state.tree.find(layer => layer.name === name);
+      check = { name, type: 'image', insert: type === 'insert', asset, thumbnail, width, height, bitDepth, isVector };
     }
     guides.push({ title: heading, text, checks: [check], suggestion: heading });
   }

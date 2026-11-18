@@ -33,8 +33,13 @@ fn tree(nodes : Array[@ora.Node], prefix : Array[Int32]) -> Json raise {
       Layer(_, image) => (image.width(), image.height(), image.bit_depth())
       Group(_, _, _) => (0, 0, 0)
     }
+    let is_vector = match node {
+      Layer(_, image) => image.svg_source() is Some(_)
+      Group(_, _, _) => false
+    }
     result.push({
       "thumbnail": preview,
+      "isVector": is_vector,
       "width": width,
       "bitDepth": bits,
       "height": height,
