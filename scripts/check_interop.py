@@ -1,6 +1,7 @@
 """Independent Python ZIP/XML and Pillow reference for the JavaScript CLI."""
 from pathlib import Path
 from io import BytesIO
+from unittest.mock import patch
 import subprocess, tempfile, zipfile, json, xml.etree.ElementTree as ET
 from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,10 +31,19 @@ with tempfile.TemporaryDirectory(prefix="moonora-interop-") as folder:
         assert z.infolist()[0].compress_type == 0
         assert z.read("notes.txt") == b"preserved extension"
         tree = ET.fromstring(z.read("stack.xml"))
-        assert tree.attrib["xres"] == "96"
+        assert (tree.attrib["xres"], tree.attrib["yres"]) == ("96", "72")
         assert tree.find(".//layer").attrib["custom"] == "preserve"
         assert Image.open(BytesIO(z.read("mergedimage.png"))).convert("RGBA").tobytes() == expected.tobytes()
         assert Image.open(BytesIO(z.read("Thumbnails/thumbnail.png"))).size == (4, 4)
+    # Lower Python's size threshold to exercise ZIP64 metadata without a huge file.
+    with zipfile.ZipFile(p / "input.ora") as regular, patch.object(zipfile, "ZIP64_LIMIT", 32):
+        with zipfile.ZipFile(p / "zip64.ora", "w") as wide:
+            for entry in regular.infolist():
+                wide.writestr(entry.filename, regular.read(entry), compress_type=entry.compress_type)
+    assert b"PK\x06\x06" in (p / "zip64.ora").read_bytes()
+    subprocess.run(["node", str(cli), "render", str(p / "zip64.ora"), str(p / "zip64.png")], check=True)
+    with Image.open(p / "zip64.png") as result:
+        assert result.convert("RGBA").tobytes() == expected.tobytes()
     # A vector layer can be inspected and preserved in browser view mode.
     import base64
     with zipfile.ZipFile(p / "vector.ora", "w") as z:

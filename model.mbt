@@ -11,6 +11,8 @@ pub struct Image {
   priv pixels : Array[Byte]
   priv bits : Int32
   priv vector_source : Bytes?
+  priv vector_path : String?
+  priv raster_source : Bytes?
 }
 
 ///|
@@ -23,7 +25,15 @@ pub fn Image::new(
   if pixels.length() != width * height * 4 {
     raise InvalidDocument("RGBA length mismatch")
   }
-  { width, height, pixels: pixels.copy(), bits: 8, vector_source: None, }
+  {
+    width,
+    height,
+    pixels: pixels.copy(),
+    bits: 8,
+    vector_source: None,
+    vector_path: None,
+    raster_source: None,
+  }
 }
 
 ///|
@@ -66,6 +76,8 @@ fn blank_image(width : Int32, height : Int32, bits : Int32) -> Image {
     bits,
     pixels: Array::make(width * height * (bits / 2), 0),
     vector_source: None,
+    vector_path: None,
+    raster_source: None,
   }
 }
 
@@ -105,7 +117,14 @@ fn Image::as_preview(self : Image) -> Image {
   if self.bits == 8 {
     self
   } else {
-    { ..self, pixels: self.pixels(), bits: 8, vector_source: None, }
+    {
+      ..self,
+      pixels: self.pixels(),
+      bits: 8,
+      vector_source: None,
+      vector_path: None,
+      raster_source: None,
+    }
   }
 }
 
@@ -292,6 +311,7 @@ pub fn Image::svg_source(self : Image) -> Bytes? {
 /// Logical bytes retained by the image and its optional SVG source.
 pub fn Image::storage_bytes(self : Image) -> Int64 {
   self.pixels.length().to_int64() +
+  self.raster_source.map(data => data.length().to_int64()).unwrap_or(0L) +
   (match self.vector_source {
     Some(data) => data.length().to_int64()
     None => 0L

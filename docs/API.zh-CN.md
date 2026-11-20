@@ -21,7 +21,7 @@ moon run examples/roundtrip --target js -- web/assets/capitole.ora edited.ora
 
 ## 导入单张图片
 
-用 `decode_image(bytes)` 按文件内容识别独立图片，得到可传给 `Node::Layer` 或 `replace_image` 的图像。支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO 和受支持的静态 SVG。JPEG 和 TIFF 应用方向标记，GIF 取第一帧，TIFF 取第一页，ICO 取最大图标。文件上限 32 MiB；支持的 16 位样本保持精度。直接读取 ORA 中的栅格资源时仍使用 `decode_png`。
+用 `decode_image(bytes)` 按文件内容识别独立图片，得到可传给 `Node::Layer` 或 `replace_image` 的图像。支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO 和受支持的静态 SVG。JPEG 和 TIFF 应用方向标记，GIF 取第一帧，TIFF 取第一页，ICO 取最大图标。文件上限 32 MiB；支持的 16 位样本保持精度。直接读取 ORA 中的栅格资源时使用 `decode_png`。已支持的色彩配置转换为 sRGB 像素供合成和单层 PNG 导出使用，保存 ORA 时保留转换过的原始 PNG。仓库版本通过 `read` 解析 SVG 引用的归档内 CSS、PNG 和 SVG 片段，相对路径以 SVG 在归档中的位置为基准。独立导入请使用自包含 SVG。显式 `@font-face` 指定的随稿 OpenType 字体可用于文字和受支持的嵌套文字片段。
 
 ## 矢量图层
 

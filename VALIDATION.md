@@ -49,6 +49,9 @@ Chromium 回归覆盖并通过：真正的拖动中像素更新、松手只提�
 
 ## SVG 图层往返
 
+仓库版的整改进度、混合稿复现和未覆盖的官方条款见 [OpenRaster 0.0.6 Full baseline 核对记录](docs/BASELINE.zh-CN.md)。
+
+
 `python scripts/check_svg.py` 独立生成 SVG 与 16 位栅格混合 ORA，执行嵌套层移动和透明度修改，再逐通道核对新合并图、图层属性和原始 SVG 字节。浏览器重放地形测绘图，导入真正的 SVG 源，保存后独立核对源文件和 16 位地形，再打开保存的 ORA，确认工作台仍识别同一 SVG 图层。核心测试覆盖透明边缘、视口、路径、渐变、剪裁、未知资源和尺寸限制。SVG 的渲染边界见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
 
 ## 平台、分发与发布状态

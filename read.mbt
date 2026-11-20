@@ -42,7 +42,7 @@ fn int_attr(e : @dom.Element, key : String, fallback : Int32) -> Int32 raise {
 fn properties(e : @dom.Element) -> Properties raise {
   let opacity = match e.attr("opacity") {
     None => 1.0
-    Some(s) => parse_number(s)
+    Some(s) => svg_number(s)
   }
   let p = Properties::new(
     e.attr("name").unwrap_or(""),
@@ -77,6 +77,8 @@ fn parse_nodes(
   entries : Array[(String, Bytes)],
   depth : Int32,
   decoded_bytes : Ref[Int64],
+  retained : Map[String, Bool],
+  viewport : (Int32, Int32),
 ) -> Array[Node] raise {
   if depth > 128 {
     raise InvalidDocument("Layer tree exceeds depth limit")
@@ -92,7 +94,18 @@ fn parse_nodes(
         }
         let payload = resource(entries, path)
         let image = if path.to_lower().has_suffix(".svg") {
-          decode_svg(payload)
+          decode_svg_with_options(
+            payload,
+            svg_resource_options(path, entries, retained),
+            Some(path),
+            href => svg_archive_resource(path, entries, retained, href),
+            viewport=Some(viewport),
+          ) catch {
+            Unsupported(message) => raise Unsupported(path + ": " + message)
+            InvalidDocument(message) =>
+              raise InvalidDocument(path + ": " + message)
+            error => raise error
+          }
         } else {
           decode_png(payload)
         }
@@ -107,13 +120,37 @@ fn parse_nodes(
           Group(
             p,
             isolation(child),
-            parse_nodes(child, entries, depth + 1, decoded_bytes),
+            parse_nodes(
+              child,
+              entries,
+              depth + 1,
+              decoded_bytes,
+              retained,
+              viewport,
+            ),
           ),
         )
       _ => raise Unsupported("Unknown layer element: " + child.name)
     }
   }
   result
+}
+
+///|
+fn read_image_attributes(root : @dom.Element) -> Array[(String, String)] raise {
+  let attributes = root.attrs.filter(a => {
+    !["w", "h", "name", "version", "xres", "yres"].contains(a.0)
+  })
+  if root.has_attr("xres") || root.has_attr("yres") {
+    let x = int_attr(root, "xres", 72)
+    let y = int_attr(root, "yres", 72)
+    if x < 1 || y < 1 {
+      raise InvalidDocument("OpenRaster resolution must be positive")
+    }
+    attributes.push(("xres", x.to_string()))
+    attributes.push(("yres", y.to_string()))
+  }
+  attributes
 }
 
 ///|
@@ -131,10 +168,14 @@ pub fn read(data : Bytes) -> Document raise {
   if children.length() != 1 || children[0].name != "stack" {
     raise InvalidDocument("Expected one root stack")
   }
+  let retained : Map[String, Bool] = Map([])
+  let width = int_attr(root, "w", 0)
+  let height = int_attr(root, "h", 0)
+  check_image_size(width, height)
   let doc = Document::new(
-    int_attr(root, "w", 0),
-    int_attr(root, "h", 0),
-    parse_nodes(children[0], entries, 0, Ref(0L)),
+    width,
+    height,
+    parse_nodes(children[0], entries, 0, Ref(0L), retained, (width, height)),
     name=root.attr("name").unwrap_or("Untitled"),
   )
   let layer_paths : Array[String] = []
@@ -143,11 +184,9 @@ pub fn read(data : Bytes) -> Document raise {
   {
     ..doc,
     root_properties: Some(properties(children[0])),
-    image_attributes: root.attrs.filter(a => {
-      !["w", "h", "name", "version"].contains(a.0)
-    }),
+    image_attributes: read_image_attributes(root),
     resources: entries.filter(e => {
-      !layer_paths.contains(e.0) &&
+      (!layer_paths.contains(e.0) || retained.contains(e.0)) &&
       e.0 != "mimetype" &&
       e.0 != "stack.xml" &&
       e.0 != "mergedimage.png" &&

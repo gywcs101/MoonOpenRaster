@@ -43,7 +43,7 @@ http://127.0.0.1:8765/ 。首次安装步骤见 [README](../README.md)。如果�
 | 整图导出 | 顶栏“导出 PNG” |
 | 保留分层继续编辑 | 顶栏“保存 ORA”，可在 Krita 中重新打开 |
 
-「导入图片」和「替换图片」都支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO 和受支持的静态 SVG。GIF 取第一帧，TIFF 取第一页，ICO 取最大图标；16 位 PNG 和受支持的 16 位 TIFF 保留通道精度。保存 ORA 后，栅格素材按独立 PNG 图层保存，SVG 保留原始矢量源文件。若导入失败，原来的图层保持不变。遇到没有支持的色彩配置或编码变体时，工具会显示错误；处理边界见 [兼容矩阵](COMPATIBILITY.zh-CN.md)。
+「导入图片」和「替换图片」都支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO 和受支持的静态 SVG。GIF 取第一帧，TIFF 取第一页，ICO 取最大图标；16 位 PNG 和受支持的 16 位 TIFF 保留通道精度。保存 ORA 后，栅格素材按独立 PNG 图层保存，SVG 保留原始矢量源文件。仓库版本打开含 SVG 的 ORA 时，可保留和使用 SVG 引用的归档内 CSS、PNG 和 SVG 片段，也可在合成时使用通过 `@font-face` 明确指定的随稿字体。若导入失败，原来的图层保持不变。遇到没有支持的色彩配置或编码变体时，工具会显示错误；处理边界见 [兼容矩阵](COMPATIBILITY.zh-CN.md)。
 
 ## 几个容易误会的地方
 

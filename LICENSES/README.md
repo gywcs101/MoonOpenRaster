@@ -21,6 +21,15 @@ The resolved graph is recorded in [manifest.json](manifest.json). The browser bu
 | [moonbitstack/moonzip](https://github.com/moonbitstack/moonzip) | 0.4.0 | [Apache-2.0](moonbitstack-moonzip-LICENSE) | No upstream NOTICE in the installed module |
 | [moonbitlang/x](https://github.com/moonbitlang/x) | 0.5.7 | [Apache-2.0](moonbitlang-x-LICENSE) | [moonbitlang-x-NOTICE](moonbitlang-x-NOTICE) |
 | [moonbitlang/core](https://github.com/moonbitlang/core) | compiler-bundled (validated with moonc 0.10.20) | [Apache-2.0](moonbitlang-core-LICENSE) | [moonbitlang-core-NOTICE](moonbitlang-core-NOTICE) |
+| [mizchi/font](https://github.com/mizchi/font) | 0.8.0 | [Apache-2.0](moonbitlang-x-LICENSE) | No bundled upstream NOTICE |
+| [mizchi/svg](https://github.com/mizchi/svg) | 0.2.3 | [Apache-2.0](moonbitlang-x-LICENSE) | No bundled upstream NOTICE |
+| [mizchi/brotli](https://github.com/mizchi/brotli) | 0.2.2 | [Apache-2.0](moonbitlang-x-LICENSE) | No bundled upstream NOTICE |
+| [mizchi/zlib](https://github.com/mizchi/zlib.mbt) | 0.4.10 | [Apache-2.0](mizchi-zlib-LICENSE) | No bundled upstream NOTICE |
+| [Milky2018/moon_swash](https://github.com/moonbit-community/moon_swash) | 0.1.15 | [Apache-2.0](Milky2018-moon_swash-LICENSE) | No bundled upstream NOTICE |
+| [Milky2018/moon_skrifa](https://github.com/moonbit-community/moon_skrifa.git) | 0.2.0 | [Apache-2.0](Milky2018-moon_skrifa-LICENSE) | No bundled upstream NOTICE |
+| [Milky2018/moon_zeno](https://github.com/moonbit-community/moon_zeno.git) | 0.1.5 | [Apache-2.0](Milky2018-moon_zeno-LICENSE) | No bundled upstream NOTICE |
+| [Milky2018/moon_yazi](https://github.com/moonbit-community/moon_yazi.git) | 0.1.4 | [Apache-2.0](Milky2018-moon_yazi-LICENSE) | No bundled upstream NOTICE |
+| [moonbit-community/unicode-bidi](https://github.com/moonbit-community/tonyfettes-unicode) | 0.7.1 | [Apache-2.0](moonbitlang-x-LICENSE) | No bundled upstream NOTICE |
 
 The core NOTICE is the complete upstream SDK file, including third-party component license texts and attributions. The x notice records the module source and copyright. Upstream notices are retained where supplied. The moonbitstack license copies are identical to the installed modules after normalizing Git line endings.
 

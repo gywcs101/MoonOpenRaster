@@ -212,7 +212,15 @@ pub fn Image::resize_nearest(
     bytes_per_pixel +
     i % bytes_per_pixel]
   })
-  { width, height, pixels, bits: self.bits, vector_source: None, }
+  {
+    width,
+    height,
+    pixels,
+    bits: self.bits,
+    vector_source: None,
+    vector_path: None,
+    raster_source: None,
+  }
 }
 
 ///|

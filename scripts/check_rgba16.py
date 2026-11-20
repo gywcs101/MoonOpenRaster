@@ -140,10 +140,19 @@ def check_input_variants(cli):
     srgb = chunk(b"gAMA", struct.pack(">I", 45455)) + chunk(b"cHRM", chroma)
     narrow = (19, 29, 39, 101)
     wide = (10001, 20002, 30003, 65535)
+    def linear_to_srgb(value):
+        value /= 65535
+        encoded = value * 12.92 if value <= .0031308 else 1.055 * value ** (1 / 2.4) - .055
+        return round(encoded * 65535)
+
+    linear = tuple(linear_to_srgb(value) for value in wide[:3]) + (wide[3],)
     cases = [
         (palette, 8, narrow, None),
         (png(1, 1, 16, lambda x, y: wide, srgb), 16, wide, None),
-        (png(1, 1, 16, lambda x, y: wide, chunk(b"gAMA", struct.pack(">I", 100000))), 16, wide, "Non-sRGB PNG gamma"),
+        (png(1, 1, 16, lambda x, y: wide, chunk(b"gAMA", struct.pack(">I", 100000))), 16, linear, None),
+        (png(1, 1, 16, lambda x, y: wide, chunk(b"cICP", bytes([1, 8, 0, 1]))), 16, linear, None),
+        (png(1, 1, 16, lambda x, y: wide, chunk(b"cICP", bytes([1, 13, 0, 1])) + chunk(b"gAMA", struct.pack(">I", 100000))), 16, wide, None),
+        (png(1, 1, 16, lambda x, y: wide, chunk(b"cICP", bytes([9, 16, 0, 1]))), 16, wide, "cICP transfer"),
         (png(1, 1, 16, lambda x, y: wide, chunk(b"iCCP", b"sRGB-elle-V2-srgbtrc.icc\0\0" + zlib.compress(b"not the approved profile"))), 16, wide, "ICC-profiled image"),
     ]
     for index, (layer, bits, expected, error) in enumerate(cases):
@@ -163,6 +172,140 @@ def check_input_variants(cli):
             assert result.returncode == 0, result.stderr
             assert decode_rgba(output.read_bytes()) == (1, 1, bits, [expected])
     print("PASS: palette transparency, canonical sRGB markers, linear gamma and untrusted ICC")
+
+def check_icc_profiles(cli):
+    from io import BytesIO
+    from PIL import Image, ImageCms
+
+    srgb = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB"))
+    base = srgb.tobytes()
+    count = struct.unpack_from(">I", base, 128)[0]
+    tags = {}
+    for tag, offset, size in struct.iter_unpack(">4sII", base[132:132 + count * 12]):
+        tags[tag] = base[offset:offset + size]
+    # Relative D50 colorants for a synthetic wide RGB profile. Its name is
+    # immaterial. LittleCMS reads the actual matrix and tone curve tags.
+    wide_rgb = {
+        b"rXYZ": (0.515102, 0.241182, -0.00104941),
+        b"gXYZ": (0.291965, 0.692236, 0.0418818),
+        b"bXYZ": (0.157153, 0.0665819, 0.784378),
+    }
+    for key, xyz in wide_rgb.items():
+        tags[key] = b"XYZ " + bytes(4) + struct.pack(">3i", *(round(v * 65536) for v in xyz))
+
+    def build_profile(tags, pcs=b"XYZ ", legacy=False):
+        table = bytearray(struct.pack(">I", len(tags)))
+        data = bytearray()
+        offset = 132 + 12 * len(tags)
+        for tag, payload in tags.items():
+            table += struct.pack(">4sII", tag, offset + len(data), len(payload))
+            data += payload + bytes(-len(payload) % 4)
+        header = bytearray(base[:128])
+        struct.pack_into(">I", header, 0, len(header) + len(table) + len(data))
+        header[20:24] = pcs
+        if legacy:
+            header[8:12] = bytes.fromhex("02100000")
+        header[84:100] = bytes(16)
+        return bytes(header + table + data)
+
+    values = [(70, 120, 170, 200), (230, 170, 85, 128), (18, 23, 41, 255)]
+    image = Image.new("RGBA", (len(values), 1))
+    image.putdata(values)
+    curves = {
+        "parametric": tags[b"rTRC"],
+        "gamma": b"curv" + bytes(4) + struct.pack(">IH", 1, 512),
+        "sampled": b"curv" + bytes(4) + struct.pack(">I3H", 3, 0, 16384, 65535),
+    }
+    p3_chroma = struct.pack(">8I", 31270, 32900, 68000, 32000, 26500, 69000, 15000, 6000)
+    matrix_cases = [
+        *(("icc-" + name, name, b"") for name in curves),
+        ("cicp-p3", "parametric", chunk(b"cICP", bytes([12, 13, 0, 1]))),
+        ("chrm-p3", "gamma", chunk(b"cHRM", p3_chroma) + chunk(b"gAMA", struct.pack(">I", 50000))),
+    ]
+    cases = []
+    for variant, curve_name, extra in matrix_cases:
+        for channel in (b"rTRC", b"gTRC", b"bTRC"):
+            tags[channel] = curves[curve_name]
+        cases.append((variant, build_profile(tags), extra))
+
+    identity = struct.pack(">9i", 65536, 0, 0, 0, 65536, 0, 0, 0, 65536)
+    xyz_samples = bytearray()
+    lab_samples = bytearray()
+    for r in range(2):
+        for g in range(2):
+            for b in range(2):
+                xyz = [sum(v * wide_rgb[tag][axis] for v, tag in zip((r,g,b), wide_rgb))
+                       for axis in range(3)]
+                xyz_samples += struct.pack(">3H", *(round(max(0,v)*32768) for v in xyz))
+                lab_samples += bytes((round(255*(r+g+b)/3),128,128))
+    ramp = struct.pack(">HH", 0, 65535) * 3
+    tables = (
+        ("lut16-xyz", b"XYZ ", b"mft2" + bytes(4) + bytes((3,3,2,0)) + identity
+         + struct.pack(">HH",2,2) + ramp + xyz_samples + ramp),
+        ("lut8-lab", b"Lab ", b"mft1" + bytes(4) + bytes((3,3,2,0)) + identity
+         + bytes(range(256))*3 + lab_samples + bytes(range(256))*3),
+    )
+    for name, pcs, payload in tables:
+        lookup_tags = {key: value for key,value in tags.items()
+                       if key not in (b"rXYZ",b"gXYZ",b"bXYZ",b"rTRC",b"gTRC",b"bTRC")}
+        lookup_tags[b"A2B0"] = payload
+        lookup_tags[b"A2B1"] = payload
+        cases.append((name, build_profile(lookup_tags, pcs=pcs, legacy=True), b""))
+
+    # ICC v4 curve, CLUT and matrix pipeline with unequal grid extents.
+    identity_curve = b"curv" + bytes(8)
+    stages = (
+        identity_curve * 3,
+        identity + struct.pack(">3i", 300, 0, 0),
+        identity_curve * 3,
+        bytes((2, 3, 2)) + bytes(13) + b"\x02\0\0\0",
+        identity_curve * 3,
+    )
+    points = bytearray()
+    for r in (0, 1):
+        for g in (0, .5, 1):
+            for b in (0, 1):
+                xyz = [sum(v * wide_rgb[tag][axis] for v, tag in zip((r,g,b), wide_rgb))
+                       for axis in range(3)]
+                points += struct.pack(">3H", *(round(max(0,v)*32768) for v in xyz))
+    stages = (*stages[:3], stages[3] + points, stages[4])
+    offsets = [32]
+    for stage in stages[:-1]:
+        offsets.append(offsets[-1]+len(stage))
+    payload = b"mAB " + bytes(4) + bytes((3,3,0,0)) + struct.pack(">5I", *offsets) + b"".join(stages)
+    lookup_tags[b"A2B0"] = payload
+    lookup_tags[b"A2B1"] = payload
+    cases.append(("mab-xyz", build_profile(lookup_tags), b""))
+    for variant, profile, extra in cases:
+        source_profile = ImageCms.ImageCmsProfile(BytesIO(profile))
+        ref = ImageCms.profileToProfile(image, source_profile, srgb, renderingIntent=1, outputMode="RGBA")
+        metadata = extra or chunk(b"iCCP", b"Test RGB\0\0" + zlib.compress(profile))
+        layer = png(len(values), 1, 8, lambda x, y: values[x], metadata)
+        source = OUT / f"{variant}.ora"
+        output = OUT / f"{variant}-edited.ora"
+        output.unlink(missing_ok=True)
+        with zipfile.ZipFile(source, "w") as archive:
+            archive.writestr("mimetype", "image/openraster")
+            archive.writestr("stack.xml", f'<image version="0.0.6" w="{len(values)+1}" h="1"><stack><layer name="Profiled" src="data/input.png"/></stack></image>')
+            archive.writestr("data/input.png", layer)
+            pixels = list(ref.getdata()) + [(0, 0, 0, 0)]
+            preview = png(len(pixels), 1, 8, lambda x, y: pixels[x])
+            archive.writestr("mergedimage.png", preview)
+            archive.writestr("Thumbnails/thumbnail.png", preview)
+        edit = OUT / "icc-edit.json"
+        edit.write_text('[{"path":[0],"x":1}]', encoding="utf-8")
+        subprocess.run(["node", str(cli), "edit", str(source), str(output), str(edit)], check=True)
+        with zipfile.ZipFile(output) as archive:
+            stack = ET.fromstring(archive.read("stack.xml"))
+            assert archive.read(stack.find("./stack/layer").get("src")) == layer
+            rendered = decode_rgba(archive.read("mergedimage.png"))
+            assert rendered[:3] == (len(values) + 1, 1, 8)
+            assert rendered[3][0] == (0, 0, 0, 0)
+            for actual, reference in zip(rendered[3][1:], ref.getdata()):
+                assert max(abs(a - b) for a, b in zip(actual, reference)) <= 1, (variant, actual, reference)
+                assert actual[3] == reference[3]
+    print("PASS: matrix and LUT ICC, P3 cICP and cHRM match LittleCMS and retain original PNG bytes")
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -191,6 +334,7 @@ def main():
     assert rerendered.read_bytes() == (OUT / "edited.png").read_bytes()
     print("PASS: exact source samples, 16-bit independent composition, fresh thumbnail and CLI reopen", flush=True)
     check_input_variants(cli)
+    check_icc_profiles(cli)
     if args.krita:
         from PIL import Image
         outputs = {}

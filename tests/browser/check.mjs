@@ -164,6 +164,72 @@ try {
   assert.match(await page.locator('#selected-size').innerText(), /16 × 12.*16 位/);
   await page.locator('#undo').click(); await idle();
   assert.match(await page.locator('#selected-size').innerText(), /12 × 16/);
+  const mixedFixture = path.join(root, '_build/svg-roundtrip/input.ora');
+  await page.locator('#file').setInputFiles(mixedFixture);
+  await page.locator('#discard-dialog button[value=discard]').click(); await idle();
+  assert.equal(await page.locator('#name').inputValue(), 'Vector');
+  await page.locator('#x').fill('2');
+  await page.locator('#opacity').evaluate(el => {
+    el.value = '0.5';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.apply-button').click(); await idle();
+  const mixedDownload = page.waitForEvent('download');
+  await page.locator('#save').click();
+  const mixedOutput = path.join(temp, 'mixed.ora');
+  await (await mixedDownload).saveAs(mixedOutput); await idle();
+  assert.deepEqual(fs.readFileSync(mixedOutput), fs.readFileSync(path.join(root, '_build/svg-roundtrip/edited.ora')));
+  await page.locator('#file').setInputFiles(mixedOutput); await idle();
+  assert.equal(await page.locator('#x').inputValue(), '2');
+  assert.equal(await page.locator('#bit-depth').innerText(), '16 位 sRGB');
+  const fontBytes = fs.readFileSync(path.join(root, 'fixtures/ora-test.ttf')).toString('base64');
+  const referenceMask = await page.evaluate(async fontBytes => {
+    const face = new FontFace('OraTestReference', 'url(data:font/ttf;base64,' + fontBytes + ')');
+    document.fonts.add(await face.load());
+    const canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 8;
+    const ctx = canvas.getContext('2d');
+    ctx.font = '8px OraTestReference';
+    ctx.fillText('A中', 0, 8);
+    return Array.from(ctx.getImageData(0, 0, 16, 8).data).filter((_, i) => i % 4 === 3);
+  }, fontBytes);
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 16; x++) {
+      const painted = (x < 4 && y >= 4) || (x >= 8 && x < 14 && y >= 2);
+      assert.equal(referenceMask[y * 16 + x] >= 128, painted, "Chromium glyph coverage at " + x + "," + y);
+    }
+  }
+  for (const variant of ['font', 'font-spans', 'font-stylesheet', 'font-svg-resource', 'font-path', 'font-position-list']) {
+    const fixtureDir = path.join(root, '_build/svg-roundtrip');
+    await page.locator('#file').setInputFiles(path.join(fixtureDir, variant + '-input.ora'));
+    await idle();
+    assert.equal(await page.locator('#name').inputValue(), 'Text');
+    await page.getByText('Raster', { exact: true }).click();
+    await page.locator('#x').fill('1');
+    await page.locator('.apply-button').click(); await idle();
+    const fontDownload = page.waitForEvent('download');
+    await page.locator('#save').click();
+    const fontOutput = path.join(temp, variant + '.ora');
+    await (await fontDownload).saveAs(fontOutput); await idle();
+    assert.deepEqual(fs.readFileSync(fontOutput), fs.readFileSync(path.join(fixtureDir, variant + '-edited.ora')));
+    await page.locator('#file').setInputFiles(fontOutput); await idle();
+    assert.equal(await page.locator('#name').inputValue(), 'Text');
+  }
+  for (const variant of ['icc-parametric', 'mab-xyz', 'cicp-p3', 'chrm-p3']) {
+    const fixtures = path.join(root, '_build/rgba16');
+    await page.locator('#file').setInputFiles(path.join(fixtures, variant + '.ora')); await idle();
+    assert.equal(await page.locator('#name').inputValue(), 'Profiled');
+    await page.locator('#x').fill('1');
+    await page.locator('.apply-button').click(); await idle();
+    const download = page.waitForEvent('download');
+    await page.locator('#save').click();
+    const output = path.join(temp, variant + '.ora');
+    await (await download).saveAs(output); await idle();
+    assert.deepEqual(fs.readFileSync(output), fs.readFileSync(path.join(fixtures, variant + '-edited.ora')));
+    await page.locator('#file').setInputFiles(output); await idle();
+    assert.equal(await page.locator('#x').inputValue(), '1');
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.setViewportSize({ width: 1500, height: 1000 });

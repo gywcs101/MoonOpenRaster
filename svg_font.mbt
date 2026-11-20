@@ -1,0 +1,517 @@
+///|
+fn svg_css_unquote(value : String) -> String {
+  let trimmed = value[:].trim().to_owned()
+  if trimmed.length() >= 2 &&
+    (
+      (trimmed.has_prefix("'") && trimmed.has_suffix("'")) ||
+      (trimmed.has_prefix("\"") && trimmed.has_suffix("\""))
+    ) {
+    return trimmed[1:trimmed.length() - 1].to_owned()
+  }
+  trimmed
+}
+
+///|
+fn svg_css_properties(source : String) -> Map[String, String] {
+  let properties : Map[String, String] = Map([])
+  let mut start = 0
+  let mut depth = 0
+  let mut quote = 0
+  for index in 0..<=source.length() {
+    let token = if index == source.length() {
+      59
+    } else {
+      source[index].to_int()
+    }
+    if quote != 0 {
+      if token == quote {
+        quote = 0
+      }
+    } else if token == 34 || token == 39 {
+      quote = token
+    } else if token == 40 {
+      depth += 1
+    } else if token == 41 {
+      depth -= 1
+    } else if token == 59 && depth == 0 {
+      let declaration = source[start:index]
+      if declaration.find(":") is Some(colon) {
+        let key = declaration[:colon].trim().to_owned().to_lower()
+        properties[key] = declaration[colon + 1:].trim().to_owned()
+      }
+      start = index + 1
+    }
+  }
+  properties
+}
+
+///|
+fn svg_font_faces_from_css(
+  source : String,
+  base : String,
+  faces : Map[String, String],
+  visited : Map[String, Bool],
+  load : (String) -> Bytes?,
+  depth : Int32,
+) -> Unit raise {
+  for imported in @css.parse_stylesheet(source).imports {
+    if imported.media != "" && imported.media != "all" {
+      continue
+    }
+    guard svg_archive_path(base, imported.href) is Some(path) else { continue }
+    let uri = svg_archive_uri(path)
+    if visited.contains(uri) {
+      continue
+    }
+    if depth >= 8 || visited.length() >= 32 {
+      raise Unsupported("SVG font stylesheet dependency limit exceeded")
+    }
+    let bytes = match load(uri) {
+      Some(bytes) => bytes
+      None => continue
+    }
+    if bytes.length() > 262144 {
+      raise Unsupported("SVG font stylesheet exceeds 256 KiB: " + path)
+    }
+    visited[uri] = true
+    svg_font_faces_from_css(
+      @utf8.decode(bytes[:]),
+      path,
+      faces,
+      visited,
+      load,
+      depth + 1,
+    )
+  }
+  let mut css = source
+  while css.find("@font-face") is Some(index) {
+    css = css[index + 10:].to_owned()
+    guard css.find("{") is Some(begin) else { break }
+    guard css[begin + 1:].find("}") is Some(body_length) else { break }
+    let end = begin + 1 + body_length
+    let properties = svg_css_properties(css[begin + 1:end].to_owned())
+    css = css[end + 1:].to_owned()
+    if properties.get("font-family") is Some(family) &&
+      properties.get("src") is Some(source) &&
+      source.has_prefix("url(") &&
+      source.find(")") is Some(close) {
+      let href = svg_css_unquote(source[4:close].to_owned())
+      if href.has_prefix("data:") {
+        faces[svg_css_unquote(family).to_lower()] = href
+      } else if svg_archive_path(base, href) is Some(path) {
+        faces[svg_css_unquote(family).to_lower()] = svg_archive_uri(path)
+      }
+    }
+  }
+}
+
+///|
+fn svg_text_properties(
+  element : @dom.Element,
+  inherited : Map[String, String],
+) -> Map[String, String] {
+  let properties = inherited.copy()
+  let inline = svg_css_properties(element.attr("style").unwrap_or(""))
+  for name in ["font-family", "font-size", "text-anchor"] {
+    let candidate = match inline.get(name) {
+      Some(value) => Some(value)
+      None => element.attr(name)
+    }
+    if candidate is Some(value) {
+      properties[name] = value
+    }
+  }
+  properties
+}
+
+///|
+fn svg_load_font(uri : String, load : (String) -> Bytes?) -> Bytes? {
+  if !uri.has_prefix("data:") {
+    return load(uri)
+  }
+  guard uri.find(",") is Some(comma) else { return None }
+  let media_type = uri[:comma].to_owned().to_lower()
+  guard media_type.has_suffix(";base64") &&
+    (
+      media_type.has_prefix("data:font/") ||
+      media_type.has_prefix("data:application/font-") ||
+      media_type == "data:application/octet-stream;base64"
+    ) else {
+    return None
+  }
+  Some(@base64.decode(uri[comma + 1:].to_owned())) catch {
+    _ => None
+  }
+}
+
+///|
+fn svg_text_numbers(
+  element : @dom.Element,
+  name : String,
+) -> Array[Double] raise {
+  let value = element
+    .attr(name)
+    .unwrap_or("")
+    .replace_all(old=",", new=" ")
+    .replace_all(old="\t", new=" ")
+    .replace_all(old="\r", new=" ")
+    .replace_all(old="\n", new=" ")
+  let result : Array[Double] = []
+  for item in value.split(" ") {
+    if !item.is_empty() {
+      if name == "rotate" {
+        result.push(svg_number(item.to_owned()))
+      } else {
+        result.push(svg_dimension(item.to_owned()))
+      }
+    }
+  }
+  result
+}
+
+///|
+fn svg_glyph_run(
+  text : String,
+  x : Double,
+  y : Double,
+  style : Map[String, String],
+  faces : Map[String, String],
+  fonts : Map[String, @font.TTFont],
+  outline_size : Ref[Int32],
+  load : (String) -> Bytes?,
+  path~ : SvgTextPath? = None,
+  positioning~ : Array[Array[Double]]? = None,
+) -> (Array[@dom.Node], Double, Double) raise {
+  if text.length() > 4096 {
+    raise Unsupported("SVG text exceeds the shaping budget")
+  }
+  if text.is_empty() {
+    return ([], x, y)
+  }
+  let family = svg_css_unquote(style.get("font-family").unwrap_or("")).to_lower()
+  guard faces.get(family) is Some(uri) else {
+    raise Unsupported("SVG text needs an in-document @font-face for " + family)
+  }
+  let font = match fonts.get(uri) {
+    Some(font) => font
+    None => {
+      guard fonts.length() < 8 else {
+        raise Unsupported("SVG exceeds the font resource count")
+      }
+      guard svg_load_font(uri, load) is Some(bytes) &&
+        bytes.length() <= 8388608 &&
+        @font.parse_font(bytes) is Some(font) else {
+        raise Unsupported("Missing or invalid SVG font: " + uri)
+      }
+      fonts[uri] = font
+      font
+    }
+  }
+  let size = svg_dimension(style.get("font-size").unwrap_or("16"))
+  guard size > 0.0 && size <= 2048.0 && font.units_per_em > 0 else {
+    raise Unsupported("Invalid SVG font size or units per em")
+  }
+  let shaped = font.shape_text(text, size, ligatures=positioning is None) catch {
+    _ => raise Unsupported("Unable to shape text with SVG font: " + family)
+  }
+  if !shaped.missing_codepoints.is_empty() {
+    raise Unsupported("SVG font is missing characters: " + uri)
+  }
+  let anchor = match style.get("text-anchor").unwrap_or("start") {
+    "start" => 0.0
+    "middle" => shaped.bounds.advance_width / 2.0
+    "end" => shaped.bounds.advance_width
+    _ => raise Unsupported("Invalid SVG text-anchor")
+  }
+  let scale = size / font.units_per_em.to_double()
+  let children : Array[@dom.Node] = []
+  let mut shift_x = 0.0
+  let mut shift_y = 0.0
+  let mut angle = 0.0
+  let offsets : Array[Int32] = [0]
+  if positioning is Some(_) {
+    for character in text {
+      offsets.push(
+        offsets[offsets.length() - 1] +
+        (if character.to_int() > 0xffff { 2 } else { 1 }),
+      )
+    }
+    if shaped.direction != "ltr" ||
+      shaped.bounds.glyphs.length() + 1 != offsets.length() {
+      raise Unsupported(
+        "SVG position lists require one glyph per character in left-to-right order",
+      )
+    }
+  }
+  for index, glyph in shaped.bounds.glyphs {
+    if positioning is Some(lists) {
+      if glyph.text_start != offsets[index] ||
+        glyph.text_end != offsets[index + 1] {
+        raise Unsupported(
+          "SVG position lists require one glyph per character in left-to-right order",
+        )
+      }
+      if lists[0].get(index) is Some(position) {
+        shift_x = position - x - glyph.x
+      }
+      if lists[1].get(index) is Some(position) {
+        shift_y = position - y
+      }
+      shift_x += lists[2].get(index).unwrap_or(0.0)
+      shift_y += lists[3].get(index).unwrap_or(0.0)
+      angle = lists[4].get(index).unwrap_or(angle)
+    }
+    let d = @font.path_commands_to_svg_d(
+      font.glyph_outline_at(glyph.glyph_id, shaped.variations),
+    )
+    outline_size.val += d.length()
+    if outline_size.val > 4194304 {
+      raise Unsupported(
+        "Expanded SVG text outlines exceed the rendering budget",
+      )
+    }
+    if !d.is_empty() {
+      let gx = x - anchor + glyph.x + shift_x
+      let gy = y + glyph.y + shift_y
+      let transform = match path {
+        Some(path) =>
+          match path.glyph_transform(gx, gy, glyph.advance_width, scale) {
+            Some(transform) => transform
+            None => continue
+          }
+        None if angle != 0.0 => {
+          let radians = angle * 3.141592653589793 / 180.0
+          let cosine = @math.cos(radians) * scale
+          let sine = @math.sin(radians) * scale
+          let values = [cosine, sine, sine, -cosine, gx, gy]
+          "matrix(" + values.map(value => value.to_string()).join(" ") + ")"
+        }
+        None =>
+          "translate(" +
+          gx.to_string() +
+          " " +
+          gy.to_string() +
+          ") scale(" +
+          scale.to_string() +
+          " " +
+          (-scale).to_string() +
+          ")"
+      }
+      children.push(
+        ElementNode(
+          @dom.Element::new("path", attrs=[("d", d), ("transform", transform)]),
+        ),
+      )
+    }
+  }
+  (children, x - anchor + shaped.bounds.advance_width + shift_x, y + shift_y)
+}
+
+///|
+fn svg_glyph_group(
+  element : @dom.Element,
+  style : Map[String, String],
+  cursor : Ref[(Double, Double)],
+  faces : Map[String, String],
+  fonts : Map[String, @font.TTFont],
+  outline_size : Ref[Int32],
+  load : (String) -> Bytes?,
+  paths : Map[String, @dom.Element],
+  path~ : SvgTextPath? = None,
+) -> @dom.Element raise {
+  if ["textLength", "lengthAdjust"].any(key => element.has_attr(key)) {
+    raise Unsupported(
+      "SVG text rotation or explicit text length is unsupported",
+    )
+  }
+  let xs = svg_text_numbers(element, "x")
+  let ys = svg_text_numbers(element, "y")
+  let dx = svg_text_numbers(element, "dx")
+  let dy = svg_text_numbers(element, "dy")
+  let rotations = svg_text_numbers(element, "rotate")
+  let lists = [xs, ys, dx, dy, rotations]
+  let explicit = !rotations.is_empty() ||
+    lists.any(values => values.length() > 1)
+  if explicit &&
+    (
+      !element.child_elements().is_empty() ||
+      style.get("text-anchor").unwrap_or("start") != "start"
+    ) {
+    raise Unsupported(
+      "SVG position lists for anchored or nested text are unsupported",
+    )
+  }
+  if explicit && path is Some(_) {
+    raise Unsupported("SVG position lists on a path are unsupported")
+  }
+  let (previous_x, previous_y) = cursor.val
+  let x = if explicit {
+    previous_x
+  } else {
+    xs.get(0).unwrap_or(previous_x) + dx.get(0).unwrap_or(0.0)
+  }
+  let y = if explicit {
+    previous_y
+  } else {
+    ys.get(0).unwrap_or(previous_y) + dy.get(0).unwrap_or(0.0)
+  }
+  cursor.val = (x, y)
+  let children : Array[@dom.Node] = []
+  if element.child_elements().is_empty() {
+    let (paths, next_x, next_y) = svg_glyph_run(
+      element.text(),
+      x,
+      y,
+      style,
+      faces,
+      fonts,
+      outline_size,
+      load,
+      path~,
+      positioning=if explicit { Some(lists) } else { None },
+    )
+    for path in paths {
+      children.push(path)
+    }
+    cursor.val = (next_x, next_y)
+  } else {
+    if style.get("text-anchor").unwrap_or("start") != "start" {
+      raise Unsupported("Anchored SVG text containing spans is unsupported")
+    }
+    let parent : @dom.Node = ElementNode(element)
+    for node in parent.children() {
+      match node {
+        ElementNode(span) if @dom.local_of(span.name) == "tspan" => {
+          let span_style = svg_text_properties(span, style)
+          children.push(
+            ElementNode(
+              svg_glyph_group(
+                span,
+                span_style,
+                cursor,
+                faces,
+                fonts,
+                outline_size,
+                load,
+                paths,
+                path~,
+              ),
+            ),
+          )
+        }
+        ElementNode(run) if @dom.local_of(run.name) == "textPath" &&
+          path is None => {
+          let geometry = svg_text_path(run, paths)
+          let run_style = svg_text_properties(run, style)
+          children.push(
+            ElementNode(
+              svg_glyph_group(
+                run,
+                run_style,
+                Ref((0.0, y)),
+                faces,
+                fonts,
+                outline_size,
+                load,
+                paths,
+                path=Some(geometry),
+              ),
+            ),
+          )
+        }
+        ElementNode(other) =>
+          raise Unsupported("Unsupported child within SVG text: " + other.name)
+        TextNode(text) | CDataNode(text) => {
+          let (current_x, current_y) = cursor.val
+          let (paths, next_x, next_y) = svg_glyph_run(
+            text,
+            current_x,
+            current_y,
+            style,
+            faces,
+            fonts,
+            outline_size,
+            load,
+            path~,
+          )
+          for path in paths {
+            children.push(path)
+          }
+          cursor.val = (next_x, next_y)
+        }
+        _ => ()
+      }
+    }
+  }
+  let attrs = element.attrs.filter(pair => {
+    !["x", "y", "dx", "dy", "rotate"].contains(pair.0) &&
+    (
+      @dom.local_of(element.name) != "textPath" ||
+      ![
+        "href", "startOffset", "method", "spacing", "{http://www.w3.org/1999/xlink}href",
+      ].contains(pair.0)
+    )
+  })
+  @dom.Element::new("g", attrs~, children~)
+}
+
+///|
+fn outline_svg_text(
+  root : @dom.Element,
+  base : String,
+  load : (String) -> Bytes?,
+) -> Bool raise {
+  let mut contains_text = false
+  let styles : Array[String] = []
+  let paths : Map[String, @dom.Element] = Map([])
+  fn collect(element : @dom.Element) -> Unit {
+    match @dom.local_of(element.name) {
+      "style" => styles.push(element.text())
+      "text" => contains_text = true
+      "path" => if element.attr("id") is Some(id) { paths[id] = element }
+      _ => ()
+    }
+    for child in element.child_elements() {
+      collect(child)
+    }
+  }
+  collect(root)
+  if !contains_text {
+    return false
+  }
+  let faces : Map[String, String] = Map([])
+  let visited : Map[String, Bool] = Map([])
+  for style in styles {
+    svg_font_faces_from_css(style, base, faces, visited, load, 0)
+  }
+  let fonts : Map[String, @font.TTFont] = Map([])
+  let outline_size = Ref(0)
+  let mut changed = false
+  fn visit(
+    element : @dom.Element,
+    inherited : Map[String, String],
+  ) -> Unit raise {
+    let style = svg_text_properties(element, inherited)
+    for child in element.child_elements() {
+      if @dom.local_of(child.name) == "text" {
+        let props = svg_text_properties(child, style)
+        let group = svg_glyph_group(
+          child,
+          props,
+          Ref((0.0, 0.0)),
+          faces,
+          fonts,
+          outline_size,
+          load,
+          paths,
+        )
+        ignore(child.replace_with(ElementNode(group)))
+        changed = true
+      } else {
+        visit(child, style)
+      }
+    }
+  }
+  visit(root, Map([]))
+  changed
+}

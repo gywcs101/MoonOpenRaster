@@ -16,10 +16,24 @@ fn attrs(p : Properties) -> Array[(String, String)] {
 }
 
 ///|
+fn reserve_svg_paths(nodes : Array[Node], paths : Map[String, Bool]) -> Unit {
+  for node in nodes {
+    match node {
+      Layer(_, image) =>
+        if image.vector_path is Some(path) {
+          paths[path] = true
+        }
+      Group(_, _, children) => reserve_svg_paths(children, paths)
+    }
+  }
+}
+
+///|
 fn write_nodes(
   nodes : Array[Node],
   entries : Array[@zip.Entry],
   depth : Int32,
+  reserved : Map[String, Bool],
 ) -> Array[@dom.Node] raise {
   if depth > 128 {
     raise InvalidDocument("Layer tree exceeds depth limit")
@@ -30,17 +44,36 @@ fn write_nodes(
       Layer(p, image) => {
         let (extension, payload) = match image.svg_source() {
           Some(source) => (".svg", source)
-          None => (".png", image.encode_png())
+          None =>
+            (
+              ".png",
+              match image.raster_source {
+                Some(original) => original
+                None => image.encode_png()
+              },
+            )
         }
         let mut serial = entries.length()
         let mut path = "data/moonopenraster-layer" +
           serial.to_string() +
           extension
-        while entries.any(e => e.name == path) {
+        while reserved.contains(path) || entries.any(e => e.name == path) {
           serial += 1
           path = "data/moonopenraster-layer" + serial.to_string() + extension
         }
-        entries.push(@zip.Entry::new(path, payload, kind=Stored))
+        if image.vector_path is Some(original) &&
+          original != "mimetype" &&
+          original != "stack.xml" &&
+          original != "mergedimage.png" &&
+          original != "Thumbnails/thumbnail.png" {
+          guard !entries.any(e => e.name == original && e.data != payload) else {
+            raise InvalidDocument("Conflicting SVG resource path: " + original)
+          }
+          path = original
+        }
+        if !entries.any(e => e.name == path) {
+          entries.push(@zip.Entry::new(path, payload, kind=Stored))
+        }
         let a = attrs(p)
         a.push(("src", path))
         result.push(ElementNode(@dom.Element::new("layer", attrs=a)))
@@ -61,7 +94,7 @@ fn write_nodes(
             @dom.Element::new(
               "stack",
               attrs=a,
-              children=write_nodes(children, entries, depth + 1),
+              children=write_nodes(children, entries, depth + 1, reserved),
             ),
           ),
         )
@@ -81,10 +114,12 @@ pub fn Document::write(self : Document) -> Bytes raise {
     None => []
     Some(p) => p.extra.copy()
   }
+  let reserved : Map[String, Bool] = Map([])
+  reserve_svg_paths(self.children, reserved)
   let stack = @dom.Element::new(
     "stack",
     attrs=root_props,
-    children=write_nodes(self.children, entries, 0),
+    children=write_nodes(self.children, entries, 0, reserved),
   )
   let root = @dom.Element::new(
     "image",

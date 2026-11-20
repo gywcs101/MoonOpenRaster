@@ -1,5 +1,7 @@
 import {
+  "mizchi/font",
   "Milky2018/svg" @vector,
+  "Milky2018/css",
   "moonbitstack/moonzip/zip",
   "moonbitstack/moonimage/png",
   "moonbitstack/moonimage/jpeg",
@@ -13,6 +15,7 @@ import {
   "moonbitstack/moonxml/xml",
   "moonbitstack/moonxml" @dom,
   "moonbitlang/core/json",
+  "moonbitlang/core/math",
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/encoding/utf8",
 }

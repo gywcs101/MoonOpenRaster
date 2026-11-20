@@ -18,7 +18,7 @@ def text_hash(data):
     return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
 
 
-BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".ico", ".svg", ".ora", ".woff", ".woff2"}
+BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".ico", ".svg", ".ora", ".woff", ".woff2", ".ttf", ".otf"}
 
 
 def _referenced_files(manifest):

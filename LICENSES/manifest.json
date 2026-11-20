@@ -89,6 +89,31 @@
       "id": "Apache-2.0",
       "file": "LICENSES/Milky2018-xml-LICENSE",
       "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/mizchi-zlib-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/Milky2018-moon_swash-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/Milky2018-moon_skrifa-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/Milky2018-moon_zeno-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "id": "Apache-2.0",
+      "file": "LICENSES/Milky2018-moon_yazi-LICENSE",
+      "sha256_lf": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
     }
   ],
   "runtime_dependencies": [
@@ -191,6 +216,69 @@
       "license": "Apache-2.0",
       "license_file": "LICENSES/Milky2018-xml-LICENSE",
       "source": "https://github.com/moonbit-community/xml-mbt.git"
+    },
+    {
+      "module": "mizchi/font",
+      "version": "0.8.0",
+      "source": "https://github.com/mizchi/font",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitlang-x-LICENSE"
+    },
+    {
+      "module": "mizchi/svg",
+      "version": "0.2.3",
+      "source": "https://github.com/mizchi/svg",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitlang-x-LICENSE"
+    },
+    {
+      "module": "mizchi/brotli",
+      "version": "0.2.2",
+      "source": "https://github.com/mizchi/brotli",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitlang-x-LICENSE"
+    },
+    {
+      "module": "mizchi/zlib",
+      "version": "0.4.10",
+      "source": "https://github.com/mizchi/zlib.mbt",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/mizchi-zlib-LICENSE"
+    },
+    {
+      "module": "Milky2018/moon_swash",
+      "version": "0.1.15",
+      "source": "https://github.com/moonbit-community/moon_swash",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/Milky2018-moon_swash-LICENSE"
+    },
+    {
+      "module": "Milky2018/moon_skrifa",
+      "version": "0.2.0",
+      "source": "https://github.com/moonbit-community/moon_skrifa.git",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/Milky2018-moon_skrifa-LICENSE"
+    },
+    {
+      "module": "Milky2018/moon_zeno",
+      "version": "0.1.5",
+      "source": "https://github.com/moonbit-community/moon_zeno.git",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/Milky2018-moon_zeno-LICENSE"
+    },
+    {
+      "module": "Milky2018/moon_yazi",
+      "version": "0.1.4",
+      "source": "https://github.com/moonbit-community/moon_yazi.git",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/Milky2018-moon_yazi-LICENSE"
+    },
+    {
+      "module": "moonbit-community/unicode-bidi",
+      "version": "0.7.1",
+      "source": "https://github.com/moonbit-community/tonyfettes-unicode",
+      "license": "Apache-2.0",
+      "license_file": "LICENSES/moonbitlang-x-LICENSE"
     }
   ],
   "asset_groups": [
@@ -240,11 +328,12 @@
         "fixtures/krita-5.3.4.ora",
         "fixtures/krita-5.3.4.png",
         "fixtures/gradient16.ora",
-        "web/assets/import-samples/*"
+        "web/assets/import-samples/*",
+        "fixtures/ora-test.ttf"
       ],
       "license": "MIT",
       "license_file": "LICENSE",
-      "source": "Project-generated Light study and 16-bit gradient fixtures and format exercises; see fixtures/README.md"
+      "source": "Project-generated Light study and 16-bit gradient fixtures and format exercises; see fixtures/README.md The test font has original geometric outlines."
     }
   ],
   "development_dependencies_note": "Playwright and Pillow are installed separately for validation; their implementation code is not redistributed in the repository or the two bundles. node_modules and .mooncakes must be excluded.",

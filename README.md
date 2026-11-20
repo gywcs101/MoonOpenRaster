@@ -91,24 +91,18 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 ## 16 位 ORA 往返
 
-在克隆的仓库根目录运行：
-
-```sh
-python scripts/check_rgba16.py
-```
-
-该命令读取 [16 位渐变样例](https://github.com/gywcs101/MoonOpenRaster/blob/main/fixtures/gradient16.ora)，把嵌套组中的 Light 图层移到 X=9、Y=6 并设为 50% 不透明度，再生成 `_build/rgba16/edited.ora` 和 `edited.png`。脚本独立解码输出，检查两个源图层的 16 位样本、重新合成的画面、图层结构与 8 位缩略图。也可以在网页打开同一个样例，手动应用上述属性后保存，重开会保留图层与位深。Krita 重开步骤和结果见 [16 位案例与复现说明](docs/ROUNDTRIP16.zh-CN.md)。
+在网页打开 16 位渐变样例，选中 Light 图层，把 X 改为 9、Y 改为 6，并将不透明度设为 50%。保存并重新打开 ORA，仍可继续编辑图层。新合并图保留 16 位精度。[下载样例](https://github.com/gywcs101/MoonOpenRaster/blob/main/fixtures/gradient16.ora) · [案例与复现说明](docs/ROUNDTRIP16.zh-CN.md)
 
 ## SVG 矢量图层
 
-工作台可以直接导入自包含的静态 SVG，也可以打开引用这类 SVG 的 ORA。图层支持移动、显隐、透明度、混合、复制和排序。合成时按 SVG 的像素尺寸或 `viewBox` 渲染，保存 ORA 时保留源文件；导出 PNG 时输出合成像素。在「样例与练习 → 地形测绘图」中，可以将 SVG 等高线与 16 位 TIFF 地形放在同一文档。命令行复现运行 `python scripts/check_svg.py`。
+工作台可以直接导入支持的静态 SVG，也可以打开含 SVG 图层的 ORA。仓库版本支持内部 CSS、图形复用以及随 ORA 一起保存的相对路径 CSS、PNG 和 SVG 片段，也支持使用 `@font-face` 声明的随稿字体渲染文字、嵌套片段和沿路径排列的字形。图层支持移动、显隐、透明度、混合、复制和排序。合成时按 SVG 的像素尺寸或 `viewBox` 渲染，保存 ORA 时保留源文件；导出 PNG 时输出合成像素。在「样例与练习 → 地形测绘图」中，可以将 SVG 等高线与 16 位 TIFF 地形放在同一文档。
 
 ## 兼容性与限制
 
-- 目标为 **OpenRaster 0.0.6 的栅格与受支持的静态 SVG 图层编辑工作流**，包括 8 位与 16 位每通道的 sRGB 图层、混合位深、嵌套组、负偏移及 20 种基线合成操作。各图层按原精度保存，含 16 位层时重新生成 16 位合成，归档缩略图为 8 位。
-- 未标记色彩的 PNG 按 sRGB 处理。支持标准 sRGB 标记与经指纹核验的 Krita 非线性 sRGB 配置。线性 RGB、其他 ICC、SVG 子集、文本及未知渲染功能的行为见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
+- 交付目标为 **OpenRaster 0.0.6 Full baseline**，当前已验证的栅格编辑流程包括 8 位与 16 位每通道的 sRGB 图层、混合位深、嵌套组、负偏移及 20 种基线合成操作。各图层按原精度保存，含 16 位层时重新生成 16 位合成，归档缩略图为 8 位。
+- 未标记色彩的 PNG 按 sRGB 处理。仓库版本还可将矩阵型与受支持的查找表 ICC、PNG gamma 和色度，以及常见全范围 SDR cICP 转为 sRGB。保存 ORA 时保留转换过的原图层 PNG。其他色彩配置与 SVG 限制见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
 - `svg:plus` 遵循 W3C 规则，和 Krita Addition 可能有像素差异。Krita 5.3.4 可重开本项目的案例，但实测其 ORA 重存会将图层变回 8 位。
-- 单图和画布最多 16,777,216 像素、单边 16,384，解码图层总预算为 128 MiB。16 位 RGBA 每像素占 8 字节，文件还受归档和渲染缓冲区限制。详见 [兼容性与验证记录](VALIDATION.md)。
+- 单图和画布最多 16,777,216 像素、单边 16,384，解码图层总预算为 128 MiB。16 位 RGBA 每像素占 8 字节，文件还受归档和渲染缓冲区限制。详见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
 
 ## 文档与许可
 
