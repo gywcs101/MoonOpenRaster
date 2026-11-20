@@ -4,6 +4,7 @@ No credentials or network access are required. Run standalone, or import
 validate_bundle from the library/web packaging checks.
 """
 from pathlib import Path
+from base64 import b64decode
 from fnmatch import fnmatchcase
 import hashlib
 import json
@@ -57,6 +58,12 @@ def validate_tree(root=ROOT):
             if path.is_file() and path.suffix.lower() in BINARY_SUFFIXES:
                 _coverage(path.relative_to(root).as_posix(), manifest)
                 count += 1
+    bundled_fonts = (root / "svg_fallback_fonts.mbt").read_text(encoding="utf-8")
+    for family, asset in [("sans", "inter"), ("serif", "instrument-serif")]:
+        font = re.search(rf"let svg_fallback_{family} : String =\n((?:  #\|[^\n]+\n)+)", bundled_fonts)
+        assert font, f"Missing embedded SVG fallback font: {family}"
+        encoded = "".join(line.removeprefix("  #|") for line in font[1].splitlines())
+        assert b64decode(encoded, validate=True) == (root / f"web/assets/{asset}.woff2").read_bytes()
     # If installed sources are available, compare the actual upstream license,
     # resolved version and any upstream NOTICE with the distributed copies.
     for component in manifest["runtime_dependencies"]:

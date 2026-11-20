@@ -20,7 +20,7 @@ Copies of the resolved dependencies' licenses and available NOTICE files are dis
 
 The workbench bundles a resized, format-converted version of David Revoy's **Poster for Capitole du libre 2023**, retaining the original seven painting layers and group. The source page states CC BY 4.0 and also carries an “AI derivation prohibited” statement, retained in LICENSES/capitole-artwork-NOTICE.txt. No generative image editing is involved. Layer names are translated; the image itself is only resized/normalized for the browser. The source archive is hash-pinned and conversion is reproducible with scripts/prepare_artwork.py. The artwork is not covered by this project's MIT license.
 
-Inter (rsms/inter) and Instrument Serif (Google Fonts) are bundled locally. Their SIL Open Font License notices are included under LICENSES/font-*.txt. No remote font service is needed at runtime.
+Inter (rsms/inter) and Instrument Serif (Google Fonts) are bundled locally for the interface and for SVG text using the generic sans-serif and serif families. The library includes exact Base64 copies of the same WOFF2 files. Their SIL Open Font License notices are included under LICENSES/font-*.txt. No remote font service is needed at runtime.
 
 
 ## Additional layered samples and practice variants

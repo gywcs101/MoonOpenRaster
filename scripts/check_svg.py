@@ -4,6 +4,7 @@ import base64
 from io import BytesIO
 import json
 from pathlib import Path
+import struct
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
@@ -43,6 +44,12 @@ def check_font_layer(cli, variant="font"):
     declaration = variant == "font-stylesheet-pi"
     imported = variant == "font-stylesheet" or declaration
     cascade = variant == "font-css-cascade"
+    centered = variant == "font-centered-spans"
+    spacing = variant == "font-length-spacing"
+    stretched = variant == "font-length-glyphs"
+    letter_spacing = variant == "font-letter-spacing"
+    weighted = variant == "font-weight"
+    slanted = variant == "font-style"
     external = variant == "font-svg-resource"
     path_text = variant == "font-path"
     positions = variant == "font-position-list"
@@ -54,6 +61,9 @@ def check_font_layer(cli, variant="font"):
     uri = "data:font/ttf;base64," + base64.b64encode(font).decode() if embedded else "../font/%E6%B5%8B%E8%AF%95.ttf"
     face = f'@font-face {{ font-family: OraTest; src: url("{uri}"); }}'
     styles = "@import '../styles/level/index.css';" if imported else face
+    if weighted or slanted:
+        descriptor = "font-weight: 700" if weighted else "font-style: italic"
+        styles = f'@font-face {{ font-family: OraTest; src: url("../font/alternate.ttf"); {descriptor}; }}' + styles
     if cascade:
         styles += " svg .label { font-family: Absent, OraTest; font-size: 8px; } text { fill: red; } path { fill: blue; }"
     text = 'A<tspan x="7" dx="1" y="7" dy="1"><tspan>中</tspan></tspan>' if spans else "A中"
@@ -64,6 +74,17 @@ def check_font_layer(cli, variant="font"):
     else:
         definition = ''
         position_attrs = 'x="0,7" y="8 7" dx="0 1" dy="0 1" rotate="0 0"' if positions else 'x="0" y="8"'
+    if centered:
+        position_attrs = 'x="8" y="8" text-anchor="middle"'
+        text = "A<tspan>中</tspan>"
+    if spacing or stretched:
+        position_attrs += ' textLength="24" lengthAdjust="spacingAndGlyphs"' if stretched else ' textLength="20"'
+    if letter_spacing:
+        position_attrs += ' style="letter-spacing: .5em"'
+    if weighted:
+        position_attrs += ' font-weight="bolder"'
+    if slanted:
+        position_attrs += ' style="font-style: italic"'
     stylesheet = '<?xml-stylesheet type="text/css" href="../styles/level/index.css"?>' if declaration else ''
     inline_style = '' if declaration else f'<style>{styles}</style>'
     font_attributes = 'class="label"' if cascade else 'font-family="OraTest" font-size="8" fill="red"'
@@ -78,6 +99,10 @@ def check_font_layer(cli, variant="font"):
     red = (65535, 0, 0, 65535)
 
     def glyph_ink(x, y):
+        if stretched:
+            return (x < 6 and y >= 4) or (x >= 12 and y >= 2)
+        if spacing or letter_spacing or weighted or slanted:
+            return (x < 4 and y >= 4) or (x >= 12 and y >= 2)
         return (x < 4 and y >= 4) or (8 <= x < 14 and y >= 2)
 
     with zipfile.ZipFile(source, "w") as archive:
@@ -88,6 +113,15 @@ def check_font_layer(cli, variant="font"):
             archive.writestr("data/word/source.svg", external_svg)
         if not embedded:
             archive.writestr("data/font/测试.ttf", font)
+        if weighted or slanted:
+            # The glyphs share the first hmtx advance. Change it from 8 to 12 px
+            # at the configured font size to distinguish the two faces.
+            alternate = bytearray(font)
+            count = struct.unpack_from(">H", font, 4)[0]
+            metrics = next(offset for tag, _, offset, _ in struct.iter_unpack(
+                ">4sIII", font[12:12 + count * 16]) if tag == b"hmtx")
+            struct.pack_into(">H", alternate, metrics, 1500)
+            archive.writestr("data/font/alternate.ttf", alternate)
         if imported:
             archive.writestr("data/styles/level/index.css", "@import 'font.css';")
             archive.writestr("data/styles/level/font.css", face.replace("../font/", "../../font/"))
@@ -117,8 +151,48 @@ def check_font_layer(cli, variant="font"):
         assert (width, height, depth) == (16, 8, 16)
         for index, (pixel, target) in enumerate(zip(actual, expected)):
             assert pixel == target, (index % 16, index // 16, pixel, target)
-    print("PASS: embedded OpenType shapes English and Chinese, and survives editing an adjacent RGBA16 layer")
+    print(f"PASS: {variant} matches its independent pixel oracle after moving an adjacent RGBA16 layer")
 
+
+
+def check_default_font(cli):
+    for generic, asset in (("sans-serif", "inter"), ("serif", "instrument-serif")):
+        font = (ROOT / "web/assets" / (asset + ".woff2")).read_bytes()
+        edited_images = []
+        for variant in ("generic", "explicit"):
+            source = OUT / f"{generic}-{variant}-input.ora"
+            edited = OUT / f"{generic}-{variant}-edited.ora"
+            edited.unlink(missing_ok=True)
+            style = (
+                '<style>@font-face { font-family: Reference; src: url("probe.woff2"); }</style>'
+                if variant == "explicit" else ""
+            )
+            family = "Reference" if variant == "explicit" else generic
+            attribute = f'font-family="{family}"' if family != "sans-serif" else ""
+            svg = (
+                '<svg xmlns="http://www.w3.org/2000/svg" width="84" height="32">'
+                f'{style}<text x="2" y="23" font-size="20" {attribute} fill="red">A B</text></svg>'
+            ).encode()
+            with zipfile.ZipFile(source, "w") as archive:
+                archive.writestr("mimetype", "image/openraster")
+                archive.writestr("stack.xml", '<image version="0.0.6" w="84" h="32"><stack><layer name="Text" src="data/text.svg"/><layer name="Raster" src="data/base.png"/></stack></image>')
+                archive.writestr("data/text.svg", svg)
+                if variant == "explicit":
+                    archive.writestr("data/probe.woff2", font)
+                archive.writestr("data/base.png", png(84, 32, 16, lambda x, y: BASE))
+                archive.writestr("mergedimage.png", png(84, 32, 16, lambda x, y: BASE))
+                archive.writestr("Thumbnails/thumbnail.png", png(84, 32, 8, lambda x, y: (0, 0, 255, 255)))
+            subprocess.run(["node", str(cli), "edit", str(source), str(edited), str(OUT / "font-edits.json")], check=True)
+            with zipfile.ZipFile(edited) as archive:
+                assert archive.read("data/text.svg") == svg
+                assert ET.fromstring(archive.read("stack.xml")).find("./stack/layer[@name='Raster']").get("x") == "1"
+                composite = archive.read("mergedimage.png")
+                width, height, depth, pixels = decode_rgba(composite)
+                assert (width, height, depth) == (84, 32, 16)
+                assert sum(red > 40000 and green < BASE[1] for red, green, _, _ in pixels) > 25
+                edited_images.append(composite)
+        assert edited_images[0] == edited_images[1]
+        print(f"PASS: {generic} fallback is pixel-identical to using the same explicit font")
 
 
 def check_svg_jpeg(cli):
@@ -227,8 +301,13 @@ def main():
         assert archive.read("mergedimage.png") == output.read_bytes()
         thumbnail = archive.read("Thumbnails/thumbnail.png")
         assert thumbnail[24] == 8 and thumbnail[28] == 0
-    for variant in ("font", "embedded-font", "font-spans", "font-stylesheet", "font-stylesheet-pi", "font-css-cascade", "font-svg-resource", "font-path", "font-position-list"):
+    for variant in (
+        "font", "embedded-font", "font-spans", "font-stylesheet", "font-stylesheet-pi",
+        "font-css-cascade", "font-centered-spans", "font-length-spacing", "font-length-glyphs",
+        "font-svg-resource", "font-path", "font-position-list", "font-letter-spacing", "font-weight", "font-style",
+    ):
         check_font_layer(cli, variant)
+    check_default_font(cli)
     check_svg_jpeg(cli)
     if args.krita:
         probe_krita(args.krita)

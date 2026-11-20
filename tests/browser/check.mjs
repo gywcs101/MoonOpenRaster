@@ -210,6 +210,8 @@ try {
   for (const variant of [
     'font', 'font-spans', 'font-stylesheet', 'font-stylesheet-pi',
     'font-css-cascade', 'font-svg-resource', 'font-path', 'font-position-list',
+    'font-centered-spans', 'font-length-spacing', 'font-length-glyphs', 'font-letter-spacing',
+    'font-weight', 'font-style', 'sans-serif-generic', 'serif-generic',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');
     await page.locator('#file').setInputFiles(path.join(fixtureDir, variant + '-input.ora'));

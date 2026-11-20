@@ -277,3 +277,22 @@ test "SVG percentage viewport uses the containing ORA canvas" {
     255, 255, 0, 0, 255, 0, 0, 0, 0,
   ])
 }
+
+///|
+test "SVG text uses bundled fonts without filesystem resources" {
+  let image = decode_svg(
+    b"<svg xmlns='http://www.w3.org/2000/svg' width='64' height='32'><text x='2' y='24' font-size='20'>A</text><text x='32' y='24' font-size='20' font-family='serif'>B</text></svg>",
+  )
+  let pixels = image.pixels()
+  for offset in [0, 32] {
+    let mut ink = 0
+    for y in 0..<32 {
+      for x in offset..<(offset + 32) {
+        if pixels[(y * 64 + x) * 4 + 3] > 128 {
+          ink += 1
+        }
+      }
+    }
+    assert_true(ink > 20)
+  }
+}

@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="moonora-source-consumer-") as folder:
     workspace = Path(folder)
     listing = subprocess.run(["moon", "package", "--list", "--frozen", "--target-dir", str(workspace / "list-build")], cwd=ROOT, check=True, capture_output=True, text=True, encoding="utf-8")
     files = sorted({line.strip().replace("\\", "/") for line in (listing.stdout + listing.stderr).splitlines() if (ROOT / line.strip()).is_file()})
-    required = _referenced_files(manifest) | {"moon.mod", "moon.pkg", "README.md", "operations.mbt", "examples/roundtrip/main.mbt", "docs/API.zh-CN.md"}
+    required = _referenced_files(manifest) | {"moon.mod", "moon.pkg", "README.md", "operations.mbt", "svg_fallback_fonts.mbt", "examples/roundtrip/main.mbt", "docs/API.zh-CN.md"}
     assert required <= set(files), required - set(files)
     assert not any(set(Path(file).parts) & {"web", "bridge", "fixtures", "tests", "scripts", "_build", ".git", "node_modules", ".mooncakes"} for file in files)
     size = sum((ROOT / file).stat().st_size for file in files)
