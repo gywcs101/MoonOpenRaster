@@ -147,13 +147,14 @@ fn check_svg_node(
   if ![
       "svg", "g", "a", "switch", "defs", "title", "desc", "metadata", "path", "rect",
       "circle", "ellipse", "line", "polyline", "polygon", "linearGradient", "radialGradient",
-      "stop", "clipPath", "style", "text", "tspan", "textPath", "symbol", "use",
-      "image", "mask", "pattern", "marker", "filter", "feBlend", "feColorMatrix",
+      "stop", "clipPath", "style", "text", "tspan", "tref", "textPath", "symbol",
+      "use", "image", "mask", "pattern", "marker", "filter", "feBlend", "feColorMatrix",
       "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting",
       "feDisplacementMap", "feDistantLight", "feFlood", "feFuncA", "feFuncB", "feFuncG",
       "feFuncR", "feGaussianBlur", "feImage", "feMerge", "feMergeNode", "feMorphology",
       "feOffset", "fePointLight", "feSpecularLighting", "feSpotLight", "feTile",
-      "feTurbulence",
+      "feTurbulence", "font", "font-face", "font-face-src", "font-face-name", "glyph",
+      "missing-glyph", "hkern", "vkern",
     ].contains(name) {
     raise Unsupported("Unsupported SVG element: " + name)
   }
@@ -624,46 +625,48 @@ fn svg_parse_source(data : Bytes) -> (String, @dom.Element) raise {
       },
     )
   }
-  let source = match source.find("<!DOCTYPE") {
-    None => source
-    Some(start) => {
-      guard source[start:].find(">") is Some(length) else {
-        raise InvalidDocument("Truncated SVG document type")
+  let parsed = @xml.loads(source, limit=32, entity_limit=65536)
+  if !parsed.unresolved().is_empty() {
+    raise Unsupported(
+      "SVG uses unresolved XML entities: " + parsed.unresolved().join(", "),
+    )
+  }
+  let mut contains_doctype = false
+  for node in parsed.children().items {
+    if node is DoctypeNode(declaration) {
+      contains_doctype = true
+      // MoonXML expands internal entity declarations without accessing external resources.
+      let header = match declaration.find("[") {
+        Some(at) => declaration[:at].to_owned()
+        None => declaration
       }
-      let end = start + length + 1
-      let declaration = source[start:end]
-        .to_owned()
+      let normalized = header
         .replace_all(old="\r", new=" ")
         .replace_all(old="\n", new=" ")
         .replace_all(old="\t", new=" ")
         .replace_all(old="'", new="\"")
       let words : Array[String] = []
-      for word in declaration.split(" ") {
+      for word in normalized.split(" ") {
         if !word.is_empty() {
           words.push(word.to_owned())
         }
       }
       guard [
-        "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">",
-        "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.0//EN\" \"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\">",
+        "svg", "svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\"",
+        "svg PUBLIC \"-//W3C//DTD SVG 1.0//EN\" \"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\"",
       ].contains(words.join(" ")) else {
         raise Unsupported("Unsupported SVG document type")
       }
-      // The well-known declaration contributes no external entity content.
-      source[:start].to_owned() + source[end:].to_owned()
     }
   }
-  let lower = source.to_lower()
-  if lower.contains("<!doctype") || lower.contains("<!entity") {
-    raise Unsupported("Unsupported SVG document declaration")
-  }
-  let parsed = @xml.loads(source)
   guard parsed.document_element() is Some(root) &&
     @dom.local_of(root.name) == "svg" else {
     raise Unsupported("Expected an SVG root element")
   }
   let styles = svg_project_stylesheets(parsed, root)
-  let changed = svg_select_branches(root, 0, Ref(0)) || styles
+  let changed = svg_select_branches(root, 0, Ref(0)) ||
+    styles ||
+    contains_doctype
   let ids : Map[String, Bool] = Map([])
   let refs : Array[String] = []
   check_svg_node(root, 0, Ref(0), ids, refs)
@@ -684,7 +687,12 @@ fn svg_render_source(
   size~ : (Int32, Int32)? = None,
 ) -> String raise {
   let mut normalized = false
+  let mut references_text = false
+  let fonts : Array[@dom.Element] = []
   fn normalize(element : @dom.Element) -> Unit {
+    if @dom.local_of(element.name) == "tref" {
+      references_text = true
+    }
     if ["image", "feImage"].contains(@dom.local_of(element.name)) {
       for key in ["href", "{http://www.w3.org/1999/xlink}href"] {
         if element.attr(key) is Some(href) {
@@ -703,12 +711,23 @@ fn svg_render_source(
         ignore(child.remove())
         normalized = true
       } else {
+        if @dom.local_of(child.name) == "font" {
+          fonts.push(child)
+        }
         normalize(child)
       }
     }
   }
   normalize(root)
-  if outline_svg_text(root, path, font_resource, size) || normalized {
+  if references_text {
+    ignore(expand_svg_text_references(root, path, font_resource))
+    normalized = true
+  }
+  let outlined = outline_svg_text(root, path, font_resource, size)
+  for font in fonts {
+    ignore(font.remove())
+  }
+  if outlined || normalized || !fonts.is_empty() {
     @dom.dumps(ElementNode(root))
   } else {
     source

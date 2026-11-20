@@ -53,6 +53,11 @@ def check_font_layer(cli, variant="font"):
     multiple_sources = variant == "font-alternate-sources"
     relative_size = variant == "font-relative-size"
     percentage_position = variant == "font-percentage-position"
+    external_outline_font = variant == "font-svg-outline-resource"
+    outline_font = variant == "font-svg-outline" or external_outline_font
+    right_to_left = variant == "font-rtl"
+    external_tref = variant == "font-tref-resource"
+    text_reference = variant == "font-tref" or external_tref
     external = variant == "font-svg-resource"
     path_external = variant == "font-path-resource"
     path_text = variant == "font-path" or path_external
@@ -62,6 +67,23 @@ def check_font_layer(cli, variant="font"):
     edited = OUT / f"{stem}-edited.ora"
     edited.unlink(missing_ok=True)
     font = (ROOT / "fixtures/ora-test.ttf").read_bytes()
+    if right_to_left:
+        # Keep the authored outlines and advances. Map them to two Hebrew letters.
+        modified = bytearray(font)
+        count = struct.unpack_from(">H", font, 4)[0]
+        cmap = next(offset for tag, _, offset, _ in struct.iter_unpack(
+            ">4sIII", font[12:12 + count * 16]) if tag == b"cmap")
+        table = cmap + struct.unpack_from(">I", font, cmap + 8)[0]
+        form, _, _, double_count = struct.unpack_from(">HHHH", font, table)
+        assert form == 4 and double_count == 6
+        ends = table + 14
+        starts = ends + double_count + 2
+        deltas = starts + double_count
+        for index, codepoint in enumerate((0x05D0, 0x05D1)):
+            struct.pack_into(">H", modified, ends + index * 2, codepoint)
+            struct.pack_into(">H", modified, starts + index * 2, codepoint)
+            struct.pack_into(">h", modified, deltas + index * 2, index + 1 - codepoint)
+        font = bytes(modified)
     uri = "data:font/ttf;base64," + base64.b64encode(font).decode() if embedded else "../font/%E6%B5%8B%E8%AF%95.ttf"
     face = f'@font-face {{ font-family: OraTest; src: url("{uri}"); }}'
     if multiple_sources:
@@ -108,6 +130,26 @@ def check_font_layer(cli, variant="font"):
         position_attrs = 'x="0%" y="100%"'
         parent_attrs = ' viewBox="0 0 8 4"'
         font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
+    if right_to_left:
+        position_attrs = 'x="16" y="8" direction="rtl" xml:lang="he"'
+        text = "אב"
+    if text_reference:
+        definition = '<defs><text id="fragment" font-family="OraTest">中</text></defs>'
+        referenced_text = f'<svg xmlns="http://www.w3.org/2000/svg">{definition}</svg>'.encode()
+        text = 'A<tref href="#fragment"/>'
+        if external_tref:
+            definition = ""
+            text = text.replace("#fragment", "../word/label.svg#fragment")
+    if outline_font:
+        inline_style = (
+            '<defs><font id="outline" horiz-adv-x="1000"><font-face font-family="OraTest" units-per-em="1000"/>'
+            '<glyph unicode="A" glyph-name="latin" d="M0 0 H500 V500 H0Z"/>'
+            '<glyph unicode="中" glyph-name="han"><path d="M0 0 H750 V750 H0Z"/></glyph>'
+            '<hkern g1="latin" u2="中" k="125"/></font></defs>'
+        )
+        if external_outline_font:
+            outline_resource = f'<svg xmlns="http://www.w3.org/2000/svg">{inline_style}</svg>'.encode()
+            inline_style = '<style>@font-face { font-family: OraTest; src: url("../font/outlines.svg#outline"); }</style>'
     svg = (
         f'{stylesheet}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8"{parent_attrs}>'
         f'{inline_style}{definition}'
@@ -123,6 +165,10 @@ def check_font_layer(cli, variant="font"):
             return (x < 6 and y >= 4) or (x >= 12 and y >= 2)
         if spacing or letter_spacing or weighted or slanted:
             return (x < 4 and y >= 4) or (x >= 12 and y >= 2)
+        if outline_font:
+            return (x < 4 and y >= 4) or (7 <= x < 13 and y >= 2)
+        if right_to_left:
+            return (x < 6 and y >= 2) or (8 <= x < 12 and y >= 4)
         return (x < 4 and y >= 4) or (8 <= x < 14 and y >= 2)
 
     with zipfile.ZipFile(source, "w") as archive:
@@ -133,7 +179,11 @@ def check_font_layer(cli, variant="font"):
             archive.writestr("data/word/source.svg", external_svg)
         if path_external:
             archive.writestr("data/paths/layout.svg", path_resource)
-        if not embedded:
+        if external_outline_font:
+            archive.writestr("data/font/outlines.svg", outline_resource)
+        if external_tref:
+            archive.writestr("data/word/label.svg", referenced_text)
+        if not embedded and not outline_font:
             archive.writestr("data/font/测试.ttf", font)
         if multiple_sources:
             archive.writestr("data/font/unsupported.woff", b"invalid font")
@@ -162,7 +212,11 @@ def check_font_layer(cli, variant="font"):
             assert archive.read("data/word/source.svg") == external_svg
         if path_external:
             assert archive.read("data/paths/layout.svg") == path_resource.encode()
-        if not embedded:
+        if external_outline_font:
+            assert archive.read("data/font/outlines.svg") == outline_resource
+        if external_tref:
+            assert archive.read("data/word/label.svg") == referenced_text
+        if not embedded and not outline_font:
             assert archive.read("data/font/测试.ttf") == font
             assert archive.getinfo("data/font/测试.ttf").flag_bits & 0x800
         if imported:
@@ -364,7 +418,8 @@ def main():
         "font-css-cascade", "font-centered-spans", "font-length-spacing", "font-length-glyphs",
         "font-svg-resource", "font-path", "font-path-resource", "font-position-list",
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
-        "font-relative-size", "font-percentage-position",
+        "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
+        "font-tref", "font-tref-resource",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)

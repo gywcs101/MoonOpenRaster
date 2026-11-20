@@ -48,6 +48,7 @@ fn svg_css_properties(source : String) -> Map[String, String] {
 ///|
 priv struct SvgFontFace {
   sources : Array[String]
+  embedded : SvgInlineFont?
   weight : Int32
   font_style : String
 }
@@ -79,6 +80,12 @@ fn svg_font_sources(declaration : String, base : String) -> Array[String] {
         let href = svg_css_unquote(declaration[start:i].to_owned())
         if href.has_prefix("data:") {
           urls.push(href)
+        } else if href.find("#") is Some(fragment) {
+          let location = href[:fragment].to_owned()
+          if location.to_lower().has_suffix(".svg") &&
+            svg_archive_path(base, location) is Some(path) {
+            urls.push(svg_archive_uri(path) + href[fragment:].to_owned())
+          }
         } else if svg_archive_path(base, href) is Some(path) {
           urls.push(svg_archive_uri(path))
         }
@@ -197,6 +204,7 @@ fn svg_font_faces_from_css(
         let variants = faces.get(name).unwrap_or([])
         variants.push({
           sources,
+          embedded: None,
           weight: svg_font_weight(
             properties.get("font-weight").unwrap_or("normal"),
           ),
@@ -296,10 +304,14 @@ fn svg_text_properties(
   computed : @css.CascadedValues,
 ) -> Map[String, String] {
   let properties = inherited.copy()
+  if element.attr("{http://www.w3.org/XML/1998/namespace}lang")
+    is Some(language) {
+    properties["language"] = language
+  }
   for
     name in [
       "font-family", "font-size", "font-weight", "font-style", "text-anchor", "letter-spacing",
-      "word-spacing",
+      "word-spacing", "direction", "writing-mode",
     ] {
     let candidate = match computed.get(name) {
       Some(declaration) =>
@@ -503,7 +515,7 @@ fn svg_unpositioned_spans(element : @dom.Element) -> Bool {
   element
   .child_elements()
   .all(child => {
-    ["tspan", "a"].contains(@dom.local_of(child.name)) &&
+    ["tspan", "tref", "a"].contains(@dom.local_of(child.name)) &&
     !["x", "y", "dx", "dy", "rotate", "transform"].any(key => {
       child.has_attr(key)
     }) &&
@@ -516,6 +528,103 @@ fn svg_spacing(value : String?, size : Double) -> Double raise {
   match value {
     None | Some("normal") => 0.0
     Some(raw) => svg_relative_length(raw, size)
+  }
+}
+
+///|
+fn svg_shape_font_sources(
+  family : String,
+  sources : Array[String],
+  fonts : Map[String, @font.TTFont],
+  load : (String) -> Bytes?,
+  text : String,
+  size : Double,
+  desired_weight : Int32,
+  ligatures : Bool,
+  direction : @font.TextDirection,
+  language : String,
+) -> SvgTextRun raise {
+  if sources.length() > 8 {
+    raise Unsupported("SVG font has too many alternate sources: " + family)
+  }
+  let mut selected : (String, @font.TTFont)? = None
+  for uri in sources {
+    if !uri.has_prefix("data:") && uri.find("#") is Some(at) {
+      let fragment = uri[at + 1:].to_owned()
+      if svg_unescape(fragment, path=false) is Some(id) &&
+        load(uri[:at].to_owned()) is Some(bytes) {
+        let (_, root) = svg_parse_source(bytes)
+        if svg_inline_font_by_id(root, id) is Some(font) {
+          guard direction != Rtl else {
+            raise Unsupported("Right-to-left layout requires an OpenType font")
+          }
+          return svg_shape_inline_font(font, text, size, ligatures)
+        }
+      }
+      continue
+    }
+    if fonts.get(uri) is Some(font) {
+      selected = Some((uri, font))
+      break
+    }
+    guard fonts.length() < 8 else {
+      raise Unsupported("SVG exceeds the font resource count")
+    }
+    let bytes = match uri {
+      "fallback:sans-serif" =>
+        Some(@base64.decode(svg_fallback_sans[:], ignore_whitespace=true))
+      "fallback:serif" =>
+        Some(@base64.decode(svg_fallback_serif[:], ignore_whitespace=true))
+      _ => svg_load_font(uri, load)
+    }
+    if bytes is Some(bytes) &&
+      svg_font_directory_is_bounded(bytes[:]) &&
+      @font.parse_font(bytes) is Some(font) {
+      fonts[uri] = font
+      selected = Some((uri, font))
+      break
+    }
+  }
+  guard selected is Some((uri, font)) else {
+    raise Unsupported("Missing or invalid SVG font: " + sources.join(", "))
+  }
+  guard font.units_per_em > 0 else {
+    raise Unsupported("Invalid SVG font size or units per em")
+  }
+  let axes : Map[String, Double] = Map([])
+  if font.var_axes.any(axis => axis.tag == "wght") {
+    axes["wght"] = desired_weight.to_double()
+  }
+  let shaped = font.shape_text(
+    text,
+    size,
+    axis_values=axes,
+    ligatures~,
+    direction~,
+    language~,
+  ) catch {
+    _ => raise Unsupported("Unable to shape text with SVG font: " + family)
+  }
+  if !shaped.missing_codepoints.is_empty() {
+    raise Unsupported("SVG font is missing characters: " + uri)
+  }
+  {
+    glyphs: shaped.bounds.glyphs.map(glyph => {
+      codepoint: glyph.codepoint,
+      text_start: glyph.text_start,
+      text_end: glyph.text_end,
+      x: glyph.x,
+      y: glyph.y,
+      advance_width: glyph.advance_width,
+      outline: () => {
+        @font.path_commands_to_svg_d(
+          font.glyph_outline_at(glyph.glyph_id, shaped.variations),
+        )
+      },
+    }),
+    advance: shaped.bounds.advance_width,
+    scale: size / font.units_per_em.to_double(),
+    left_to_right: shaped.direction == "ltr",
   }
 }
 
@@ -551,7 +660,15 @@ fn svg_glyph_run(
     style.get("font-weight").unwrap_or("normal"),
   )
   let desired_style = style.get("font-style").unwrap_or("normal")
+  let mode = style.get("writing-mode").unwrap_or("horizontal-tb")
+  guard ["horizontal-tb", "lr", "lr-tb", "rl", "rl-tb"].contains(mode) else {
+    raise Unsupported("Vertical SVG text layout is unsupported")
+  }
+  let rtl = style.get("direction").unwrap_or("ltr") == "rtl" ||
+    mode == "rl" ||
+    mode == "rl-tb"
   let mut sources : Array[String] = []
+  let mut embedded : SvgInlineFont? = None
   for choice in family.split(",") {
     let name = choice.trim().to_owned()
     let generic = name.to_lower()
@@ -567,68 +684,47 @@ fn svg_glyph_run(
           svg_font_weight_rank(face.weight, desired_weight)
         if rank <= best {
           sources = face.sources
+          embedded = face.embedded
           best = rank
         }
       }
-      if !sources.is_empty() {
+      if !sources.is_empty() || embedded is Some(_) {
         break
       }
     }
   }
-  if sources.is_empty() {
+  if sources.is_empty() && embedded is None {
     raise Unsupported("SVG text needs an in-document @font-face for " + family)
-  }
-  if sources.length() > 8 {
-    raise Unsupported("SVG font has too many alternate sources: " + family)
-  }
-  let mut selected : (String, @font.TTFont)? = None
-  for uri in sources {
-    if fonts.get(uri) is Some(font) {
-      selected = Some((uri, font))
-      break
-    }
-    guard fonts.length() < 8 else {
-      raise Unsupported("SVG exceeds the font resource count")
-    }
-    let bytes = match uri {
-      "fallback:sans-serif" =>
-        Some(@base64.decode(svg_fallback_sans[:], ignore_whitespace=true))
-      "fallback:serif" =>
-        Some(@base64.decode(svg_fallback_serif[:], ignore_whitespace=true))
-      _ => svg_load_font(uri, load)
-    }
-    if bytes is Some(bytes) &&
-      svg_font_directory_is_bounded(bytes[:]) &&
-      @font.parse_font(bytes) is Some(font) {
-      fonts[uri] = font
-      selected = Some((uri, font))
-      break
-    }
-  }
-  guard selected is Some((uri, font)) else {
-    raise Unsupported("Missing or invalid SVG font: " + sources.join(", "))
-  }
-  guard font.units_per_em > 0 else {
-    raise Unsupported("Invalid SVG font size or units per em")
   }
   let letter_spacing = svg_spacing(style.get("letter-spacing"), size)
   let word_spacing = svg_spacing(style.get("word-spacing"), size)
-  let axes : Map[String, Double] = Map([])
-  if font.var_axes.any(axis => axis.tag == "wght") {
-    axes["wght"] = desired_weight.to_double()
+  let ligatures = positioning is None && letter_spacing == 0.0
+  let shaped = match embedded {
+    Some(font) => {
+      guard !rtl else {
+        raise Unsupported("Right-to-left layout requires an OpenType font")
+      }
+      svg_shape_inline_font(font, text, size, ligatures)
+    }
+    None =>
+      svg_shape_font_sources(
+        family,
+        sources,
+        fonts,
+        load,
+        text,
+        size,
+        desired_weight,
+        ligatures,
+        if rtl {
+          Rtl
+        } else {
+          Ltr
+        },
+        style.get("language").unwrap_or("und"),
+      )
   }
-  let shaped = font.shape_text(
-    text,
-    size,
-    axis_values=axes,
-    ligatures=positioning is None && letter_spacing == 0.0,
-  ) catch {
-    _ => raise Unsupported("Unable to shape text with SVG font: " + family)
-  }
-  if !shaped.missing_codepoints.is_empty() {
-    raise Unsupported("SVG font is missing characters: " + uri)
-  }
-  let glyphs = shaped.bounds.glyphs
+  let glyphs = shaped.glyphs
   let spacing_offsets : Array[Double] = []
   let mut spacing = 0.0
   let mut clusters = 0
@@ -648,7 +744,7 @@ fn svg_glyph_run(
       }
     }
   }
-  let advance = shaped.bounds.advance_width + spacing
+  let advance = shaped.advance + spacing
   let (adjusted, width_scale, letter_gap) = match length_adjust {
     Some((target, true)) if advance > 0.0 => (target, target / advance, 0.0)
     Some((target, false)) if clusters > 1 =>
@@ -656,12 +752,12 @@ fn svg_glyph_run(
     _ => (advance, 1.0, 0.0)
   }
   let anchor = match style.get("text-anchor").unwrap_or("start") {
-    "start" => 0.0
+    "start" => if rtl { adjusted } else { 0.0 }
     "middle" => adjusted / 2.0
-    "end" => adjusted
+    "end" => if rtl { 0.0 } else { adjusted }
     _ => raise Unsupported("Invalid SVG text-anchor")
   }
-  let scale = size / font.units_per_em.to_double()
+  let scale = shaped.scale
   let children : Array[@dom.Node] = []
   let mut shift_x = 0.0
   let mut shift_y = 0.0
@@ -674,14 +770,13 @@ fn svg_glyph_run(
         (if character.to_int() > 0xffff { 2 } else { 1 }),
       )
     }
-    if shaped.direction != "ltr" ||
-      shaped.bounds.glyphs.length() + 1 != offsets.length() {
+    if !shaped.left_to_right || shaped.glyphs.length() + 1 != offsets.length() {
       raise Unsupported(
         "SVG position lists require one glyph per character in left-to-right order",
       )
     }
   }
-  for index, glyph in shaped.bounds.glyphs {
+  for index, glyph in shaped.glyphs {
     if positioning is Some(lists) {
       if glyph.text_start != offsets[index] ||
         glyph.text_end != offsets[index + 1] {
@@ -699,9 +794,7 @@ fn svg_glyph_run(
       shift_y += lists[3].get(index).unwrap_or(0.0)
       angle = lists[4].get(index).unwrap_or(angle)
     }
-    let d = @font.path_commands_to_svg_d(
-      font.glyph_outline_at(glyph.glyph_id, shaped.variations),
-    )
+    let d = (glyph.outline)()
     outline_size.val += d.length()
     if outline_size.val > 4194304 {
       raise Unsupported(
@@ -770,6 +863,14 @@ fn svg_glyph_group(
   viewport : (Double, Double),
   path~ : SvgTextPath? = None,
 ) -> @dom.Element raise {
+  if !element.child_elements().is_empty() &&
+    (
+      style.get("direction") == Some("rtl") ||
+      style.get("writing-mode") == Some("rl") ||
+      style.get("writing-mode") == Some("rl-tb")
+    ) {
+    raise Unsupported("Nested right-to-left SVG text layout is unsupported")
+  }
   let font_size = svg_dimension(style.get("font-size").unwrap_or("16"))
   let (width, height) = viewport
   let xs = svg_text_numbers(element, "x", font_size, width)
@@ -865,7 +966,9 @@ fn svg_glyph_group(
     let parent : @dom.Node = ElementNode(element)
     for node in parent.children() {
       match node {
-        ElementNode(span) if ["tspan", "a"].contains(@dom.local_of(span.name)) => {
+        ElementNode(span) if ["tspan", "tref", "a"].contains(
+            @dom.local_of(span.name),
+          ) => {
           let span_selector = svg_text_selector(span, Some(selector))
           let span_style = svg_text_properties(
             span,
@@ -1064,10 +1167,28 @@ fn outline_svg_text(
   let mut contains_text = false
   let styles : Array[String] = []
   let paths : Map[String, @dom.Element] = Map([])
+  let faces : Map[String, Array[SvgFontFace]] = Map([])
   fn collect(element : @dom.Element) -> Unit {
     match @dom.local_of(element.name) {
       "style" => styles.push(element.text())
       "text" => contains_text = true
+      "font" =>
+        for descriptor in element.child_elements() {
+          if @dom.local_of(descriptor.name) == "font-face" &&
+            descriptor.attr("font-family") is Some(family) {
+            let name = svg_css_unquote(family).to_lower()
+            let variants = faces.get(name).unwrap_or([])
+            variants.push({
+              sources: [],
+              embedded: Some({ metrics: descriptor, source: element, }),
+              weight: svg_font_weight(
+                descriptor.attr("font-weight").unwrap_or("normal"),
+              ),
+              font_style: descriptor.attr("font-style").unwrap_or("normal"),
+            })
+            faces[name] = variants
+          }
+        }
       "path" => if element.attr("id") is Some(id) { paths[id] = element }
       _ => ()
     }
@@ -1089,7 +1210,6 @@ fn outline_svg_text(
       (w.to_double(), h.to_double())
     }
   }
-  let faces : Map[String, Array[SvgFontFace]] = Map([])
   let visited : Map[String, Bool] = Map([])
   let sheets : Array[@css.Stylesheet] = []
   for style in styles {

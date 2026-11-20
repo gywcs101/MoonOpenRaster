@@ -211,7 +211,8 @@ try {
     'font', 'font-spans', 'font-stylesheet', 'font-stylesheet-pi',
     'font-css-cascade', 'font-svg-resource', 'font-path', 'font-path-resource', 'font-position-list',
     'font-centered-spans', 'font-length-spacing', 'font-length-glyphs', 'font-letter-spacing',
-    'font-weight', 'font-style', 'font-alternate-sources', 'font-relative-size', 'font-percentage-position',
+    'font-weight', 'font-style', 'font-alternate-sources', 'font-relative-size', 'font-percentage-position', 'font-svg-outline',
+    'font-svg-outline-resource', 'font-rtl', 'font-tref', 'font-tref-resource',
     'sans-serif-generic', 'serif-generic', 'nested-image',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');

@@ -500,3 +500,22 @@ test "SVG fractional filter offsets preserve the alpha coverage of a translated 
     0, 0, 0, 0, 255, 0, 0, 128, 255, 0, 0, 128, 0, 0, 0, 0,
   ])
 }
+
+///|
+test "SVG expands local XML color entities and retains the source declaration" {
+  let source = b"<!DOCTYPE svg [<!ENTITY ink '#ff4500'>]><svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><rect width='1' height='1' fill='&ink;'/></svg>"
+  let image = decode_svg(source)
+  assert_eq(image.pixels(), [255, 69, 0, 255])
+  assert_eq(image.svg_source(), Some(source))
+}
+
+///|
+test "SVG reports unresolved external XML entities before rendering" {
+  let source = b"<!DOCTYPE svg [<!ENTITY ink SYSTEM 'palette.txt'>]><svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><text x='0' y='1'>&ink;</text></svg>"
+  let result = Ok(decode_svg(source)) catch { error => Err(error) }
+  match result {
+    Err(Unsupported(message)) =>
+      assert_eq(message, "SVG uses unresolved XML entities: ink")
+    _ => fail("Expected an unresolved SVG entity diagnostic")
+  }
+}
