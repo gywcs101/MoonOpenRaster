@@ -398,6 +398,7 @@ fn convolve_filter_image(
   target_y : Int32,
   edge_mode : FilterEdgeMode,
   preserve_alpha : Bool,
+  linear_rgb : Bool,
 ) -> Image {
   if order_x <= 0 || order_y <= 0 || kernel.length() != order_x * order_y {
     return source
@@ -422,16 +423,32 @@ fn convolve_filter_image(
             order_x -
             1 -
             kernel_x]
-          red = red + sample.r.to_double() * weight
-          green = green + sample.g.to_double() * weight
-          blue = blue + sample.b.to_double() * weight
-          alpha = alpha + sample.a.to_double() * weight
+          let sample_alpha = sample.a.to_double() / 255.0
+          let color_weight = if preserve_alpha {
+            weight
+          } else {
+            weight * sample_alpha
+          }
+          red += filter_input_channel(sample.r, linear_rgb) * color_weight
+          green += filter_input_channel(sample.g, linear_rgb) * color_weight
+          blue += filter_input_channel(sample.b, linear_rgb) * color_weight
+          alpha += sample_alpha * weight
         }
       }
+      let opacity = if preserve_alpha {
+        source.get_pixel(x, y).a.to_double() / 255.0
+      } else {
+        clamp_filter_unit(alpha / safe_divisor + bias)
+      }
       fn output_channel(value : Double) -> Int32 {
-        (clamp_filter_unit(value / safe_divisor / 255.0 + bias) * 255.0)
-        .round()
-        .to_int()
+        let component = if preserve_alpha {
+          value / safe_divisor + bias
+        } else if opacity > 0.0 {
+          value / (safe_divisor * opacity) + bias
+        } else {
+          0.0
+        }
+        filter_output_channel(component, linear_rgb)
       }
       result.set_pixel(
         x,
@@ -440,11 +457,7 @@ fn convolve_filter_image(
           output_channel(red),
           output_channel(green),
           output_channel(blue),
-          if preserve_alpha {
-            source.get_pixel(x, y).a
-          } else {
-            output_channel(alpha)
-          },
+          (opacity * 255.0).round().to_int(),
         ),
       )
     }
@@ -845,6 +858,7 @@ fn composite_filter_pixel(
   k2 : Double,
   k3 : Double,
   k4 : Double,
+  linear_rgb : Bool,
 ) -> Color {
   let source_alpha = source.a.to_double() / 255.0
   let backdrop_alpha = backdrop.a.to_double() / 255.0
@@ -872,9 +886,11 @@ fn composite_filter_pixel(
     return Color::transparent()
   }
   fn channel(source_channel : Int32, backdrop_channel : Int32) -> Int32 {
-    let source_premultiplied = source_channel.to_double() / 255.0 * source_alpha
-    let backdrop_premultiplied = backdrop_channel.to_double() /
-      255.0 *
+    let source_premultiplied = filter_input_channel(source_channel, linear_rgb) *
+      source_alpha
+    let backdrop_premultiplied = filter_input_channel(
+        backdrop_channel, linear_rgb,
+      ) *
       backdrop_alpha
     let output_premultiplied = if operator == CompositeArithmetic {
       clamp_filter_unit(
@@ -887,9 +903,7 @@ fn composite_filter_pixel(
       source_premultiplied * source_factor +
       backdrop_premultiplied * backdrop_factor
     }
-    (clamp_filter_unit(output_premultiplied / output_alpha) * 255.0)
-    .round()
-    .to_int()
+    filter_output_channel(output_premultiplied / output_alpha, linear_rgb)
   }
   Color::rgba(
     channel(source.r, backdrop.r),
@@ -908,6 +922,7 @@ fn composite_filter_images(
   k2 : Double,
   k3 : Double,
   k4 : Double,
+  linear_rgb : Bool,
 ) -> Image {
   let width = if source.width < backdrop.width {
     source.width
@@ -933,6 +948,7 @@ fn composite_filter_images(
           k2,
           k3,
           k4,
+          linear_rgb,
         ),
       )
     }
@@ -1168,6 +1184,7 @@ fn evaluate_filter_graph(
               input, source, source_alpha, previous, named,
             ),
             mode,
+            linear_rgb~,
           ),
           result,
         )
@@ -1185,6 +1202,7 @@ fn evaluate_filter_graph(
             k2,
             k3,
             k4,
+            linear_rgb,
           ),
           result,
         )
@@ -1199,6 +1217,7 @@ fn evaluate_filter_graph(
               input, source, source_alpha, previous, named,
             ),
             Normal,
+            linear_rgb~,
           )
         }
         (merged, result)
@@ -1256,6 +1275,7 @@ fn evaluate_filter_graph(
             target_y,
             edge_mode,
             preserve_alpha,
+            linear_rgb,
           ),
           result,
         )

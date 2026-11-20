@@ -412,3 +412,18 @@ test "SVG filter color transfer defaults to linear sRGB" {
   let svg = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><defs><filter id='f' filterUnits='userSpaceOnUse' x='0' y='0' width='1' height='1'><feComponentTransfer><feFuncR type='linear' slope='.5'/></feComponentTransfer></filter></defs><rect width='1' height='1' fill='red' filter='url(#f)'/></svg>"
   assert_eq(decode_svg(svg).pixels(), [188, 0, 0, 255])
 }
+
+///|
+test "SVG metadata survives editing without entering the render tree" {
+  let source = b"<svg xmlns='http://www.w3.org/2000/svg' xmlns:meta='urn:moonora:test' width='1' height='1'><metadata><meta:text>This metadata is not a graphic</meta:text><rect width='1' height='1' fill='blue'/></metadata><rect width='1' height='1' fill='red'/></svg>"
+  let image = decode_svg(source)
+  let doc = Document::new(2, 1, [Layer(Properties::new("Source"), image)])
+  let edited = read(
+    doc.set_properties([0], Properties::new("Source", x=1)).write(),
+  )
+  assert_eq(edited.render().pixels(), [0, 0, 0, 0, 255, 0, 0, 255])
+  match edited.node([0]) {
+    Layer(_, image) => assert_eq(image.svg_source(), Some(source))
+    _ => fail("Expected SVG layer")
+  }
+}

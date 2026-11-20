@@ -6,7 +6,7 @@ const transparent = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4
 const width = 16;
 const height = 12;
 const wrap = body => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${body}</svg>`;
-const filter = body => `<filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}" color-interpolation-filters="sRGB">${body}</filter>`;
+const filter = (body, space = 'sRGB') => `<filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}"${space ? ' color-interpolation-filters="' + space + '"' : ''}>${body}</filter>`;
 const cases = {
   'marker with user space units': wrap(
     '<defs><marker id="m" markerUnits="userSpaceOnUse" markerWidth="3" markerHeight="3" refX="0" refY="1"><rect width="3" height="2" fill="red"/></marker></defs>' +
@@ -54,8 +54,7 @@ const cases = {
     '<defs>' + filter('<feColorMatrix type="luminanceToAlpha"/>') + '</defs>' +
     '<rect x="2" y="2" width="10" height="8" fill="lime" filter="url(#f)"/>'),
   'default linear RGB color transfer': wrap(
-    '<defs>' + filter('<feComponentTransfer><feFuncR type="linear" slope=".5"/></feComponentTransfer>')
-      .replace(' color-interpolation-filters="sRGB"', '') + '</defs>' +
+    '<defs>' + filter('<feComponentTransfer><feFuncR type="linear" slope=".5"/></feComponentTransfer>', '') + '</defs>' +
     '<rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
   'per-primitive linear RGB override': wrap(
     '<defs>' + filter('<feComponentTransfer style="color-interpolation-filters: linearRGB"><feFuncR type="linear" slope=".5"/></feComponentTransfer>') + '</defs>' +
@@ -66,6 +65,24 @@ const cases = {
   'stitched fractal noise': wrap(
     '<defs>' + filter('<feTurbulence type="fractalNoise" baseFrequency=".16 .2" numOctaves="2" seed="17" stitchTiles="stitch"/>') + '</defs>' +
     '<rect width="16" height="12" filter="url(#f)"/>'),
+  'alpha-aware convolution': wrap(
+    '<defs>' + filter('<feConvolveMatrix order="3 1" kernelMatrix="1 1 1" edgeMode="none"/>') + '</defs>' +
+    '<rect x="5" y="3" width="6" height="6" fill="red" filter="url(#f)"/>'),
+  'linear RGB convolution preserving alpha': wrap(
+    '<defs>' + filter('<feConvolveMatrix color-interpolation-filters="linearRGB" order="3 1" kernelMatrix="1 1 1" preserveAlpha="true" edgeMode="none"/>') + '</defs>' +
+    '<g filter="url(#f)"><rect x="2" y="2" width="6" height="8" fill="red"/><rect x="8" y="2" width="6" height="8" fill="lime"/></g>'),
+  'linear RGB screen blend': wrap(
+    '<defs>' + filter('<feFlood flood-color="#805020" result="under"/>' +
+      '<feBlend in="SourceGraphic" in2="under" mode="screen"/>', 'linearRGB') + '</defs>' +
+    '<rect width="16" height="12" fill="#3060a0" filter="url(#f)"/>'),
+  'linear RGB source-over composite': wrap(
+    '<defs>' + filter('<feFlood flood-color="blue" result="under"/>' +
+      '<feComposite in="SourceGraphic" in2="under" operator="over"/>', 'linearRGB') + '</defs>' +
+    '<rect width="16" height="12" fill="red" fill-opacity=".5" filter="url(#f)"/>'),
+  'linear RGB merge': wrap(
+    '<defs>' + filter('<feFlood flood-color="blue" result="under"/>' +
+      '<feMerge><feMergeNode in="under"/><feMergeNode in="SourceGraphic"/></feMerge>', 'linearRGB') + '</defs>' +
+    '<rect width="16" height="12" fill="red" fill-opacity=".5" filter="url(#f)"/>'),
 };
 
 function run(query) {

@@ -55,11 +55,8 @@ fn svg_dimension(value : String) -> Double raise OraError {
 }
 
 ///|
-fn svg_dimensions(
-  root : @dom.Element,
-  viewport : (Int32, Int32)?,
-) -> (Int32, Int32) raise OraError {
-  let view = match root.attr("viewBox") {
+fn svg_viewbox_size(root : @dom.Element) -> (Double, Double)? raise OraError {
+  match root.attr("viewBox") {
     Some(value) => {
       let separated = value
         .replace_all(old=",", new=" ")
@@ -86,25 +83,38 @@ fn svg_dimensions(
     }
     None => None
   }
+}
+
+///|
+fn svg_viewport_axis(
+  value : String?,
+  fallback : Double,
+) -> Double raise OraError {
+  guard value is Some(text) else { return fallback }
+  let text = text[:].trim().to_owned()
+  if text.has_suffix("%") {
+    fallback * svg_number(text[:text.length() - 1].to_owned()) / 100.0
+  } else {
+    svg_dimension(text)
+  }
+}
+
+///|
+fn svg_dimensions(
+  root : @dom.Element,
+  viewport : (Int32, Int32)?,
+) -> (Int32, Int32) raise OraError {
+  let view = svg_viewbox_size(root)
   let (container_w, container_h) = match viewport {
     Some((w, h)) => (w.to_double(), h.to_double())
     None => view.unwrap_or((300.0, 150.0))
-  }
-  fn axis(value : String?, fallback : Double) -> Double raise OraError {
-    guard value is Some(text) else { return fallback }
-    let text = text[:].trim().to_owned()
-    if text.has_suffix("%") {
-      fallback * svg_number(text[:text.length() - 1].to_owned()) / 100.0
-    } else {
-      svg_dimension(text)
-    }
   }
   let w = root.attr("width")
   let h = root.attr("height")
   let (width, height) = if w is None && h is None && view is Some(size) {
     size
   } else {
-    (axis(w, container_w), axis(h, container_h))
+    (svg_viewport_axis(w, container_w), svg_viewport_axis(h, container_h))
   }
   if width <= 0.0 || height <= 0.0 || width > 2048.0 || height > 2048.0 {
     raise Unsupported(
@@ -149,6 +159,9 @@ fn check_svg_node(
       raise InvalidDocument("Duplicate SVG id: " + id)
     }
     ids[id] = true
+  }
+  if ["title", "desc", "metadata"].contains(name) {
+    return
   }
   for (key, value) in element.attrs {
     if value.length() > 8192 &&
@@ -436,9 +449,13 @@ fn svg_nested_image(
   let (source, root) = svg_parse_source(data)
   let (width, height) = svg_dimensions(root, None)
   guard images.reserve(width, height) else { return None }
-  let prepared = svg_render_source(source, root, name, href => {
-    svg_archive_resource(name, entries, retained, href)
-  })
+  let prepared = svg_render_source(
+    source,
+    root,
+    name,
+    href => svg_archive_resource(name, entries, retained, href),
+    size=Some((width, height)),
+  )
   let options = svg_resource_options(name, entries, retained, images~)
   let rendered = @vector.render_svg(prepared, width, height, options)
   guard rendered.diagnostics.is_empty() else { return None }
@@ -629,8 +646,9 @@ fn svg_render_source(
   root : @dom.Element,
   path : String,
   font_resource : (String) -> Bytes?,
+  size~ : (Int32, Int32)? = None,
 ) -> String raise {
-  let mut inline_images = false
+  let mut normalized = false
   fn normalize(element : @dom.Element) -> Unit {
     if ["image", "feImage"].contains(@dom.local_of(element.name)) {
       for key in ["href", "{http://www.w3.org/1999/xlink}href"] {
@@ -640,17 +658,22 @@ fn svg_render_source(
             // Resolve the child with the same safe parser and resource budget.
             // Keep the input URI unchanged in the stored layer source.
             element.set_attr(key, "ora-inline-image:" + uri[5:].to_owned())
-            inline_images = true
+            normalized = true
           }
         }
       }
     }
     for child in element.child_elements() {
-      normalize(child)
+      if ["title", "desc", "metadata"].contains(@dom.local_of(child.name)) {
+        ignore(child.remove())
+        normalized = true
+      } else {
+        normalize(child)
+      }
     }
   }
   normalize(root)
-  if outline_svg_text(root, path, font_resource) || inline_images {
+  if outline_svg_text(root, path, font_resource, size) || normalized {
     @dom.dumps(ElementNode(root))
   } else {
     source
@@ -672,6 +695,7 @@ fn decode_svg_with_options(
     root,
     path.unwrap_or(""),
     font_resource,
+    size=Some((width, height)),
   )
   let rendered = @vector.render_svg(render_source, width, height, options)
   for diagnostic in rendered.diagnostics {

@@ -473,6 +473,7 @@ fn svg_text_numbers(
   element : @dom.Element,
   name : String,
   size : Double,
+  axis : Double,
 ) -> Array[Double] raise {
   let value = element
     .attr(name)
@@ -484,10 +485,13 @@ fn svg_text_numbers(
   let result : Array[Double] = []
   for item in value.split(" ") {
     if !item.is_empty() {
+      let token = item.to_owned()
       if name == "rotate" {
-        result.push(svg_number(item.to_owned()))
+        result.push(svg_number(token))
+      } else if token.has_suffix("%") {
+        result.push(svg_viewport_axis(Some(token), axis))
       } else {
-        result.push(svg_relative_length(item.to_owned(), size))
+        result.push(svg_relative_length(token, size))
       }
     }
   }
@@ -763,14 +767,16 @@ fn svg_glyph_group(
   paths : Map[String, @dom.Element],
   selector : @css.Element,
   sheets : Array[@css.Stylesheet],
+  viewport : (Double, Double),
   path~ : SvgTextPath? = None,
 ) -> @dom.Element raise {
   let font_size = svg_dimension(style.get("font-size").unwrap_or("16"))
-  let xs = svg_text_numbers(element, "x", font_size)
-  let ys = svg_text_numbers(element, "y", font_size)
-  let dx = svg_text_numbers(element, "dx", font_size)
-  let dy = svg_text_numbers(element, "dy", font_size)
-  let rotations = svg_text_numbers(element, "rotate", font_size)
+  let (width, height) = viewport
+  let xs = svg_text_numbers(element, "x", font_size, width)
+  let ys = svg_text_numbers(element, "y", font_size, height)
+  let dx = svg_text_numbers(element, "dx", font_size, width)
+  let dy = svg_text_numbers(element, "dy", font_size, height)
+  let rotations = svg_text_numbers(element, "rotate", font_size, width)
   let lists = [xs, ys, dx, dy, rotations]
   let explicit = !rotations.is_empty() ||
     lists.any(values => values.length() > 1)
@@ -794,7 +800,11 @@ fn svg_glyph_group(
           "SVG explicit text length with positions, spans, or paths is unsupported",
         )
       }
-      let length = svg_relative_length(value, font_size)
+      let length = if value.has_suffix("%") {
+        svg_viewport_axis(Some(value), width)
+      } else {
+        svg_relative_length(value, font_size)
+      }
       guard length > 0.0 else {
         raise Unsupported("SVG textLength must be positive")
       }
@@ -875,6 +885,7 @@ fn svg_glyph_group(
                 paths,
                 span_selector,
                 sheets,
+                viewport,
                 path~,
               ),
             ),
@@ -902,6 +913,7 @@ fn svg_glyph_group(
                 paths,
                 run_selector,
                 sheets,
+                viewport,
                 path=Some(geometry),
               ),
             ),
@@ -1047,6 +1059,7 @@ fn outline_svg_text(
   root : @dom.Element,
   base : String,
   load : (String) -> Bytes?,
+  size : (Int32, Int32)?,
 ) -> Bool raise {
   let mut contains_text = false
   let styles : Array[String] = []
@@ -1066,6 +1079,16 @@ fn outline_svg_text(
   if !contains_text {
     return false
   }
+  let viewport = match svg_viewbox_size(root) {
+    Some(view) => view
+    None => {
+      let (w, h) = match size {
+        Some(dimensions) => dimensions
+        None => svg_dimensions(root, None)
+      }
+      (w.to_double(), h.to_double())
+    }
+  }
   let faces : Map[String, Array[SvgFontFace]] = Map([])
   let visited : Map[String, Bool] = Map([])
   let sheets : Array[@css.Stylesheet] = []
@@ -1080,6 +1103,7 @@ fn outline_svg_text(
     inherited : Map[String, String],
     parent : @css.Element?,
     preserve : Bool,
+    viewport : (Double, Double),
   ) -> Unit raise {
     let preserve = svg_preserve_space(element, preserve)
     let selector = svg_text_selector(element, parent)
@@ -1108,14 +1132,29 @@ fn outline_svg_text(
           paths,
           child_selector,
           sheets,
+          viewport,
         )
         ignore(child.replace_with(ElementNode(group)))
         changed = true
       } else {
-        visit(child, style, Some(selector), preserve)
+        let viewport = if @dom.local_of(child.name) == "svg" {
+          match svg_viewbox_size(child) {
+            Some(view) => view
+            None => {
+              let (w, h) = viewport
+              (
+                svg_viewport_axis(child.attr("width"), w),
+                svg_viewport_axis(child.attr("height"), h),
+              )
+            }
+          }
+        } else {
+          viewport
+        }
+        visit(child, style, Some(selector), preserve, viewport)
       }
     }
   }
-  visit(root, Map([]), None, false)
+  visit(root, Map([]), None, false, viewport)
   changed
 }

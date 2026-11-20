@@ -34,14 +34,19 @@ pub(all) enum Isolation {
 
 ///|
 /// Blend two colors using the specified blend mode
-fn blend_with_mode(backdrop : Color, source : Color, mode : BlendMode) -> Color {
-  let bd_r = backdrop.r.to_double() / 255.0
-  let bd_g = backdrop.g.to_double() / 255.0
-  let bd_b = backdrop.b.to_double() / 255.0
+fn blend_with_mode(
+  backdrop : Color,
+  source : Color,
+  mode : BlendMode,
+  linear_rgb~ : Bool = false,
+) -> Color {
+  let bd_r = filter_input_channel(backdrop.r, linear_rgb)
+  let bd_g = filter_input_channel(backdrop.g, linear_rgb)
+  let bd_b = filter_input_channel(backdrop.b, linear_rgb)
   let bd_a = backdrop.a.to_double() / 255.0
-  let src_r = source.r.to_double() / 255.0
-  let src_g = source.g.to_double() / 255.0
-  let src_b = source.b.to_double() / 255.0
+  let src_r = filter_input_channel(source.r, linear_rgb)
+  let src_g = filter_input_channel(source.g, linear_rgb)
+  let src_b = filter_input_channel(source.b, linear_rgb)
   let src_a = source.a.to_double() / 255.0
   // Apply blend mode to RGB
   let (blended_r, blended_g, blended_b) = match mode {
@@ -156,9 +161,9 @@ fn blend_with_mode(backdrop : Color, source : Color, mode : BlendMode) -> Color 
     ) /
     out_a
   Color::rgba(
-    clamp_int((out_r * 255.0).round().to_int(), 0, 255),
-    clamp_int((out_g * 255.0).round().to_int(), 0, 255),
-    clamp_int((out_b * 255.0).round().to_int(), 0, 255),
+    filter_output_channel(out_r, linear_rgb),
+    filter_output_channel(out_g, linear_rgb),
+    filter_output_channel(out_b, linear_rgb),
     clamp_int((out_a * 255.0).round().to_int(), 0, 255),
   )
 }
@@ -391,7 +396,12 @@ fn blend_luminosity(
 
 ///|
 /// Blend two images using the specified blend mode
-fn blend_images(backdrop : Image, source : Image, mode : BlendMode) -> Image {
+fn blend_images(
+  backdrop : Image,
+  source : Image,
+  mode : BlendMode,
+  linear_rgb~ : Bool = false,
+) -> Image {
   let width = if backdrop.width < source.width {
     backdrop.width
   } else {
@@ -407,7 +417,7 @@ fn blend_images(backdrop : Image, source : Image, mode : BlendMode) -> Image {
     for x in 0..<width {
       let bd_color = backdrop.get_pixel(x, y)
       let src_color = source.get_pixel(x, y)
-      let blended = blend_with_mode(bd_color, src_color, mode)
+      let blended = blend_with_mode(bd_color, src_color, mode, linear_rgb~)
       result.set_pixel(x, y, blended)
     }
   }

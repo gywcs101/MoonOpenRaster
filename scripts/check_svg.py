@@ -52,6 +52,7 @@ def check_font_layer(cli, variant="font"):
     slanted = variant == "font-style"
     multiple_sources = variant == "font-alternate-sources"
     relative_size = variant == "font-relative-size"
+    percentage_position = variant == "font-percentage-position"
     external = variant == "font-svg-resource"
     path_external = variant == "font-path-resource"
     path_text = variant == "font-path" or path_external
@@ -103,6 +104,10 @@ def check_font_layer(cli, variant="font"):
         font_attributes = 'font-family="OraTest" font-size="50%" fill="red"'
         parent_attrs = ' font-size="16px"'
         text = 'A<tspan font-size="1em">中</tspan>'
+    if percentage_position:
+        position_attrs = 'x="0%" y="100%"'
+        parent_attrs = ' viewBox="0 0 8 4"'
+        font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
     svg = (
         f'{stylesheet}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8"{parent_attrs}>'
         f'{inline_style}{definition}'
@@ -358,7 +363,8 @@ def main():
         "font", "embedded-font", "font-spans", "font-stylesheet", "font-stylesheet-pi",
         "font-css-cascade", "font-centered-spans", "font-length-spacing", "font-length-glyphs",
         "font-svg-resource", "font-path", "font-path-resource", "font-position-list",
-        "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources", "font-relative-size",
+        "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
+        "font-relative-size", "font-percentage-position",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)
