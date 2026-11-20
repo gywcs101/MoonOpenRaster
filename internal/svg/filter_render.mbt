@@ -34,6 +34,37 @@ fn offset_filter_image(source : Image, dx : Double, dy : Double) -> Image {
   let result = Image::new(source.width, source.height)
   let offset_x = dx.round().to_int()
   let offset_y = dy.round().to_int()
+  if dx != offset_x.to_double() || dy != offset_y.to_double() {
+    let base_x = (-dx).floor().to_int()
+    let base_y = (-dy).floor().to_int()
+    let mix_x = -dx - base_x.to_double()
+    let mix_y = -dy - base_y.to_double()
+    let corners = [
+      (0, 0, (1.0 - mix_x) * (1.0 - mix_y)),
+      (1, 0, mix_x * (1.0 - mix_y)),
+      (0, 1, (1.0 - mix_x) * mix_y),
+      (1, 1, mix_x * mix_y),
+    ]
+    for y in 0..<source.height {
+      for x in 0..<source.width {
+        let mut red = 0.0
+        let mut green = 0.0
+        let mut blue = 0.0
+        let mut alpha = 0.0
+        for (ox, oy, weight) in corners {
+          let color = PremulColor16::from_color(
+            source.get_pixel(x + base_x + ox, y + base_y + oy),
+          )
+          red += color.r.to_double() * weight
+          green += color.g.to_double() * weight
+          blue += color.b.to_double() * weight
+          alpha += color.a.to_double() * weight
+        }
+        result.set_pixel(x, y, sampled_premul_color(red, green, blue, alpha))
+      }
+    }
+    return result
+  }
   for y in 0..<source.height {
     for x in 0..<source.width {
       let color = source.get_pixel(x, y)
@@ -932,71 +963,57 @@ fn filter_primitive_region(
   defaults : BoundingBox,
   origin_x : Int32,
   origin_y : Int32,
+  transform : Transform,
 ) -> BoundingBox {
-  let (viewport_width, viewport_height) = graph.viewport
-  fn position(
-    length : (Double, Bool)?,
-    origin : Double,
-    extent : Double,
+  if graph.primitive_units is ObjectBoundingBox {
+    fn dimension(
+      value : (Double, Bool)?,
+      extent : Double,
+      start : Double,
+      fallback : Double,
+    ) -> Double {
+      match value {
+        Some((fraction, _)) => start + fraction * extent
+        None => fallback
+      }
+    }
+    let x = dimension(region.x, target.width(), target.min_x, defaults.min_x)
+    let y = dimension(region.y, target.height(), target.min_y, defaults.min_y)
+    let width = dimension(region.width, target.width(), 0.0, defaults.width())
+    let height = dimension(
+      region.height,
+      target.height(),
+      0.0,
+      defaults.height(),
+    )
+    return BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0))
+  }
+  let device = Transform::translate(
+    -origin_x.to_double(),
+    -origin_y.to_double(),
+  ).multiply(transform)
+  if !device.is_invertible() {
+    return defaults
+  }
+  let local_defaults = device.inverse().apply_bbox(defaults)
+  let (w, h) = graph.viewport
+  fn length(
+    spec : (Double, Bool)?,
     viewport : Double,
-    device_origin : Int32,
-    default : Double,
+    fallback : Double,
   ) -> Double {
-    match length {
-      Some((value, percent)) =>
-        match graph.primitive_units {
-          ObjectBoundingBox => origin + value * extent
-          UserSpaceOnUse =>
-            (if percent { value * viewport } else { value }) -
-            device_origin.to_double()
-        }
-      None => default
+    match spec {
+      Some((value, percent)) => resolve_mask_size(value, percent, viewport)
+      None => fallback
     }
   }
-  fn size(
-    length : (Double, Bool)?,
-    extent : Double,
-    viewport : Double,
-    default : Double,
-  ) -> Double {
-    match length {
-      Some((value, percent)) =>
-        match graph.primitive_units {
-          ObjectBoundingBox => value * extent
-          UserSpaceOnUse => if percent { value * viewport } else { value }
-        }
-      None => default
-    }
-  }
-  let x = position(
-    region.x,
-    target.min_x,
-    target.width(),
-    viewport_width,
-    origin_x,
-    defaults.min_x,
+  let x = length(region.x, w, local_defaults.min_x)
+  let y = length(region.y, h, local_defaults.min_y)
+  let width = length(region.width, w, local_defaults.width())
+  let height = length(region.height, h, local_defaults.height())
+  device.apply_bbox(
+    BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0)),
   )
-  let y = position(
-    region.y,
-    target.min_y,
-    target.height(),
-    viewport_height,
-    origin_y,
-    defaults.min_y,
-  )
-  let width = size(
-    region.width,
-    target.width(),
-    viewport_width,
-    defaults.width(),
-  )
-  let height = size(
-    region.height,
-    target.height(),
-    viewport_height,
-    defaults.height(),
-  )
-  { min_x: x, min_y: y, max_x: x + width, max_y: y + height, }
 }
 
 ///|
@@ -1028,6 +1045,7 @@ fn evaluate_filter_graph(
   image_resolver : ((String) -> Image?)?,
   origin_x : Int32,
   origin_y : Int32,
+  transform : Transform,
   local_image : (String) -> Image?,
   paint_input : (String) -> Image?,
   diagnostics : Array[RenderDiagnostic],
@@ -1035,29 +1053,18 @@ fn evaluate_filter_graph(
   if graph.primitives.is_empty() {
     return Image::new(source.width, source.height)
   }
+  let device_region = graph.get_filter_bounds(target_bounds, transform)
   let target_bounds = {
     min_x: target_bounds.min_x - origin_x.to_double(),
     min_y: target_bounds.min_y - origin_y.to_double(),
     max_x: target_bounds.max_x - origin_x.to_double(),
     max_y: target_bounds.max_y - origin_y.to_double(),
   }
-  let filter_bounds = match graph.units {
-    ObjectBoundingBox => graph.get_filter_bounds(target_bounds)
-    UserSpaceOnUse => {
-      let device_target = {
-        min_x: target_bounds.min_x + origin_x.to_double(),
-        min_y: target_bounds.min_y + origin_y.to_double(),
-        max_x: target_bounds.max_x + origin_x.to_double(),
-        max_y: target_bounds.max_y + origin_y.to_double(),
-      }
-      let device_bounds = graph.get_filter_bounds(device_target)
-      {
-        min_x: device_bounds.min_x - origin_x.to_double(),
-        min_y: device_bounds.min_y - origin_y.to_double(),
-        max_x: device_bounds.max_x - origin_x.to_double(),
-        max_y: device_bounds.max_y - origin_y.to_double(),
-      }
-    }
+  let filter_bounds : BoundingBox = {
+    min_x: device_region.min_x - origin_x.to_double(),
+    min_y: device_region.min_y - origin_y.to_double(),
+    max_x: device_region.max_x - origin_x.to_double(),
+    max_y: device_region.max_y - origin_y.to_double(),
   }
   let source_alpha = filter_source_alpha(source)
   let named : Map[String, Image] = Map([])
@@ -1065,6 +1072,19 @@ fn evaluate_filter_graph(
   let named_regions : Map[String, BoundingBox] = Map([])
   let mut previous = source
   let mut previous_region = filter_bounds
+  let (scale_x, scale_y) = transform.get_scale()
+  fn scaled_x(value : Double) -> Double {
+    match graph.primitive_units {
+      UserSpaceOnUse => value * scale_x
+      ObjectBoundingBox => value * target_bounds.width()
+    }
+  }
+  fn scaled_y(value : Double) -> Double {
+    match graph.primitive_units {
+      UserSpaceOnUse => value * scale_y
+      ObjectBoundingBox => value * target_bounds.height()
+    }
+  }
   fn input_surface(name : String) -> Image {
     match name {
       "SourceGraphic" => source
@@ -1110,7 +1130,7 @@ fn evaluate_filter_graph(
     let requested = match graph.primitive_regions.get(i) {
       Some(Some(region)) =>
         filter_primitive_region(
-          region, graph, target_bounds, defaults, origin_x, origin_y,
+          region, graph, target_bounds, defaults, origin_x, origin_y, transform,
         )
       _ => defaults
     }
@@ -1130,21 +1150,24 @@ fn evaluate_filter_graph(
         (
           blur_filter_image_xy(
             input_surface(input),
-            filter_primitive_x(graph, radius_x, target_bounds),
-            filter_primitive_y(graph, radius_y, target_bounds),
+            scaled_x(radius_x),
+            scaled_y(radius_y),
             linear_rgb,
           ),
           result,
         )
-      GraphOffset(input~, result~, dx~, dy~) =>
-        (
-          offset_filter_image(
-            input_surface(input),
-            filter_primitive_x(graph, dx, target_bounds),
-            filter_primitive_y(graph, dy, target_bounds),
-          ),
-          result,
-        )
+      GraphOffset(input~, result~, dx~, dy~) => {
+        let (dx, dy) = match graph.primitive_units {
+          ObjectBoundingBox =>
+            (dx * target_bounds.width(), dy * target_bounds.height())
+          UserSpaceOnUse => {
+            let (from_x, from_y) = transform.apply(0.0, 0.0)
+            let (to_x, to_y) = transform.apply(dx, dy)
+            (to_x - from_x, to_y - from_y)
+          }
+        }
+        (offset_filter_image(input_surface(input), dx, dy), result)
+      }
       GraphBlend(input~, input2~, result~, mode~) =>
         (
           blend_images(
@@ -1199,8 +1222,8 @@ fn evaluate_filter_graph(
         (
           morphology_filter_image(
             input_surface(input),
-            filter_primitive_x(graph, radius_x, target_bounds),
-            filter_primitive_y(graph, radius_y, target_bounds),
+            scaled_x(radius_x),
+            scaled_y(radius_y),
             operator,
           ),
           result,
@@ -1246,8 +1269,8 @@ fn evaluate_filter_graph(
           displacement_filter_image(
             input_surface(input),
             input_surface(input2),
-            filter_primitive_x(graph, scale, target_bounds),
-            filter_primitive_y(graph, scale, target_bounds),
+            scaled_x(scale),
+            scaled_y(scale),
             x_channel,
             y_channel,
           ),

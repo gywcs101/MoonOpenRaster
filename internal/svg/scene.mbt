@@ -620,6 +620,7 @@ fn render_isolated_node(
             ctx.image_resolver,
             layer.origin_x,
             layer.origin_y,
+            parent_transform.multiply(node.transform),
             local_image,
             paint_input,
             ctx.diagnostics,
@@ -693,7 +694,13 @@ fn isolated_node_region(
   match node.filter_graph_id {
     Some(id) =>
       match resources.filter_graphs.get(id) {
-        Some(graph) => bounds = bounds.union(graph.get_filter_bounds(bounds))
+        Some(graph) =>
+          bounds = bounds.union(
+            graph.get_filter_bounds(
+              bounds,
+              parent_transform.multiply(node.transform),
+            ),
+          )
         None => ()
       }
     None => ()

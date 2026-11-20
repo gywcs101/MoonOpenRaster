@@ -492,3 +492,11 @@ test "SVG BackgroundImage reads the pixels of its enabled background scope" {
     0, 255, 0, 255, 0, 0, 0, 0,
   ])
 }
+
+///|
+test "SVG fractional filter offsets preserve the alpha coverage of a translated pixel" {
+  let svg = b"<svg xmlns='http://www.w3.org/2000/svg' width='4' height='1'><defs><filter id='f' filterUnits='userSpaceOnUse' x='0' y='0' width='4' height='1'><feOffset dx='.5'/></filter></defs><rect x='1' width='1' height='1' fill='red' filter='url(#f)'/></svg>"
+  assert_eq(decode_svg(svg).pixels(), [
+    0, 0, 0, 0, 255, 0, 0, 128, 255, 0, 0, 128, 0, 0, 0, 0,
+  ])
+}

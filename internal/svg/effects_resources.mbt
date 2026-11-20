@@ -300,6 +300,7 @@ pub(all) struct FilterGraph {
 fn FilterGraph::get_filter_bounds(
   self : FilterGraph,
   target : BoundingBox,
+  transform : Transform,
 ) -> BoundingBox {
   match self.units {
     ObjectBoundingBox => {
@@ -313,36 +314,22 @@ fn FilterGraph::get_filter_bounds(
       }
     }
     UserSpaceOnUse => {
-      let width = target.width()
-      let height = target.height()
-      let min_x = resolve_mask_coord(
-        self.x,
-        self.x_is_percent,
-        target.min_x,
-        width,
-      )
-      let min_y = resolve_mask_coord(
-        self.y,
-        self.y_is_percent,
-        target.min_y,
-        height,
-      )
-      let filter_width = resolve_mask_size(
+      let (viewport_width, viewport_height) = self.viewport
+      let x = resolve_mask_size(self.x, self.x_is_percent, viewport_width)
+      let y = resolve_mask_size(self.y, self.y_is_percent, viewport_height)
+      let width = resolve_mask_size(
         self.width,
         self.width_is_percent,
-        width,
+        viewport_width,
       )
-      let filter_height = resolve_mask_size(
+      let height = resolve_mask_size(
         self.height,
         self.height_is_percent,
-        height,
+        viewport_height,
       )
-      {
-        min_x,
-        min_y,
-        max_x: min_x + filter_width,
-        max_y: min_y + filter_height,
-      }
+      transform.apply_bbox(
+        BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0)),
+      )
     }
   }
 }
