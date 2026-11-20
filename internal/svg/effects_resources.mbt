@@ -277,9 +277,19 @@ pub(all) enum FilterCompositeOperator {
 }
 
 ///|
+pub(all) struct FilterPrimitiveRegion {
+  x : (Double, Bool)?
+  y : (Double, Bool)?
+  width : (Double, Bool)?
+  height : (Double, Bool)?
+}
+
+///|
 pub(all) struct FilterGraph {
   id : String
   primitives : Array[FilterGraphPrimitive]
+  primitive_regions : Array[FilterPrimitiveRegion?]
+  viewport : (Double, Double)
   units : MaskUnits
   primitive_units : MaskUnits
   x : Double

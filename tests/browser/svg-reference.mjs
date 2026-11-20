@@ -36,6 +36,14 @@ const cases = {
   'transparent blur': wrap(
     '<defs>' + filter('<feGaussianBlur stdDeviation="1"/>') + '</defs>' +
     '<rect x="5" y="4" width="6" height="4" fill="red" filter="url(#f)"/>'),
+  'filter primitive clipping in a named intermediate result': wrap(
+    '<defs>' + filter('<feFlood x="25%" y="2" width="6" height="4" flood-color="red" result="patch"/>' +
+      '<feOffset in="patch" dx="1" dy="2"/>') + '</defs>' +
+    '<rect width="16" height="12" fill="blue" filter="url(#f)"/>'),
+  'filter primitive object bounding box': wrap(
+    '<defs><filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="16" height="12" primitiveUnits="objectBoundingBox">' +
+      '<feFlood x=".25" y=".25" width=".5" height=".5" flood-color="red"/></filter></defs>' +
+    '<rect x="2" y="2" width="12" height="8" fill="blue" filter="url(#f)"/>'),
 };
 
 function run(query) {

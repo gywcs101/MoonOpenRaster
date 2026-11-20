@@ -204,6 +204,8 @@ pub fn FilterEdgeMode::to_repr(Self) -> @debug.Repr
 pub(all) struct FilterGraph {
   id : String
   primitives : Array[FilterGraphPrimitive]
+  primitive_regions : Array[FilterPrimitiveRegion?]
+  viewport : (Double, Double)
   units : MaskUnits
   primitive_units : MaskUnits
   x : Double
@@ -244,6 +246,13 @@ pub(all) enum FilterLight {
   SpotLight(x~ : Double, y~ : Double, z~ : Double, points_at_x~ : Double, points_at_y~ : Double, points_at_z~ : Double, exponent~ : Double, limiting_cone_angle~ : Double?)
 }
 pub fn FilterLight::to_repr(Self) -> @debug.Repr
+
+pub(all) struct FilterPrimitiveRegion {
+  x : (Double, Bool)?
+  y : (Double, Bool)?
+  width : (Double, Bool)?
+  height : (Double, Bool)?
+}
 
 pub(all) enum Gradient {
   Linear(LinearGradient)

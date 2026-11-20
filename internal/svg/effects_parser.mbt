@@ -509,6 +509,38 @@ fn parse_filter_graph(
   tag_name : String,
 ) -> Unit {
   let primitives : Array[FilterGraphPrimitive] = []
+  let regions : Array[FilterPrimitiveRegion?] = []
+  let units = match get_attr(attrs, "primitiveUnits") {
+    Some(value) => parse_mask_units(value)
+    None => UserSpaceOnUse
+  }
+  fn add(
+    element : SVGXmlElement,
+    children : Array[FilterPrimitiveChild],
+  ) -> Unit {
+    if parse_filter_primitive(element.name, element.attributes, children)
+      is Some(primitive) {
+      fn length(key : String) -> (Double, Bool)? {
+        get_attr(element.attributes, key).map(value => {
+          parse_mask_length(value, units)
+        })
+      }
+      let (x, y, width, height) = (
+        length("x"),
+        length("y"),
+        length("width"),
+        length("height"),
+      )
+      primitives.push(primitive)
+      regions.push(
+        if x is Some(_) || y is Some(_) || width is Some(_) || height is Some(_) {
+          Some({ x, y, width, height, })
+        } else {
+          None
+        },
+      )
+    }
+  }
   while !parser.is_end() {
     match parser.advance_event() {
       XmlStart(element) => {
@@ -516,27 +548,15 @@ fn parse_filter_graph(
         let primitive_children = parse_filter_primitive_children(
           parser, primitive_tag,
         )
-        match
-          parse_filter_primitive(
-            primitive_tag,
-            element.attributes,
-            primitive_children,
-          ) {
-          Some(primitive) => primitives.push(primitive)
-          None => ()
-        }
+        add(element, primitive_children)
       }
-      XmlEmpty(element) =>
-        match parse_filter_primitive(element.name, element.attributes, []) {
-          Some(primitive) => primitives.push(primitive)
-          None => ()
-        }
+      XmlEmpty(element) => add(element, [])
       XmlEnd(name) => if name == tag_name { break }
       XmlEof => break
       _ => ()
     }
   }
-  register_filter_graph(attrs, ctx, primitives)
+  register_filter_graph(attrs, ctx, primitives, regions~)
 }
 
 ///|
@@ -544,6 +564,7 @@ fn register_filter_graph(
   attrs : Array[(String, String)],
   ctx : SVGParseContext,
   primitives : Array[FilterGraphPrimitive],
+  regions~ : Array[FilterPrimitiveRegion?] = [],
 ) -> Unit {
   let id = get_attr(attrs, "id").unwrap_or("")
   if id.length() == 0 {
@@ -580,6 +601,8 @@ fn register_filter_graph(
   ctx.filter_graphs.add({
     id,
     primitives,
+    primitive_regions: regions,
+    viewport: ctx.current_length_viewport().unwrap_or((300.0, 150.0)),
     units,
     primitive_units,
     x,

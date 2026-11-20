@@ -41,14 +41,14 @@ Chromium 的 Canvas 使用同一字体独立绘制字形，并用 50% 覆盖阈�
 | 图形、填充、描边与透明度 | 路径、常见几何、RGBA 像素、渐变及图案 | 渐变和图案的全部组合、标记对照 |
 | 样式和资源 | 内部 CSS、多级 CSS、XML 样式表声明、文字样式选择器、同文件和跨文件引用、归档内和内嵌 PNG、JPEG、SVG 图像 | 资源图像的完整视口、片段与 CSS 组合 |
 | 文字和字体 | 随稿 OpenType、WOFF2、内置通用字体、备用字体源、粗细及斜体选择、空白及嵌套居中、字距、简单单行 `textLength`、沿归档内路径排字、部分逐字定位 | 内置字体字形覆盖、系统字体解析、逐字多列继承、复杂脚本位置、路径上的字距和字形调整 |
-| 剪裁、蒙版和滤镜 | 剪裁与亮度蒙版和偏移滤镜组合，颜色矩阵、组件传递、合并、形态学及高斯模糊 | 更多滤镜原语、线性 RGB 滤镜色彩、滤镜边界和组合效果 |
+| 剪裁、蒙版和滤镜 | 剪裁与亮度蒙版和偏移滤镜组合，颜色矩阵、组件传递、合并、形态学、高斯模糊和滤镜阶段的裁剪 | 更多滤镜原语、线性 RGB 滤镜色彩、变换后的边界和复杂组合 |
 | 色彩与配置 | sRGB 8/16 位往返、常见 ICC 和 PNG 色彩声明及原始色彩数据保留 | 其他 ICC 转换类型、HDR、SVG 色彩配置 |
 
 色彩对照可以运行 `python scripts/check_rgba16.py` 复现。被转换图层的原始 PNG 包含原位深和原色彩配置。写出的合并图使用 sRGB。ICC 采用相对色度转换，超出 sRGB 色域的颜色裁剪到可表示的范围。算法来源见 [ICC.1:2022](https://www.color.org/specifications/ICC.1-2022-05.pdf) 和 [PNG 第三版](https://www.w3.org/TR/png-3/)。
 
 资源测试用独立像素断言检查了 `<image>` 引用归档 SVG，并检查该 SVG 通过自己的相对路径加载 CSS 和 PNG。移动图层、保存和重开后，所有资源字节保持一致，合并画面按新坐标生成。SVG 图像的 Base64 和百分号编码数据也通过了像素对照。循环引用会报告出错的资源。
 
-Chromium 独立对照覆盖描边标记、渐变图案、剪裁和蒙版叠加滤镜、颜色矩阵和组件传递、滤镜合成及形态学。六例的 8 位预乘通道最大差为 1。透明背景上的高斯模糊另由公式逐像素核对透明度，误差最多 1。该例与 Chromium 近似渲染的最大差为 12。测试位于 `tests/browser/svg-reference.mjs`。[SVG 1.1 滤镜规范](https://www.w3.org/TR/SVG11/filters.html#feGaussianBlurElement)
+Chromium 独立对照覆盖描边标记、渐变图案、剪裁和蒙版叠加滤镜、颜色矩阵和组件传递、滤镜合成、形态学，以及两种坐标单位下的滤镜区域。八例的 8 位预乘通道最大差为 1。透明背景上的高斯模糊另由公式逐像素核对透明度，误差最多 1。该例与 Chromium 近似渲染的最大差为 12。测试位于 `tests/browser/svg-reference.mjs`。[SVG 1.1 滤镜规范](https://www.w3.org/TR/SVG11/filters.html#feGaussianBlurElement)
 
 关于独立 `stack.xml` 文本节点的历史说明见 [OpenRaster 早期草案](https://github.com/openraster/ora-spec/pull/3/files)。现行交付以本文固定的规范和 schema 为依据。
 

@@ -1010,6 +1010,108 @@ fn clip_filter_result(result : Image, bounds : BoundingBox) -> Image {
 }
 
 ///|
+fn filter_primitive_region(
+  region : FilterPrimitiveRegion,
+  graph : FilterGraph,
+  target : BoundingBox,
+  filter : BoundingBox,
+  defaults : BoundingBox,
+  origin_x : Int32,
+  origin_y : Int32,
+) -> BoundingBox {
+  let (viewport_width, viewport_height) = graph.viewport
+  fn position(
+    length : (Double, Bool)?,
+    origin : Double,
+    extent : Double,
+    viewport : Double,
+    device_origin : Int32,
+    default : Double,
+  ) -> Double {
+    match length {
+      Some((value, percent)) =>
+        match graph.primitive_units {
+          ObjectBoundingBox => origin + value * extent
+          UserSpaceOnUse =>
+            (if percent { value * viewport } else { value }) -
+            device_origin.to_double()
+        }
+      None => default
+    }
+  }
+  fn size(
+    length : (Double, Bool)?,
+    extent : Double,
+    viewport : Double,
+    default : Double,
+  ) -> Double {
+    match length {
+      Some((value, percent)) =>
+        match graph.primitive_units {
+          ObjectBoundingBox => value * extent
+          UserSpaceOnUse => if percent { value * viewport } else { value }
+        }
+      None => default
+    }
+  }
+  let x = position(
+    region.x,
+    target.min_x,
+    target.width(),
+    viewport_width,
+    origin_x,
+    defaults.min_x,
+  )
+  let y = position(
+    region.y,
+    target.min_y,
+    target.height(),
+    viewport_height,
+    origin_y,
+    defaults.min_y,
+  )
+  let width = size(
+    region.width,
+    target.width(),
+    viewport_width,
+    defaults.width(),
+  )
+  let height = size(
+    region.height,
+    target.height(),
+    viewport_height,
+    defaults.height(),
+  )
+  {
+    min_x: x.max(filter.min_x),
+    min_y: y.max(filter.min_y),
+    max_x: (x + width).min(filter.max_x),
+    max_y: (y + height).min(filter.max_y),
+  }
+}
+
+///|
+fn FilterGraphPrimitive::region_inputs(
+  self : FilterGraphPrimitive,
+) -> Array[String] {
+  match self {
+    GraphColorMatrix(input~, ..)
+    | GraphGaussianBlur(input~, ..)
+    | GraphOffset(input~, ..)
+    | GraphComponentTransfer(input~, ..)
+    | GraphMorphology(input~, ..)
+    | GraphConvolveMatrix(input~, ..)
+    | GraphDiffuseLighting(input~, ..)
+    | GraphSpecularLighting(input~, ..) => [input]
+    GraphBlend(input~, input2~, ..)
+    | GraphComposite(input~, input2~, ..)
+    | GraphDisplacementMap(input~, input2~, ..) => [input, input2]
+    GraphMerge(inputs~, ..) => inputs
+    GraphFlood(..) | GraphImage(..) | GraphTurbulence(..) | GraphTile(..) => []
+  }
+}
+
+///|
 fn evaluate_filter_graph(
   graph : FilterGraph,
   source : Image,
@@ -1027,10 +1129,30 @@ fn evaluate_filter_graph(
     max_x: target_bounds.max_x - origin_x.to_double(),
     max_y: target_bounds.max_y - origin_y.to_double(),
   }
+  let filter_bounds = match graph.units {
+    ObjectBoundingBox => graph.get_filter_bounds(target_bounds)
+    UserSpaceOnUse => {
+      let device_target = {
+        min_x: target_bounds.min_x + origin_x.to_double(),
+        min_y: target_bounds.min_y + origin_y.to_double(),
+        max_x: target_bounds.max_x + origin_x.to_double(),
+        max_y: target_bounds.max_y + origin_y.to_double(),
+      }
+      let device_bounds = graph.get_filter_bounds(device_target)
+      {
+        min_x: device_bounds.min_x - origin_x.to_double(),
+        min_y: device_bounds.min_y - origin_y.to_double(),
+        max_x: device_bounds.max_x - origin_x.to_double(),
+        max_y: device_bounds.max_y - origin_y.to_double(),
+      }
+    }
+  }
   let source_alpha = filter_source_alpha(source)
   let named : Map[String, Image] = Map([])
+  let named_regions : Map[String, BoundingBox] = Map([])
   let mut previous = source
-  for primitive in graph.primitives {
+  let mut previous_region = filter_bounds
+  for i, primitive in graph.primitives {
     let (output, result_name) = match primitive {
       GraphColorMatrix(input~, result~, matrix~) =>
         (
@@ -1300,30 +1422,44 @@ fn evaluate_filter_graph(
           result,
         )
     }
-    previous = output
+    let mut input_region : BoundingBox? = None
+    for name in primitive.region_inputs() {
+      let bounds = if name == "" {
+        previous_region
+      } else {
+        named_regions.get(name).unwrap_or(filter_bounds)
+      }
+      input_region = Some(
+        match input_region {
+          Some(combined) => combined.union(bounds)
+          None => bounds
+        },
+      )
+    }
+    let defaults = input_region.unwrap_or(filter_bounds)
+    let region = match graph.primitive_regions.get(i) {
+      Some(Some(region)) =>
+        filter_primitive_region(
+          region, graph, target_bounds, filter_bounds, defaults, origin_x, origin_y,
+        )
+      _ => defaults
+    }
+    let clipped = if region.min_x > 0.0 ||
+      region.min_y > 0.0 ||
+      region.max_x < output.width.to_double() ||
+      region.max_y < output.height.to_double() {
+      clip_filter_result(output.clone(), region)
+    } else {
+      output
+    }
+    previous = clipped
+    previous_region = region
     if result_name.length() > 0 {
-      named.set(result_name, output)
+      named.set(result_name, clipped)
+      named_regions.set(result_name, region)
     }
   }
-  let filter_bounds = match graph.units {
-    ObjectBoundingBox => graph.get_filter_bounds(target_bounds)
-    UserSpaceOnUse => {
-      let device_target = {
-        min_x: target_bounds.min_x + origin_x.to_double(),
-        min_y: target_bounds.min_y + origin_y.to_double(),
-        max_x: target_bounds.max_x + origin_x.to_double(),
-        max_y: target_bounds.max_y + origin_y.to_double(),
-      }
-      let device_bounds = graph.get_filter_bounds(device_target)
-      {
-        min_x: device_bounds.min_x - origin_x.to_double(),
-        min_y: device_bounds.min_y - origin_y.to_double(),
-        max_x: device_bounds.max_x - origin_x.to_double(),
-        max_y: device_bounds.max_y - origin_y.to_double(),
-      }
-    }
-  }
-  clip_filter_result(previous, filter_bounds)
+  previous
 }
 
 ///|
