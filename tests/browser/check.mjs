@@ -97,8 +97,15 @@ try {
   const layerDownload = page.waitForEvent('download'); await page.locator('#layer-png').click();
   const layerFile = await layerDownload; await layerFile.saveAs(path.join(temp, 'layer.png')); await idle();
   assert.ok(fs.statSync(path.join(temp, 'layer.png')).size > 1000);
-  const zipDownload = page.waitForEvent('download'); await page.locator('#all-layers').click();
-  await (await zipDownload).saveAs(path.join(temp, 'layers.zip')); await idle();
+  try {
+    const [zipDownload] = await Promise.all([
+      page.waitForEvent('download', { timeout: 90000 }),
+      page.locator('#all-layers').click(),
+    ]);
+    await zipDownload.saveAs(path.join(temp, 'layers.zip')); await idle();
+  } catch (error) {
+    throw new Error('Batch layer export failed. Workbench status: ' + await page.locator('#status').innerText(), { cause: error });
+  }
   const save = page.waitForEvent('download'); await page.locator('#save').click();
   await (await save).saveAs(path.join(temp, 'edited.ora')); await idle();
   const savedImage = await page.locator('#canvas').getAttribute('src');
@@ -200,7 +207,10 @@ try {
       assert.equal(referenceMask[y * 16 + x] >= 128, painted, "Chromium glyph coverage at " + x + "," + y);
     }
   }
-  for (const variant of ['font', 'font-spans', 'font-stylesheet', 'font-svg-resource', 'font-path', 'font-position-list']) {
+  for (const variant of [
+    'font', 'font-spans', 'font-stylesheet', 'font-stylesheet-pi',
+    'font-css-cascade', 'font-svg-resource', 'font-path', 'font-position-list',
+  ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');
     await page.locator('#file').setInputFiles(path.join(fixtureDir, variant + '-input.ora'));
     await idle();

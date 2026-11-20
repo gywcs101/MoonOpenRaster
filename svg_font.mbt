@@ -50,11 +50,13 @@ fn svg_font_faces_from_css(
   source : String,
   base : String,
   faces : Map[String, String],
+  sheets : Array[@css.Stylesheet],
   visited : Map[String, Bool],
   load : (String) -> Bytes?,
   depth : Int32,
 ) -> Unit raise {
-  for imported in @css.parse_stylesheet(source).imports {
+  let sheet = @css.parse_stylesheet(source)
+  for imported in sheet.imports {
     if imported.media != "" && imported.media != "all" {
       continue
     }
@@ -78,11 +80,13 @@ fn svg_font_faces_from_css(
       @utf8.decode(bytes[:]),
       path,
       faces,
+      sheets,
       visited,
       load,
       depth + 1,
     )
   }
+  sheets.push(sheet)
   let mut css = source
   while css.find("@font-face") is Some(index) {
     css = css[index + 10:].to_owned()
@@ -106,15 +110,73 @@ fn svg_font_faces_from_css(
 }
 
 ///|
+fn svg_text_selector(
+  element : @dom.Element,
+  parent : @css.Element?,
+) -> @css.Element {
+  let mut selector = @css.Element::new(@dom.local_of(element.name))
+  for (key, value) in element.attrs {
+    selector = selector.set_attribute(key, value)
+  }
+  if element.attr("id") is Some(id) {
+    selector = selector.set_id(id)
+  }
+  for class in element.classes() {
+    selector = selector.add_class(class)
+  }
+  if parent is Some(parent) {
+    selector = selector.set_parent(parent)
+  }
+  selector
+}
+
+///|
+fn svg_text_cascade(
+  element : @dom.Element,
+  selector : @css.Element,
+  sheets : Array[@css.Stylesheet],
+) -> @css.CascadedValues {
+  let inline : Array[@css.Declaration] = []
+  for key, value in svg_css_properties(element.attr("style").unwrap_or("")) {
+    let important = value.to_lower().has_suffix("!important")
+    let declared = if important {
+      value[:value.length() - 10].trim().to_owned()
+    } else {
+      value
+    }
+    inline.push(
+      @css.Declaration::from_inline(
+        key,
+        declared,
+        if important {
+          Important
+        } else {
+          Normal
+        },
+      ),
+    )
+  }
+  @css.cascade_element(selector, sheets, inline)
+}
+
+///|
 fn svg_text_properties(
   element : @dom.Element,
   inherited : Map[String, String],
+  computed : @css.CascadedValues,
 ) -> Map[String, String] {
   let properties = inherited.copy()
-  let inline = svg_css_properties(element.attr("style").unwrap_or(""))
   for name in ["font-family", "font-size", "text-anchor"] {
-    let candidate = match inline.get(name) {
-      Some(value) => Some(value)
+    let candidate = match computed.get(name) {
+      Some(declaration) =>
+        match declaration.value {
+          Value(value) => Some(value)
+          Initial => {
+            ignore(properties.remove(name))
+            None
+          }
+          _ => None
+        }
       None => element.attr(name)
     }
     if candidate is Some(value) {
@@ -188,8 +250,16 @@ fn svg_glyph_run(
   if text.is_empty() {
     return ([], x, y)
   }
-  let family = svg_css_unquote(style.get("font-family").unwrap_or("")).to_lower()
-  guard faces.get(family) is Some(uri) else {
+  let family = style.get("font-family").unwrap_or("")
+  let mut uri = None
+  for choice in family.split(",") {
+    let candidate = svg_css_unquote(choice.to_owned()).to_lower()
+    if faces.get(candidate) is Some(uri_value) {
+      uri = Some(uri_value)
+      break
+    }
+  }
+  guard uri is Some(uri) else {
     raise Unsupported("SVG text needs an in-document @font-face for " + family)
   }
   let font = match fonts.get(uri) {
@@ -299,7 +369,13 @@ fn svg_glyph_run(
       }
       children.push(
         ElementNode(
-          @dom.Element::new("path", attrs=[("d", d), ("transform", transform)]),
+          @dom.Element::new("path", attrs=[
+            ("d", d),
+            ("transform", transform),
+            (
+              "style", "fill:inherit !important;stroke:inherit !important;filter:none !important;mask:none !important;clip-path:none !important;opacity:1 !important",
+            ),
+          ]),
         ),
       )
     }
@@ -317,6 +393,8 @@ fn svg_glyph_group(
   outline_size : Ref[Int32],
   load : (String) -> Bytes?,
   paths : Map[String, @dom.Element],
+  selector : @css.Element,
+  sheets : Array[@css.Stylesheet],
   path~ : SvgTextPath? = None,
 ) -> @dom.Element raise {
   if ["textLength", "lengthAdjust"].any(key => element.has_attr(key)) {
@@ -382,7 +460,12 @@ fn svg_glyph_group(
     for node in parent.children() {
       match node {
         ElementNode(span) if @dom.local_of(span.name) == "tspan" => {
-          let span_style = svg_text_properties(span, style)
+          let span_selector = svg_text_selector(span, Some(selector))
+          let span_style = svg_text_properties(
+            span,
+            style,
+            svg_text_cascade(span, span_selector, sheets),
+          )
           children.push(
             ElementNode(
               svg_glyph_group(
@@ -394,6 +477,8 @@ fn svg_glyph_group(
                 outline_size,
                 load,
                 paths,
+                span_selector,
+                sheets,
                 path~,
               ),
             ),
@@ -402,7 +487,12 @@ fn svg_glyph_group(
         ElementNode(run) if @dom.local_of(run.name) == "textPath" &&
           path is None => {
           let geometry = svg_text_path(run, paths)
-          let run_style = svg_text_properties(run, style)
+          let run_selector = svg_text_selector(run, Some(selector))
+          let run_style = svg_text_properties(
+            run,
+            style,
+            svg_text_cascade(run, run_selector, sheets),
+          )
           children.push(
             ElementNode(
               svg_glyph_group(
@@ -414,6 +504,8 @@ fn svg_glyph_group(
                 outline_size,
                 load,
                 paths,
+                run_selector,
+                sheets,
                 path=Some(geometry),
               ),
             ),
@@ -452,7 +544,24 @@ fn svg_glyph_group(
       ].contains(pair.0)
     )
   })
-  @dom.Element::new("g", attrs~, children~)
+  let group = @dom.Element::new("g", attrs~, children~)
+  let computed = svg_text_cascade(element, selector, sheets)
+  let style = StringBuilder()
+  style.write_string(element.attr("style").unwrap_or(""))
+  for
+    name in [
+      "fill", "stroke", "color", "opacity", "fill-opacity", "stroke-opacity", "stroke-width",
+      "visibility", "display", "clip-path", "filter", "mask",
+    ] {
+    if computed.get_value(name) is Some(value) {
+      style.write_string(";" + name + ":" + value + " !important")
+    }
+  }
+  let inline = style.to_string()
+  if !inline.is_empty() {
+    group.set_attr("style", inline)
+  }
+  group
 }
 
 ///|
@@ -481,8 +590,9 @@ fn outline_svg_text(
   }
   let faces : Map[String, String] = Map([])
   let visited : Map[String, Bool] = Map([])
+  let sheets : Array[@css.Stylesheet] = []
   for style in styles {
-    svg_font_faces_from_css(style, base, faces, visited, load, 0)
+    svg_font_faces_from_css(style, base, faces, sheets, visited, load, 0)
   }
   let fonts : Map[String, @font.TTFont] = Map([])
   let outline_size = Ref(0)
@@ -490,11 +600,22 @@ fn outline_svg_text(
   fn visit(
     element : @dom.Element,
     inherited : Map[String, String],
+    parent : @css.Element?,
   ) -> Unit raise {
-    let style = svg_text_properties(element, inherited)
+    let selector = svg_text_selector(element, parent)
+    let style = svg_text_properties(
+      element,
+      inherited,
+      svg_text_cascade(element, selector, sheets),
+    )
     for child in element.child_elements() {
       if @dom.local_of(child.name) == "text" {
-        let props = svg_text_properties(child, style)
+        let child_selector = svg_text_selector(child, Some(selector))
+        let props = svg_text_properties(
+          child,
+          style,
+          svg_text_cascade(child, child_selector, sheets),
+        )
         let group = svg_glyph_group(
           child,
           props,
@@ -504,14 +625,16 @@ fn outline_svg_text(
           outline_size,
           load,
           paths,
+          child_selector,
+          sheets,
         )
         ignore(child.replace_with(ElementNode(group)))
         changed = true
       } else {
-        visit(child, style)
+        visit(child, style, Some(selector))
       }
     }
   }
-  visit(root, Map([]))
+  visit(root, Map([]), None)
   changed
 }

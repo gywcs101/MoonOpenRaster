@@ -40,7 +40,9 @@ def check_atlas(path):
 def check_font_layer(cli, variant="font"):
     embedded = variant == "embedded-font"
     spans = variant == "font-spans"
-    imported = variant == "font-stylesheet"
+    declaration = variant == "font-stylesheet-pi"
+    imported = variant == "font-stylesheet" or declaration
+    cascade = variant == "font-css-cascade"
     external = variant == "font-svg-resource"
     path_text = variant == "font-path"
     positions = variant == "font-position-list"
@@ -52,6 +54,8 @@ def check_font_layer(cli, variant="font"):
     uri = "data:font/ttf;base64," + base64.b64encode(font).decode() if embedded else "../font/%E6%B5%8B%E8%AF%95.ttf"
     face = f'@font-face {{ font-family: OraTest; src: url("{uri}"); }}'
     styles = "@import '../styles/level/index.css';" if imported else face
+    if cascade:
+        styles += " svg .label { font-family: Absent, OraTest; font-size: 8px; } text { fill: red; } path { fill: blue; }"
     text = 'A<tspan x="7" dx="1" y="7" dy="1"><tspan>中</tspan></tspan>' if spans else "A中"
     if path_text:
         definition = '<defs><path id="baseline" transform="translate(0 2)" d="M0 6 c2 0 5 0 8 0 s5 0 8 0"/></defs>'
@@ -60,10 +64,13 @@ def check_font_layer(cli, variant="font"):
     else:
         definition = ''
         position_attrs = 'x="0,7" y="8 7" dx="0 1" dy="0 1" rotate="0 0"' if positions else 'x="0" y="8"'
+    stylesheet = '<?xml-stylesheet type="text/css" href="../styles/level/index.css"?>' if declaration else ''
+    inline_style = '' if declaration else f'<style>{styles}</style>'
+    font_attributes = 'class="label"' if cascade else 'font-family="OraTest" font-size="8" fill="red"'
     svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8">'
-        f'<style>{styles}</style>{definition}'
-        f'<text font-family="OraTest" font-size="8" {position_attrs} fill="red" id="label">{text}</text></svg>'
+        f'{stylesheet}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8">'
+        f'{inline_style}{definition}'
+        f'<text {font_attributes} {position_attrs} id="label">{text}</text></svg>'
     ).encode()
     external_svg = svg
     if external:
@@ -220,7 +227,7 @@ def main():
         assert archive.read("mergedimage.png") == output.read_bytes()
         thumbnail = archive.read("Thumbnails/thumbnail.png")
         assert thumbnail[24] == 8 and thumbnail[28] == 0
-    for variant in ("font", "embedded-font", "font-spans", "font-stylesheet", "font-svg-resource", "font-path", "font-position-list"):
+    for variant in ("font", "embedded-font", "font-spans", "font-stylesheet", "font-stylesheet-pi", "font-css-cascade", "font-svg-resource", "font-path", "font-position-list"):
         check_font_layer(cli, variant)
     check_svg_jpeg(cli)
     if args.krita:

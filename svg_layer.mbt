@@ -437,6 +437,48 @@ fn svg_select_branches(
 }
 
 ///|
+fn svg_project_stylesheets(
+  document : @dom.Document,
+  root : @dom.Element,
+) -> Bool raise {
+  let styles : Array[@dom.Node] = []
+  for node in document.children().items {
+    match node {
+      ProcessingInstructionNode(instruction) if instruction.target ==
+        "xml-stylesheet" => {
+        let parameters = @xml.loads("<stylesheet " + instruction.data + "/>")
+        guard parameters.document_element() is Some(attributes) &&
+          attributes.attr("href") is Some(href) &&
+          attributes.attr("type").unwrap_or("text/css") == "text/css" else {
+          raise Unsupported("SVG stylesheet must reference CSS")
+        }
+        if attributes.attr("alternate").unwrap_or("no") == "yes" {
+          continue
+        }
+        let media = attributes.attr("media").unwrap_or("all")
+        guard !href.is_empty() &&
+          !href.contains("\\") &&
+          !href.contains("\"") &&
+          !href.contains("\n") &&
+          !href.contains("\r") &&
+          media.all(c => (c >= 'a' && c <= 'z') || c == ',' || c == ' ') else {
+          raise Unsupported("Unsupported SVG stylesheet URL or media")
+        }
+        let css = "@import url(\"" + href + "\") " + media + ";"
+        styles.push(
+          ElementNode(@dom.Element::new("style", children=[TextNode(css)])),
+        )
+      }
+      _ => ()
+    }
+  }
+  for index in 0..<styles.length() {
+    root.insert(index, styles[index])
+  }
+  !styles.is_empty()
+}
+
+///|
 fn svg_parse_source(data : Bytes) -> (String, @dom.Element) raise {
   if data.length() > 262144 {
     raise Unsupported("SVG layer exceeds 256 KiB")
@@ -479,19 +521,16 @@ fn svg_parse_source(data : Bytes) -> (String, @dom.Element) raise {
     }
   }
   let lower = source.to_lower()
-  if lower.contains("<!doctype") ||
-    lower.contains("<!entity") ||
-    lower.contains("<?xml-stylesheet") {
-    raise Unsupported(
-      "SVG document declarations and external stylesheets are unsupported",
-    )
+  if lower.contains("<!doctype") || lower.contains("<!entity") {
+    raise Unsupported("Unsupported SVG document declaration")
   }
   let parsed = @xml.loads(source)
   guard parsed.document_element() is Some(root) &&
     @dom.local_of(root.name) == "svg" else {
     raise Unsupported("Expected an SVG root element")
   }
-  let changed = svg_select_branches(root, 0, Ref(0))
+  let styles = svg_project_stylesheets(parsed, root)
+  let changed = svg_select_branches(root, 0, Ref(0)) || styles
   let ids : Map[String, Bool] = Map([])
   let refs : Array[String] = []
   check_svg_node(root, 0, Ref(0), ids, refs)

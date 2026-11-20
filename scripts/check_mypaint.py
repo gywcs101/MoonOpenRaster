@@ -14,6 +14,15 @@ from check_rgba16 import decode_rgba, png
 
 ROOT = Path(__file__).resolve().parents[1]
 SVG = b'<svg xmlns="http://www.w3.org/2000/svg" width="5" height="3"><path fill="red" d="M0 0H5V3H0Z"/></svg>'
+COMPLEX_SVG = (
+    b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="5" height="3">'
+    b'<defs><path id="shape" d="M0 0H5V3H0Z"/>'
+    b'<clipPath id="clip"><rect width="3" height="3"/></clipPath>'
+    b'<filter id="shift" x="0" y="0" width="5" height="3" filterUnits="userSpaceOnUse">'
+    b'<feOffset dx="1" dy="0"/></filter></defs>'
+    b'<g clip-path="url(#clip)"><use xlink:href="#shape" fill="red"/></g>'
+    b'<rect x="3" width="1" height="3" fill="blue" filter="url(#shift)"/></svg>'
+)
 RGBA16 = (10001, 20002, 30003, 65535)
 MYPAINT_SCRIPT = """
 import sys
@@ -36,21 +45,21 @@ finally:
 """
 
 
-def write_seed(path):
+def write_seed(path, svg):
     preview = png(16, 8, 8, lambda x, y: (0, 0, 0, 255))
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr("mimetype", "image/openraster")
         archive.writestr("stack.xml", '<image w="16" h="8" version="0.0.6"><stack><layer name="Vector" src="data/shape.svg" x="1" y="1"/><layer name="Raster" src="data/base.png"/></stack></image>')
-        archive.writestr("data/shape.svg", SVG)
+        archive.writestr("data/shape.svg", svg)
         archive.writestr("data/base.png", png(16, 8, 16, lambda x, y: RGBA16))
         archive.writestr("mergedimage.png", preview)
         archive.writestr("Thumbnails/thumbnail.png", preview)
 
 
-def verify_vector(archive, expected_x):
+def verify_vector(archive, expected_x, svg):
     layer = ET.fromstring(archive.read("stack.xml")).find("./stack/layer[@name='Vector']")
     assert layer.get("x") == str(expected_x) and layer.get("y") == "1"
-    assert archive.read(layer.get("src")) == SVG
+    assert archive.read(layer.get("src")) == svg
 
 
 def main():
@@ -71,24 +80,29 @@ def main():
     with tempfile.TemporaryDirectory(prefix="moonora-mypaint-") as temporary:
         work = Path(temporary)
         seed = work / "seed.ora"
-        write_seed(seed)
+        write_seed(seed, SVG)
+        complex_seed = work / "complex.ora"
+        write_seed(complex_seed, COMPLEX_SVG)
         source = work / "mypaint-original.ora"
         mypaint(seed, source, work / "mypaint-original.png")
         with zipfile.ZipFile(source) as archive:
-            verify_vector(archive, 1)
+            verify_vector(archive, 1, SVG)
 
         changes = work / "edits.json"
         changes.write_text('[{"path":[0],"x":8}]', encoding="utf-8")
-        for name, input_file in (("mypaint-original", source), ("mixed-16-bit", seed)):
+        for name, input_file, svg in (
+            ("mypaint-original", source, SVG), ("mixed-16-bit", seed, SVG),
+            ("complex-mixed-16-bit", complex_seed, COMPLEX_SVG),
+        ):
             edited = work / f"{name}-edited.ora"
             reopened = work / f"{name}-reopened.ora"
             reference = work / f"{name}-reference.png"
             subprocess.run(["node", str(cli), "edit", str(input_file), str(edited), str(changes)], check=True)
             mypaint(edited, reopened, reference)
             with zipfile.ZipFile(reopened) as archive:
-                verify_vector(archive, 8)
+                verify_vector(archive, 8, svg)
             with zipfile.ZipFile(edited) as archive, Image.open(reference) as ref:
-                verify_vector(archive, 8)
+                verify_vector(archive, 8, svg)
                 preview_bytes = archive.read("mergedimage.png")
                 preview = Image.open(BytesIO(preview_bytes)).convert("RGBA")
                 ref_rgba = ref.convert("RGBA")
@@ -98,7 +112,7 @@ def main():
                 ref_rgba = ref_rgba.crop((0, 0, 16, 8))
                 assert preview.getpixel((1, 1)) != (255, 0, 0, 255)
                 assert ref_rgba.getpixel((8, 1)) == (255, 0, 0, 255)
-                if name == "mixed-16-bit":
+                if input_file != source:
                     raster = ET.fromstring(archive.read("stack.xml")).find("./stack/layer[@name='Raster']")
                     assert decode_rgba(archive.read(raster.get("src"))) == (16, 8, 16, [RGBA16] * 128)
                     assert decode_rgba(preview_bytes)[2] == 16

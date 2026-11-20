@@ -437,6 +437,11 @@ fn icc_rgb_transform(
     }
     tags[tag] = data[offset.to_int():(offset + size).to_int()]
   }
+  if [b"D2B0", b"D2B1", b"D2B2", b"D2B3"].any(tag => tags.contains(tag)) {
+    raise Unsupported(
+      "ICC multi-process element color conversion is unsupported",
+    )
+  }
   let lookup = match tags.get(b"A2B1") {
     Some(lut) => Some(lut)
     None => tags.get(b"A2B0")
@@ -447,8 +452,7 @@ fn icc_rgb_transform(
     }
     return icc_lut_transform(lut, gray, lab)
   }
-  if lab ||
-    [b"A2B2", b"D2B0", b"D2B1", b"D2B2", b"D2B3"].any(tag => tags.contains(tag)) {
+  if lab || tags.contains(b"A2B2") {
     raise Unsupported("Unsupported ICC color conversion tags")
   }
   fn tag(key : Bytes) -> BytesView raise OraError {
