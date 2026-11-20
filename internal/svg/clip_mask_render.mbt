@@ -285,6 +285,7 @@ fn make_image_context(
     image_resolver: parent.image_resolver,
     target_image: Some(image),
     blend_pixel: parent.blend_pixel,
+    background: None,
     diagnostics: parent.diagnostics,
   }
 }

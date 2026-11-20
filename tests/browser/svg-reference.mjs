@@ -91,6 +91,11 @@ const cases = {
   'filter image preserving an embedded PNG aspect ratio': wrap(
     '<defs>' + filter('<feImage x="25%" y="0" width="8" height="12" href="data:image/png;base64,' + redStripe + '"/>') + '</defs>' +
     '<rect width="16" height="12" fill="blue" filter="url(#f)"/>'),
+  'filter tiling retains transparent parts of the tile': wrap(
+    '<defs>' + filter('<feFlood x="0" y="0" width="2" height="1" flood-color="red" result="stripe"/>' +
+      '<feOffset in="stripe" x="0" y="0" width="4" height="1" result="tile"/>' +
+      '<feTile in="tile"/>') + '</defs>' +
+    '<rect width="16" height="12" fill="blue" filter="url(#f)"/>'),
 };
 
 function run(query) {

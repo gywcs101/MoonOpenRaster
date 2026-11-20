@@ -338,6 +338,8 @@ fn SVGNode::clone(self : SVGNode) -> SVGNode {
     opacity: self.opacity,
     blend_mode: self.blend_mode,
     isolation: self.isolation,
+    starts_background: self.starts_background,
+    background_bounds: self.background_bounds,
     marker_start: self.marker_start,
     marker_start_is_set: self.marker_start_is_set,
     marker_mid: self.marker_mid,

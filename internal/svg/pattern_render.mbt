@@ -214,6 +214,7 @@ fn build_pattern_tile(
     image_resolver: ctx.image_resolver,
     target_image: Some(image),
     blend_pixel: None,
+    background: None,
     diagnostics: ctx.diagnostics,
   }
   let pixel_scale = Transform::scale(

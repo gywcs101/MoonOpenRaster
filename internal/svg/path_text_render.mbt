@@ -383,6 +383,7 @@ fn RenderState::new(
     image_resolver: None,
     target_image: None,
     blend_pixel: None,
+    background: None,
     diagnostics: [],
   }
 }

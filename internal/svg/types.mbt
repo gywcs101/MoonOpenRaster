@@ -447,6 +447,8 @@ pub(all) struct SVGNode {
   mut opacity : Double
   mut blend_mode : BlendMode
   mut isolation : Isolation
+  priv mut starts_background : Bool
+  priv mut background_bounds : BoundingBox?
   mut marker_start : String?
   priv mut marker_start_is_set : Bool
   mut marker_mid : String?
@@ -488,6 +490,8 @@ pub fn SVGNode::new(shape : Shape) -> SVGNode {
     opacity: 1.0,
     blend_mode: Normal,
     isolation: Auto,
+    starts_background: false,
+    background_bounds: None,
     marker_start: None,
     marker_start_is_set: false,
     marker_mid: None,

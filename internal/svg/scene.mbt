@@ -98,6 +98,7 @@ priv struct RenderState {
   image_resolver : ((String) -> Image?)?
   target_image : Image?
   blend_pixel : ((Int32, Int32, Color, BlendMode) -> Unit)?
+  background : ((Int32, Int32) -> Color)?
   diagnostics : Array[RenderDiagnostic]
 }
 
@@ -290,7 +291,8 @@ fn render_node(
       has_filter_graph ||
       needs_surface_mask ||
       node.blend_mode != Normal ||
-      node.isolation == Isolate
+      node.isolation == Isolate ||
+      node.starts_background
     ) {
     render_isolated_node(node, parent_transform, ctx, resources, parent_color)
     return
@@ -464,11 +466,35 @@ fn render_isolated_node(
     setter: layer_setter,
     target_image: None,
     blend_pixel: Some(layer_blend),
+    background: if node.starts_background {
+      let transform = parent_transform.multiply(node.transform)
+      let explicit = node.background_bounds.map(bounds => {
+        transform.apply_bbox(bounds)
+      })
+      Some(fn(x, y) {
+        if !layer.contains_device(x, y) {
+          return Color::transparent()
+        }
+        if explicit is Some(region) &&
+          (
+            x.to_double() < region.min_x ||
+            x.to_double() >= region.max_x ||
+            y.to_double() < region.min_y ||
+            y.to_double() >= region.max_y
+          ) {
+          return Color::transparent()
+        }
+        layer.get_device(x, y).to_color()
+      })
+    } else {
+      ctx.background
+    },
   }
   let layer_node = node.clone()
   layer_node.opacity = 1.0
   layer_node.blend_mode = Normal
   layer_node.isolation = Auto
+  layer_node.starts_background = false
   layer_node.clear_filters()
   layer_node.filter_graph_id = None
   layer_node.mask_id = None
@@ -483,6 +509,24 @@ fn render_isolated_node(
     Some(id) =>
       match resources.filter_graphs.get(id) {
         Some(graph) => {
+          let region_transform = Transform::translate(
+              -layer.origin_x.to_double(),
+              -layer.origin_y.to_double(),
+            )
+            .multiply(parent_transform)
+            .multiply(node.transform)
+          fn input_context(image : Image) -> RenderState {
+            {
+              ..RenderState::new(
+                make_image_compositing_setter(image),
+                image.width,
+                image.height,
+              ),
+              image_resolver: ctx.image_resolver,
+              target_image: Some(image),
+              diagnostics: ctx.diagnostics,
+            }
+          }
           fn local_image(id : String) -> Image? {
             guard !resources.active_filter_images.contains(id) &&
               resources.active_filter_images.length() < 8 else {
@@ -494,28 +538,80 @@ fn render_isolated_node(
             }
             guard target is Some(target) else { return None }
             let image = Image::new(layer.width, layer.height)
-            let image_ctx = {
-              ..RenderState::new(
-                make_image_compositing_setter(image),
-                image.width,
-                image.height,
-              ),
-              image_resolver: ctx.image_resolver,
-              target_image: Some(image),
-              diagnostics: ctx.diagnostics,
-            }
-            let transform = Transform::translate(
-                -layer.origin_x.to_double(),
-                -layer.origin_y.to_double(),
-              )
-              .multiply(parent_transform)
-              .multiply(node.transform)
             resources.active_filter_images.push(id)
             render_node(
-              target, transform, image_ctx, resources, false, parent_color,
+              target,
+              region_transform,
+              input_context(image),
+              resources,
+              false,
+              parent_color,
             )
             ignore(resources.active_filter_images.pop())
             Some(image)
+          }
+          fn paint_input(name : String) -> Image? {
+            if name == "BackgroundImage" || name == "BackgroundAlpha" {
+              let image = Image::new(layer.width, layer.height)
+              if ctx.background is Some(pixel) {
+                for y in 0..<image.height {
+                  for x in 0..<image.width {
+                    let color = pixel(x + layer.origin_x, y + layer.origin_y)
+                    image.set_pixel(
+                      x,
+                      y,
+                      if name == "BackgroundAlpha" {
+                        Color::rgba(0, 0, 0, color.a)
+                      } else {
+                        color
+                      },
+                    )
+                  }
+                }
+              }
+              return Some(image)
+            }
+            let (paint, opacity) = match name {
+              "FillPaint" => (node.fill, node.fill_opacity)
+              "StrokePaint" => (node.stroke.paint, node.stroke_opacity)
+              _ => return None
+            }
+            let resolved = resolve_paint_for_render(
+              paint,
+              node.color.unwrap_or(parent_color),
+              resources,
+            )
+            match resolved {
+              SolidColor(value) =>
+                Some(
+                  Image::filled(
+                    layer.width,
+                    layer.height,
+                    apply_opacity(value, opacity),
+                  ),
+                )
+              None => Some(Image::new(layer.width, layer.height))
+              _ => {
+                let image = Image::new(layer.width, layer.height)
+                if make_paint_server_setter(
+                    resolved,
+                    node.shape,
+                    region_transform,
+                    input_context(image),
+                    resources,
+                    opacity,
+                    node.image_sampling,
+                  )
+                  is Some(setter) {
+                  for y in 0..<image.height {
+                    for x in 0..<image.width {
+                      setter.pixel(x, y, Color::white())
+                    }
+                  }
+                }
+                Some(image)
+              }
+            }
           }
           let result = evaluate_filter_graph(
             graph,
@@ -525,6 +621,7 @@ fn render_isolated_node(
             layer.origin_x,
             layer.origin_y,
             local_image,
+            paint_input,
             ctx.diagnostics,
           )
           layer.replace_from_image(result)

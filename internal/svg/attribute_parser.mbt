@@ -294,6 +294,26 @@ fn apply_attribute(
     "filter" => node.filter_graph_id = parse_url_ref(value)
     "mix-blend-mode" => node.blend_mode = parse_blend_mode(value)
     "isolation" => node.isolation = parse_isolation(value)
+    "enable-background" => {
+      let setting = trim_string(value)
+      node.starts_background = setting == "new" ||
+        setting.has_prefix("new ") ||
+        setting.has_prefix("new\t")
+      node.background_bounds = None
+      if node.starts_background && setting.length() > 3 {
+        let numbers = parse_number_list(setting[3:].to_owned())
+        if numbers.length() == 4 && numbers[2] >= 0.0 && numbers[3] >= 0.0 {
+          node.background_bounds = Some(
+            BoundingBox::from_rect(
+              numbers[0],
+              numbers[1],
+              numbers[2],
+              numbers[3],
+            ),
+          )
+        }
+      }
+    }
     "transform" => node.transform = parse_transform(value)
     // Stroke detail attributes
     "stroke-linecap" =>

@@ -30,22 +30,6 @@ fn filter_output_channel(value : Double, linear_rgb : Bool) -> Int32 {
 }
 
 ///|
-fn resolve_filter_graph_input(
-  name : String,
-  source : Image,
-  source_alpha : Image,
-  previous : Image,
-  named : Map[String, Image],
-) -> Image {
-  match name {
-    "SourceGraphic" => source
-    "SourceAlpha" => source_alpha
-    "" => previous
-    _ => named.get(name).unwrap_or(Image::new(source.width, source.height))
-  }
-}
-
-///|
 fn offset_filter_image(source : Image, dx : Double, dy : Double) -> Image {
   let result = Image::new(source.width, source.height)
   let offset_x = dx.round().to_int()
@@ -503,33 +487,19 @@ fn displacement_filter_image(
 }
 
 ///|
-fn tile_filter_image(source : Image) -> Image {
-  let mut min_x = source.width
-  let mut min_y = source.height
-  let mut max_x = -1
-  let mut max_y = -1
-  for y in 0..<source.height {
-    for x in 0..<source.width {
-      if source.get_pixel(x, y).a > 0 {
-        min_x = if min_x < x { min_x } else { x }
-        min_y = if min_y < y { min_y } else { y }
-        max_x = if max_x > x { max_x } else { x }
-        max_y = if max_y > y { max_y } else { y }
-      }
-    }
-  }
-  if max_x < min_x || max_y < min_y {
-    return Image::new(source.width, source.height)
-  }
-  let tile_width = max_x - min_x + 1
-  let tile_height = max_y - min_y + 1
+fn tile_filter_image(source : Image, bounds : BoundingBox) -> Image {
   let result = Image::new(source.width, source.height)
+  let min_x = floor_to_int(bounds.min_x)
+  let min_y = floor_to_int(bounds.min_y)
+  let width = ceil_to_int(bounds.max_x) - min_x
+  let height = ceil_to_int(bounds.max_y) - min_y
+  if width <= 0 || height <= 0 {
+    return result
+  }
   for y in 0..<source.height {
     for x in 0..<source.width {
-      let sample_x = min_x +
-        ((x - min_x) % tile_width + tile_width) % tile_width
-      let sample_y = min_y +
-        ((y - min_y) % tile_height + tile_height) % tile_height
+      let sample_x = min_x + ((x - min_x) % width + width) % width
+      let sample_y = min_y + ((y - min_y) % height + height) % height
       result.set_pixel(x, y, source.get_pixel(sample_x, sample_y))
     }
   }
@@ -1059,6 +1029,7 @@ fn evaluate_filter_graph(
   origin_x : Int32,
   origin_y : Int32,
   local_image : (String) -> Image?,
+  paint_input : (String) -> Image?,
   diagnostics : Array[RenderDiagnostic],
 ) -> Image {
   if graph.primitives.is_empty() {
@@ -1090,18 +1061,44 @@ fn evaluate_filter_graph(
   }
   let source_alpha = filter_source_alpha(source)
   let named : Map[String, Image] = Map([])
+  let paints : Map[String, Image] = Map([])
   let named_regions : Map[String, BoundingBox] = Map([])
   let mut previous = source
   let mut previous_region = filter_bounds
+  fn input_surface(name : String) -> Image {
+    match name {
+      "SourceGraphic" => source
+      "SourceAlpha" => source_alpha
+      "" => previous
+      "FillPaint" | "StrokePaint" | "BackgroundImage" | "BackgroundAlpha" =>
+        match paints.get(name) {
+          Some(image) => image
+          None => {
+            let image = paint_input(name).unwrap_or_else(() => {
+              Image::new(source.width, source.height)
+            })
+            paints[name] = image
+            image
+          }
+        }
+      _ =>
+        named
+        .get(name)
+        .unwrap_or_else(() => Image::new(source.width, source.height))
+    }
+  }
   for i, primitive in graph.primitives {
     let linear_rgb = graph.linear_color.get(i).unwrap_or(true)
-    let mut input_region : BoundingBox? = None
-    for name in primitive.region_inputs() {
-      let bounds = if name == "" {
+    fn referenced_region(name : String) -> BoundingBox {
+      if name == "" {
         previous_region
       } else {
         named_regions.get(name).unwrap_or(filter_bounds)
       }
+    }
+    let mut input_region : BoundingBox? = None
+    for name in primitive.region_inputs() {
+      let bounds = referenced_region(name)
       input_region = Some(
         match input_region {
           Some(combined) => combined.union(bounds)
@@ -1126,21 +1123,13 @@ fn evaluate_filter_graph(
     let (output, result_name) = match primitive {
       GraphColorMatrix(input~, result~, matrix~) =>
         (
-          apply_filter(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
-            ColorMatrix(matrix),
-            linear_rgb~,
-          ),
+          apply_filter(input_surface(input), ColorMatrix(matrix), linear_rgb~),
           result,
         )
       GraphGaussianBlur(input~, result~, radius_x~, radius_y~) =>
         (
           blur_filter_image_xy(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             filter_primitive_x(graph, radius_x, target_bounds),
             filter_primitive_y(graph, radius_y, target_bounds),
             linear_rgb,
@@ -1150,9 +1139,7 @@ fn evaluate_filter_graph(
       GraphOffset(input~, result~, dx~, dy~) =>
         (
           offset_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             filter_primitive_x(graph, dx, target_bounds),
             filter_primitive_y(graph, dy, target_bounds),
           ),
@@ -1161,12 +1148,8 @@ fn evaluate_filter_graph(
       GraphBlend(input~, input2~, result~, mode~) =>
         (
           blend_images(
-            resolve_filter_graph_input(
-              input2, source, source_alpha, previous, named,
-            ),
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input2),
+            input_surface(input),
             mode,
             linear_rgb~,
           ),
@@ -1175,12 +1158,8 @@ fn evaluate_filter_graph(
       GraphComposite(input~, input2~, result~, operator~, k1~, k2~, k3~, k4~) =>
         (
           composite_filter_images(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
-            resolve_filter_graph_input(
-              input2, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
+            input_surface(input2),
             operator,
             k1,
             k2,
@@ -1197,9 +1176,7 @@ fn evaluate_filter_graph(
         for input in inputs {
           merged = blend_images(
             merged,
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             Normal,
             linear_rgb~,
           )
@@ -1209,9 +1186,7 @@ fn evaluate_filter_graph(
       GraphComponentTransfer(input~, result~, red~, green~, blue~, alpha~) =>
         (
           component_transfer_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             red,
             green,
             blue,
@@ -1223,9 +1198,7 @@ fn evaluate_filter_graph(
       GraphMorphology(input~, result~, radius_x~, radius_y~, operator~) =>
         (
           morphology_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             filter_primitive_x(graph, radius_x, target_bounds),
             filter_primitive_y(graph, radius_y, target_bounds),
             operator,
@@ -1247,9 +1220,7 @@ fn evaluate_filter_graph(
       ) =>
         (
           convolve_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             order_x,
             order_y,
             kernel,
@@ -1273,12 +1244,8 @@ fn evaluate_filter_graph(
       ) =>
         (
           displacement_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
-            resolve_filter_graph_input(
-              input2, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
+            input_surface(input2),
             filter_primitive_x(graph, scale, target_bounds),
             filter_primitive_y(graph, scale, target_bounds),
             x_channel,
@@ -1333,11 +1300,7 @@ fn evaluate_filter_graph(
       }
       GraphTile(input~, result~) =>
         (
-          tile_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
-          ),
+          tile_filter_image(input_surface(input), referenced_region(input)),
           result,
         )
       GraphImage(result~, href~, aspect~) => {
@@ -1376,9 +1339,7 @@ fn evaluate_filter_graph(
       ) =>
         (
           lighting_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             filter_primitive_y(graph, surface_scale, target_bounds),
             diffuse_constant,
             1.0,
@@ -1401,9 +1362,7 @@ fn evaluate_filter_graph(
       ) =>
         (
           lighting_filter_image(
-            resolve_filter_graph_input(
-              input, source, source_alpha, previous, named,
-            ),
+            input_surface(input),
             filter_primitive_y(graph, surface_scale, target_bounds),
             specular_constant,
             specular_exponent,

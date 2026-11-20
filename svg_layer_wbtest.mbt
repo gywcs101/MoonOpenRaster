@@ -453,3 +453,42 @@ test "unresolved SVG filter images report the resource name" {
     _ => fail("A missing filter image must be reported")
   }
 }
+
+///|
+test "SVG filter FillPaint and StrokePaint are available across the filter region" {
+  for
+    (input, color) in [
+      ("FillPaint", [255, 0, 0, 191]),
+      ("StrokePaint", [0, 0, 255, 255]),
+    ] {
+    let markup = "<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2'><defs><filter id='f' filterUnits='userSpaceOnUse' x='0' y='0' width='2' height='2'><feOffset in='" +
+      input +
+      "'/></filter></defs><rect x='1' y='1' width='1' height='1' fill='red' fill-opacity='.75' stroke='blue' filter='url(#f)'/></svg>"
+    let pixels = decode_svg(@utf8.encode(markup[:])).pixels()
+    assert_eq(pixels.length(), 16)
+    for i in 0..<4 {
+      for j in 0..<4 {
+        assert_eq(pixels[i * 4 + j].to_int(), color[j])
+      }
+    }
+  }
+}
+
+///|
+test "SVG BackgroundImage reads the pixels of its enabled background scope" {
+  let enabled = "<svg xmlns='http://www.w3.org/2000/svg' width='2' height='1' enable-background='new'><defs><filter id='f' filterUnits='userSpaceOnUse' x='0' y='0' width='2' height='1'><feColorMatrix in='BackgroundImage' values='0 1 0 0 0  1 0 0 0 0  0 0 1 0 0  0 0 0 1 0'/></filter></defs><rect width='1' height='1' fill='lime'/><rect width='2' height='1' fill='blue' filter='url(#f)'/></svg>"
+  let disabled = enabled.replace_all(old=" enable-background='new'", new="")
+  assert_eq(decode_svg(@utf8.encode(enabled[:])).pixels(), [
+    255, 0, 0, 255, 0, 0, 0, 0,
+  ])
+  assert_eq(decode_svg(@utf8.encode(disabled[:])).pixels(), [
+    0, 255, 0, 255, 0, 0, 0, 0,
+  ])
+  let nested = enabled.replace_all(
+    old="<rect width='2' height='1' fill='blue' filter='url(#f)'/>",
+    new="<g enable-background='new'><rect width='2' height='1' fill='blue' filter='url(#f)'/></g>",
+  )
+  assert_eq(decode_svg(@utf8.encode(nested[:])).pixels(), [
+    0, 255, 0, 255, 0, 0, 0, 0,
+  ])
+}
