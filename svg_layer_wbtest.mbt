@@ -427,3 +427,18 @@ test "SVG metadata survives editing without entering the render tree" {
     _ => fail("Expected SVG layer")
   }
 }
+
+///|
+test "SVG UTF-16 source decodes and retains its original bytes" {
+  let markup = "<?xml version='1.0' encoding='UTF-16'?><svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><title>样例</title><rect width='1' height='1' fill='red'/></svg>"
+  for endian in [@utf16.Little, @utf16.Big] {
+    let source = @utf16.encode(markup[:], endianness=endian, bom=true)
+    let image = decode_image(source)
+    assert_eq(image.pixels(), [255, 0, 0, 255])
+    let document = Document::new(1, 1, [Layer(Properties::new("Vector"), image)])
+    match read(document.write()).node([0]) {
+      Layer(_, image) => assert_eq(image.svg_source(), Some(source))
+      _ => fail("Expected SVG layer")
+    }
+  }
+}

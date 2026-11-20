@@ -1,5 +1,8 @@
 ///|
 fn looks_like_svg_xml(data : BytesView) -> Bool {
+  if data.has_prefix(b"\xff\xfe"[:]) || data.has_prefix(b"\xfe\xff"[:]) {
+    return true
+  }
   let mut start = if data.has_prefix(b"\xef\xbb\xbf"[:]) { 3 } else { 0 }
   while start < data.length() &&
         [b'\x20', b'\t', b'\r', b'\n'].contains(data[start]) {
@@ -577,18 +580,50 @@ fn svg_project_stylesheets(
 }
 
 ///|
+fn svg_decode_utf16(bytes : BytesView, endian : @utf16.Endian) -> String raise {
+  let text = @utf16.decode(bytes, endianness=endian, ignore_bom=true)
+  if !text.has_prefix("<?xml") ||
+    text.length() <= 5 ||
+    ![' ', '\t', '\n', '\r'].any(space => text[5].to_int() == space.to_int()) {
+    return text
+  }
+  guard text.find("?>") is Some(end) else {
+    raise InvalidDocument("Truncated SVG XML declaration")
+  }
+  let declaration = text[5:end].to_owned()
+  let attributes = @xml.loads("<declaration " + declaration + "/>")
+  guard attributes.document_element() is Some(element) &&
+    element.attr("encoding") is Some(encoding) else {
+    return text
+  }
+  let expected = if endian is Little { "utf-16le" } else { "utf-16be" }
+  guard encoding.to_lower() == "utf-16" || encoding.to_lower() == expected else {
+    raise InvalidDocument("SVG XML encoding disagrees with its byte order mark")
+  }
+  "<?xml" +
+  declaration.replace_all(old=encoding, new="UTF-8") +
+  text[end:].to_owned()
+}
+
+///|
 fn svg_parse_source(data : Bytes) -> (String, @dom.Element) raise {
   if data.length() > 262144 {
     raise Unsupported("SVG layer exceeds 256 KiB")
   }
   let bytes = data[:]
-  let source = @utf8.decode(
-    if bytes.has_prefix(b"\xef\xbb\xbf"[:]) {
-      bytes[3:]
-    } else {
-      bytes
-    },
-  )
+  let source = if bytes.has_prefix(b"\xff\xfe"[:]) {
+    svg_decode_utf16(bytes, Little)
+  } else if bytes.has_prefix(b"\xfe\xff"[:]) {
+    svg_decode_utf16(bytes, Big)
+  } else {
+    @utf8.decode(
+      if bytes.has_prefix(b"\xef\xbb\xbf"[:]) {
+        bytes[3:]
+      } else {
+        bytes
+      },
+    )
+  }
   let source = match source.find("<!DOCTYPE") {
     None => source
     Some(start) => {
