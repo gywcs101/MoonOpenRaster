@@ -475,10 +475,9 @@ fn parse_filter_primitive(
         GraphImage(
           result~,
           href=get_href_attr(attrs).unwrap_or(""),
-          x=get_attr(attrs, "x").map(parse_number).unwrap_or(0.0),
-          y=get_attr(attrs, "y").map(parse_number).unwrap_or(0.0),
-          width=get_attr(attrs, "width").map(parse_number).unwrap_or(0.0),
-          height=get_attr(attrs, "height").map(parse_number).unwrap_or(0.0),
+          aspect=get_attr(attrs, "preserveAspectRatio")
+            .map(parse_preserve_aspect_ratio)
+            .unwrap_or(PreserveAspectRatio::default()),
         ),
       )
     "feDiffuseLighting" =>

@@ -187,14 +187,7 @@ pub(all) enum FilterGraphPrimitive {
     fractal_noise~ : Bool,
   )
   GraphTile(input~ : String, result~ : String)
-  GraphImage(
-    result~ : String,
-    href~ : String,
-    x~ : Double,
-    y~ : Double,
-    width~ : Double,
-    height~ : Double,
-  )
+  GraphImage(result~ : String, href~ : String, aspect~ : PreserveAspectRatio)
   GraphDiffuseLighting(
     input~ : String,
     result~ : String,

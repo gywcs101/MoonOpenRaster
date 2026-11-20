@@ -234,7 +234,7 @@ pub(all) enum FilterGraphPrimitive {
   GraphDisplacementMap(input~ : String, input2~ : String, result~ : String, scale~ : Double, x_channel~ : FilterChannel, y_channel~ : FilterChannel)
   GraphTurbulence(result~ : String, base_x~ : Double, base_y~ : Double, octaves~ : Int32, seed~ : Double, stitch~ : Bool, fractal_noise~ : Bool)
   GraphTile(input~ : String, result~ : String)
-  GraphImage(result~ : String, href~ : String, x~ : Double, y~ : Double, width~ : Double, height~ : Double)
+  GraphImage(result~ : String, href~ : String, aspect~ : PreserveAspectRatio)
   GraphDiffuseLighting(input~ : String, result~ : String, surface_scale~ : Double, diffuse_constant~ : Double, color~ : Color, light~ : FilterLight)
   GraphSpecularLighting(input~ : String, result~ : String, surface_scale~ : Double, specular_constant~ : Double, specular_exponent~ : Double, color~ : Color, light~ : FilterLight)
 }
@@ -518,6 +518,7 @@ pub fn PreferredColorScheme::equal(Self, Self) -> Bool
 pub fn PreferredColorScheme::not_equal(Self, Self) -> Bool
 pub fn PreferredColorScheme::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct PreserveAspectRatio {
   align : Align
   meet_or_slice : MeetOrSlice

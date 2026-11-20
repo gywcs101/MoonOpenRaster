@@ -103,6 +103,7 @@ pub(all) enum MeetOrSlice {
 
 ///|
 /// Complete preserveAspectRatio setting
+#derive(Debug)
 pub(all) struct PreserveAspectRatio {
   align : Align
   meet_or_slice : MeetOrSlice

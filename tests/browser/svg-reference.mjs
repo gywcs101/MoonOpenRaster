@@ -3,6 +3,7 @@ import { request } from '../../_build/js/debug/build/bridge/bridge.js';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const transparent = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUeNpjYAACAAAFAAHp+tzYAAAAAElFTkSuQmCC';
+const redStripe = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAAXNSR0IArs4c6QAAAA5JREFUeNpj+M/A8B+EARH3A/3+rbuZAAAAAElFTkSuQmCC';
 const width = 16;
 const height = 12;
 const wrap = body => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${body}</svg>`;
@@ -83,6 +84,13 @@ const cases = {
     '<defs>' + filter('<feFlood flood-color="blue" result="under"/>' +
       '<feMerge><feMergeNode in="under"/><feMergeNode in="SourceGraphic"/></feMerge>', 'linearRGB') + '</defs>' +
     '<rect width="16" height="12" fill="red" fill-opacity=".5" filter="url(#f)"/>'),
+  'filter image from a local graphic': wrap(
+    '<defs><rect id="stamp" x="5" y="3" width="6" height="5" fill="red"/>' +
+    filter('<feImage xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#stamp"/>') + '</defs>' +
+    '<rect width="16" height="12" fill="blue" filter="url(#f)"/>'),
+  'filter image preserving an embedded PNG aspect ratio': wrap(
+    '<defs>' + filter('<feImage x="25%" y="0" width="8" height="12" href="data:image/png;base64,' + redStripe + '"/>') + '</defs>' +
+    '<rect width="16" height="12" fill="blue" filter="url(#f)"/>'),
 };
 
 function run(query) {

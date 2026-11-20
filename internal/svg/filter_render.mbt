@@ -541,50 +541,32 @@ fn filter_image_resource(
   width : Int32,
   height : Int32,
   href : String,
-  x : Double,
-  y : Double,
-  target_width : Double,
-  target_height : Double,
+  display : BoundingBox,
+  aspect : PreserveAspectRatio,
   resolver : ((String) -> Image?)?,
-) -> Image {
+) -> Image? {
+  guard resolver is Some(resolve) && resolve(href) is Some(image) else {
+    return None
+  }
   let result = Image::new(width, height)
-  let resource = match resolver {
-    Some(resolve) => resolve(href)
-    None => None
-  }
-  match resource {
-    Some(image) => {
-      let output_width = if target_width > 0.0 {
-        target_width
-      } else {
-        image.width.to_double()
-      }
-      let output_height = if target_height > 0.0 {
-        target_height
-      } else {
-        image.height.to_double()
-      }
-      let min_x = floor_to_int(x)
-      let min_y = floor_to_int(y)
-      let max_x = ceil_to_int(x + output_width)
-      let max_y = ceil_to_int(y + output_height)
-      for py in min_y..<max_y {
-        for px in min_x..<max_x {
-          let source_x = floor_to_int(
-            (px.to_double() + 0.5 - x) / output_width * image.width.to_double(),
-          )
-          let source_y = floor_to_int(
-            (py.to_double() + 0.5 - y) /
-            output_height *
-            image.height.to_double(),
-          )
-          result.set_pixel(px, py, image.get_pixel(source_x, source_y))
-        }
-      }
-    }
-    None => ()
-  }
-  result
+  let ctx = RenderState::new(
+    make_image_compositing_setter(result),
+    width,
+    height,
+  )
+  render_raster_image(
+    image,
+    display.min_x,
+    display.min_y,
+    display.width(),
+    display.height(),
+    Transform::identity(),
+    ctx,
+    aspect,
+    Bilinear,
+    1.0,
+  )
+  Some(result)
 }
 
 ///|
@@ -977,7 +959,6 @@ fn filter_primitive_region(
   region : FilterPrimitiveRegion,
   graph : FilterGraph,
   target : BoundingBox,
-  filter : BoundingBox,
   defaults : BoundingBox,
   origin_x : Int32,
   origin_y : Int32,
@@ -1045,12 +1026,7 @@ fn filter_primitive_region(
     viewport_height,
     defaults.height(),
   )
-  {
-    min_x: x.max(filter.min_x),
-    min_y: y.max(filter.min_y),
-    max_x: (x + width).min(filter.max_x),
-    max_y: (y + height).min(filter.max_y),
-  }
+  { min_x: x, min_y: y, max_x: x + width, max_y: y + height, }
 }
 
 ///|
@@ -1082,6 +1058,8 @@ fn evaluate_filter_graph(
   image_resolver : ((String) -> Image?)?,
   origin_x : Int32,
   origin_y : Int32,
+  local_image : (String) -> Image?,
+  diagnostics : Array[RenderDiagnostic],
 ) -> Image {
   if graph.primitives.is_empty() {
     return Image::new(source.width, source.height)
@@ -1132,12 +1110,18 @@ fn evaluate_filter_graph(
       )
     }
     let defaults = input_region.unwrap_or(filter_bounds)
-    let region = match graph.primitive_regions.get(i) {
+    let requested = match graph.primitive_regions.get(i) {
       Some(Some(region)) =>
         filter_primitive_region(
-          region, graph, target_bounds, filter_bounds, defaults, origin_x, origin_y,
+          region, graph, target_bounds, defaults, origin_x, origin_y,
         )
       _ => defaults
+    }
+    let region : BoundingBox = {
+      min_x: requested.min_x.max(filter_bounds.min_x),
+      min_y: requested.min_y.max(filter_bounds.min_y),
+      max_x: requested.max_x.min(filter_bounds.max_x),
+      max_y: requested.max_y.min(filter_bounds.max_y),
     }
     let (output, result_name) = match primitive {
       GraphColorMatrix(input~, result~, matrix~) =>
@@ -1356,20 +1340,32 @@ fn evaluate_filter_graph(
           ),
           result,
         )
-      GraphImage(result~, href~, x~, y~, width~, height~) =>
-        (
+      GraphImage(result~, href~, aspect~) => {
+        let image = if href.has_prefix("#") {
+          local_image(href[1:].to_owned())
+        } else {
           filter_image_resource(
             source.width,
             source.height,
             href,
-            filter_primitive_position_x(graph, x, target_bounds, origin_x),
-            filter_primitive_position_y(graph, y, target_bounds, origin_y),
-            filter_primitive_x(graph, width, target_bounds),
-            filter_primitive_y(graph, height, target_bounds),
+            requested,
+            aspect,
             image_resolver,
-          ),
-          result,
-        )
+          )
+        }
+        match image {
+          Some(image) => (image, result)
+          None => {
+            diagnostics.push({
+              kind: ResourceUnresolved,
+              stage: Image,
+              resource: href,
+              node_id: graph.id,
+            })
+            (Image::new(source.width, source.height), result)
+          }
+        }
+      }
       GraphDiffuseLighting(
         input~,
         result~,

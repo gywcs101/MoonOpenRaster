@@ -103,6 +103,8 @@ priv struct RenderState {
 
 ///|
 priv struct RenderResources {
+  root : SVGNode
+  definitions : DefsRegistry
   clips : ClipPathRegistry
   masks : MaskRegistry
   filter_graphs : FilterGraphRegistry
@@ -110,6 +112,7 @@ priv struct RenderResources {
   gradients : GradientRegistry
   markers : MarkerRegistry
   active_patterns : Array[String]
+  active_filter_images : Array[String]
   pattern_tiles : Map[String, PatternTile]
   surface_pool : RenderSurfacePool
 }
@@ -118,6 +121,8 @@ priv struct RenderResources {
 /// Render a parsed SVG document with registered resources
 fn SVGDocument::render(self : SVGDocument, ctx : RenderState) -> Unit {
   let resources = {
+    root: self.root,
+    definitions: self.definitions,
     clips: self.clips,
     masks: self.masks,
     filter_graphs: self.filter_graphs,
@@ -125,6 +130,7 @@ fn SVGDocument::render(self : SVGDocument, ctx : RenderState) -> Unit {
     gradients: self.gradients,
     markers: self.markers,
     active_patterns: [],
+    active_filter_images: [],
     pattern_tiles: Map([]),
     surface_pool: RenderSurfacePool::new(),
   }
@@ -477,6 +483,40 @@ fn render_isolated_node(
     Some(id) =>
       match resources.filter_graphs.get(id) {
         Some(graph) => {
+          fn local_image(id : String) -> Image? {
+            guard !resources.active_filter_images.contains(id) &&
+              resources.active_filter_images.length() < 8 else {
+              return None
+            }
+            let target = match resources.definitions.get(id) {
+              Some(_) as defined => defined
+              None => find_node_by_id(resources.root, id)
+            }
+            guard target is Some(target) else { return None }
+            let image = Image::new(layer.width, layer.height)
+            let image_ctx = {
+              ..RenderState::new(
+                make_image_compositing_setter(image),
+                image.width,
+                image.height,
+              ),
+              image_resolver: ctx.image_resolver,
+              target_image: Some(image),
+              diagnostics: ctx.diagnostics,
+            }
+            let transform = Transform::translate(
+                -layer.origin_x.to_double(),
+                -layer.origin_y.to_double(),
+              )
+              .multiply(parent_transform)
+              .multiply(node.transform)
+            resources.active_filter_images.push(id)
+            render_node(
+              target, transform, image_ctx, resources, false, parent_color,
+            )
+            ignore(resources.active_filter_images.pop())
+            Some(image)
+          }
           let result = evaluate_filter_graph(
             graph,
             layer.to_image(),
@@ -484,6 +524,8 @@ fn render_isolated_node(
             ctx.image_resolver,
             layer.origin_x,
             layer.origin_y,
+            local_image,
+            ctx.diagnostics,
           )
           layer.replace_from_image(result)
         }

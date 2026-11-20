@@ -442,3 +442,14 @@ test "SVG UTF-16 source decodes and retains its original bytes" {
     }
   }
 }
+
+///|
+test "unresolved SVG filter images report the resource name" {
+  let source = b"<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2'><defs><filter id='f'><feImage href='missing.png'/></filter></defs><rect width='2' height='2' filter='url(#f)'/></svg>"
+  let outcome = Ok(decode_svg(source)) catch { error => Err(error) }
+  match outcome {
+    Err(Unsupported(message)) =>
+      assert_eq(message, "SVG rendering failed for resource: missing.png")
+    _ => fail("A missing filter image must be reported")
+  }
+}
