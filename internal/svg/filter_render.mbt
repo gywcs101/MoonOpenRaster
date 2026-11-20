@@ -13,6 +13,23 @@ fn filter_source_alpha(source : Image) -> Image {
 }
 
 ///|
+fn filter_input_channel(value : Int32, linear_rgb : Bool) -> Double {
+  let unit = value.to_double() / 255.0
+  if linear_rgb {
+    srgb_to_linear_unit(unit)
+  } else {
+    unit
+  }
+}
+
+///|
+fn filter_output_channel(value : Double, linear_rgb : Bool) -> Int32 {
+  let unit = clamp_filter_unit(value)
+  let encoded = if linear_rgb { linear_to_srgb_unit(unit) } else { unit }
+  (encoded * 255.0).round().to_int()
+}
+
+///|
 fn resolve_filter_graph_input(
   name : String,
   source : Image,
@@ -123,6 +140,7 @@ fn blur_filter_image_xy(
   source : Image,
   radius_x : Double,
   radius_y : Double,
+  linear_rgb : Bool,
 ) -> Image {
   if radius_x <= 0.0 && radius_y <= 0.0 {
     return source
@@ -139,9 +157,9 @@ fn blur_filter_image_xy(
         let color = source.get_pixel(x, y)
         let value = match channel {
           3 => color.a.to_double()
-          0 => color.r.to_double() * color.a.to_double() / 255.0
-          1 => color.g.to_double() * color.a.to_double() / 255.0
-          _ => color.b.to_double() * color.a.to_double() / 255.0
+          0 => filter_input_channel(color.r, linear_rgb) * color.a.to_double()
+          1 => filter_input_channel(color.g, linear_rgb) * color.a.to_double()
+          _ => filter_input_channel(color.b, linear_rgb) * color.a.to_double()
         }
         plane[y * width + x] = Float::from_double(value)
       }
@@ -160,9 +178,10 @@ fn blur_filter_image_xy(
           alpha[index] = filtered[index]
           result.set_pixel(x, y, Color::rgba(0, 0, 0, value.round().to_int()))
         } else if alpha[index] > (0.0 : Float) {
-          let component = (value * 255.0 / alpha[index].to_double())
-            .round()
-            .to_int()
+          let component = filter_output_channel(
+            value / alpha[index].to_double(),
+            linear_rgb,
+          )
           let color = result.get_pixel(x, y)
           result.set_pixel(
             x,
@@ -244,6 +263,7 @@ fn component_transfer_filter_image(
   green : ComponentTransferFunction,
   blue : ComponentTransferFunction,
   alpha : ComponentTransferFunction,
+  linear_rgb : Bool,
 ) -> Image {
   let result = Image::new(source.width, source.height)
   for y in 0..<source.height {
@@ -253,15 +273,27 @@ fn component_transfer_filter_image(
         x,
         y,
         Color::rgba(
-          (transfer_filter_value(red, color.r.to_double() / 255.0) * 255.0)
-          .round()
-          .to_int(),
-          (transfer_filter_value(green, color.g.to_double() / 255.0) * 255.0)
-          .round()
-          .to_int(),
-          (transfer_filter_value(blue, color.b.to_double() / 255.0) * 255.0)
-          .round()
-          .to_int(),
+          filter_output_channel(
+            transfer_filter_value(
+              red,
+              filter_input_channel(color.r, linear_rgb),
+            ),
+            linear_rgb,
+          ),
+          filter_output_channel(
+            transfer_filter_value(
+              green,
+              filter_input_channel(color.g, linear_rgb),
+            ),
+            linear_rgb,
+          ),
+          filter_output_channel(
+            transfer_filter_value(
+              blue,
+              filter_input_channel(color.b, linear_rgb),
+            ),
+            linear_rgb,
+          ),
           (transfer_filter_value(alpha, color.a.to_double() / 255.0) * 255.0)
           .round()
           .to_int(),
@@ -458,91 +490,6 @@ fn displacement_filter_image(
 }
 
 ///|
-fn smooth_noise_fraction(value : Double) -> Double {
-  value * value * (3.0 - 2.0 * value)
-}
-
-///|
-fn filter_noise_hash(x : Int32, y : Int32, seed : Double) -> Double {
-  let value = @math.sin(
-      x.to_double() * 12.9898 + y.to_double() * 78.233 + seed * 37.719,
-    ) *
-    43758.5453
-  let fraction = value - value.floor()
-  if fraction < 0.0 {
-    fraction + 1.0
-  } else {
-    fraction
-  }
-}
-
-///|
-fn filter_value_noise(x : Double, y : Double, seed : Double) -> Double {
-  let x0 = x.floor().to_int()
-  let y0 = y.floor().to_int()
-  let tx = smooth_noise_fraction(x - x0.to_double())
-  let ty = smooth_noise_fraction(y - y0.to_double())
-  let top = filter_noise_hash(x0, y0, seed) * (1.0 - tx) +
-    filter_noise_hash(x0 + 1, y0, seed) * tx
-  let bottom = filter_noise_hash(x0, y0 + 1, seed) * (1.0 - tx) +
-    filter_noise_hash(x0 + 1, y0 + 1, seed) * tx
-  top * (1.0 - ty) + bottom * ty
-}
-
-///|
-fn turbulence_filter_image(
-  width : Int32,
-  height : Int32,
-  base_x : Double,
-  base_y : Double,
-  octaves : Int32,
-  seed : Double,
-  fractal_noise : Bool,
-) -> Image {
-  let result = Image::new(width, height)
-  let octave_count = if octaves < 1 {
-    1
-  } else if octaves > 8 {
-    8
-  } else {
-    octaves
-  }
-  for y in 0..<height {
-    for x in 0..<width {
-      let mut sum = 0.0
-      let mut weight_sum = 0.0
-      let mut frequency = 1.0
-      let mut weight = 1.0
-      for octave in 0..<octave_count {
-        let noise = filter_value_noise(
-          x.to_double() * base_x * frequency,
-          y.to_double() * base_y * frequency,
-          seed + octave.to_double() * 19.0,
-        )
-        sum = sum +
-          (if fractal_noise {
-            noise * 2.0 - 1.0
-          } else {
-            (noise * 2.0 - 1.0).abs()
-          }) *
-          weight
-        weight_sum = weight_sum + weight
-        frequency = frequency * 2.0
-        weight = weight * 0.5
-      }
-      let unit = if fractal_noise {
-        clamp_filter_unit(0.5 + sum / weight_sum * 0.5)
-      } else {
-        clamp_filter_unit(sum / weight_sum)
-      }
-      let byte = (unit * 255.0).round().to_int()
-      result.set_pixel(x, y, Color::rgba(byte, byte, byte, 255))
-    }
-  }
-  result
-}
-
-///|
 fn tile_filter_image(source : Image) -> Image {
   let mut min_x = source.width
   let mut min_y = source.height
@@ -675,7 +622,7 @@ fn filter_light_vector(
       points_at_y~,
       points_at_z~,
       exponent~,
-      limiting_cone_angle~
+      limiting_cone_angle~,
     ) => {
       let vector = normalize_filter_vector(
         light_x - x,
@@ -859,7 +806,7 @@ fn resolve_filter_light(
       points_at_y~,
       points_at_z~,
       exponent~,
-      limiting_cone_angle~
+      limiting_cone_angle~,
     ) =>
       SpotLight(
         x=filter_primitive_position_x(graph, x, target, origin_x),
@@ -1153,6 +1100,29 @@ fn evaluate_filter_graph(
   let mut previous = source
   let mut previous_region = filter_bounds
   for i, primitive in graph.primitives {
+    let linear_rgb = graph.linear_color.get(i).unwrap_or(true)
+    let mut input_region : BoundingBox? = None
+    for name in primitive.region_inputs() {
+      let bounds = if name == "" {
+        previous_region
+      } else {
+        named_regions.get(name).unwrap_or(filter_bounds)
+      }
+      input_region = Some(
+        match input_region {
+          Some(combined) => combined.union(bounds)
+          None => bounds
+        },
+      )
+    }
+    let defaults = input_region.unwrap_or(filter_bounds)
+    let region = match graph.primitive_regions.get(i) {
+      Some(Some(region)) =>
+        filter_primitive_region(
+          region, graph, target_bounds, filter_bounds, defaults, origin_x, origin_y,
+        )
+      _ => defaults
+    }
     let (output, result_name) = match primitive {
       GraphColorMatrix(input~, result~, matrix~) =>
         (
@@ -1161,6 +1131,7 @@ fn evaluate_filter_graph(
               input, source, source_alpha, previous, named,
             ),
             ColorMatrix(matrix),
+            linear_rgb~,
           ),
           result,
         )
@@ -1172,6 +1143,7 @@ fn evaluate_filter_graph(
             ),
             filter_primitive_x(graph, radius_x, target_bounds),
             filter_primitive_y(graph, radius_y, target_bounds),
+            linear_rgb,
           ),
           result,
         )
@@ -1241,6 +1213,7 @@ fn evaluate_filter_graph(
             green,
             blue,
             alpha,
+            linear_rgb,
           ),
           result,
         )
@@ -1267,7 +1240,7 @@ fn evaluate_filter_graph(
         target_x~,
         target_y~,
         edge_mode~,
-        preserve_alpha~
+        preserve_alpha~,
       ) =>
         (
           convolve_filter_image(
@@ -1292,7 +1265,7 @@ fn evaluate_filter_graph(
         result~,
         scale~,
         x_channel~,
-        y_channel~
+        y_channel~,
       ) =>
         (
           displacement_filter_image(
@@ -1315,8 +1288,8 @@ fn evaluate_filter_graph(
         base_y~,
         octaves~,
         seed~,
-        stitch=_,
-        fractal_noise~
+        stitch~,
+        fractal_noise~,
       ) => {
         let frequency_x = match graph.primitive_units {
           ObjectBoundingBox =>
@@ -1344,7 +1317,12 @@ fn evaluate_filter_graph(
             frequency_y,
             octaves,
             seed,
+            stitch,
             fractal_noise,
+            region,
+            origin_x,
+            origin_y,
+            linear_rgb,
           ),
           result,
         )
@@ -1378,7 +1356,7 @@ fn evaluate_filter_graph(
         surface_scale~,
         diffuse_constant~,
         color~,
-        light~
+        light~,
       ) =>
         (
           lighting_filter_image(
@@ -1403,7 +1381,7 @@ fn evaluate_filter_graph(
         specular_constant~,
         specular_exponent~,
         color~,
-        light~
+        light~,
       ) =>
         (
           lighting_filter_image(
@@ -1421,28 +1399,6 @@ fn evaluate_filter_graph(
           ),
           result,
         )
-    }
-    let mut input_region : BoundingBox? = None
-    for name in primitive.region_inputs() {
-      let bounds = if name == "" {
-        previous_region
-      } else {
-        named_regions.get(name).unwrap_or(filter_bounds)
-      }
-      input_region = Some(
-        match input_region {
-          Some(combined) => combined.union(bounds)
-          None => bounds
-        },
-      )
-    }
-    let defaults = input_region.unwrap_or(filter_bounds)
-    let region = match graph.primitive_regions.get(i) {
-      Some(Some(region)) =>
-        filter_primitive_region(
-          region, graph, target_bounds, filter_bounds, defaults, origin_x, origin_y,
-        )
-      _ => defaults
     }
     let clipped = if region.min_x > 0.0 ||
       region.min_y > 0.0 ||

@@ -406,3 +406,9 @@ test "SVG text whitespace collapses across spans and honors inherited xml:space"
   assert_eq(render(" \nA\t B ", true), render("  A  B ", true))
   assert_true(render("  A  B ", true) != render("A B", false))
 }
+
+///|
+test "SVG filter color transfer defaults to linear sRGB" {
+  let svg = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><defs><filter id='f' filterUnits='userSpaceOnUse' x='0' y='0' width='1' height='1'><feComponentTransfer><feFuncR type='linear' slope='.5'/></feComponentTransfer></filter></defs><rect width='1' height='1' fill='red' filter='url(#f)'/></svg>"
+  assert_eq(decode_svg(svg).pixels(), [188, 0, 0, 255])
+}

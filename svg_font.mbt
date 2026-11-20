@@ -259,6 +259,37 @@ fn svg_text_cascade(
 }
 
 ///|
+fn svg_relative_length(value : String, font_size : Double) -> Double raise {
+  let value = value[:].trim().to_owned()
+  if value.has_suffix("em") {
+    svg_number(value[:value.length() - 2].to_owned()) * font_size
+  } else if value.has_suffix("ex") {
+    svg_number(value[:value.length() - 2].to_owned()) * font_size * 0.5
+  } else {
+    svg_dimension(value)
+  }
+}
+
+///|
+fn svg_resolve_font_size(value : String, inherited : Double) -> Double raise {
+  match value {
+    "xx-small" => 9.0
+    "x-small" => 10.0
+    "small" => 13.0
+    "medium" => 16.0
+    "large" => 18.0
+    "x-large" => 24.0
+    "xx-large" => 32.0
+    "larger" => inherited * 1.2
+    "smaller" => inherited / 1.2
+    "inherit" => inherited
+    raw if raw.has_suffix("%") =>
+      svg_number(raw[:raw.length() - 1].to_owned()) * inherited / 100.0
+    _ => svg_relative_length(value, inherited)
+  }
+}
+
+///|
 fn svg_text_properties(
   element : @dom.Element,
   inherited : Map[String, String],
@@ -283,7 +314,17 @@ fn svg_text_properties(
       None => element.attr(name)
     }
     if candidate is Some(value) {
-      properties[name] = if name == "font-weight" &&
+      properties[name] = if name == "font-size" {
+        let size = svg_dimension(properties.get(name).unwrap_or("16")) catch {
+          _ => 16.0
+        }
+        let resolved = svg_resolve_font_size(value, size) catch { _ => size }
+        if resolved >= 0.0 {
+          resolved.to_string()
+        } else {
+          size.to_string()
+        }
+      } else if name == "font-weight" &&
         (value == "lighter" || value == "bolder") {
         let parent = svg_font_weight(properties.get(name).unwrap_or("normal"))
         (if value == "lighter" {
@@ -431,6 +472,7 @@ fn svg_font_directory_is_bounded(data : BytesView) -> Bool {
 fn svg_text_numbers(
   element : @dom.Element,
   name : String,
+  size : Double,
 ) -> Array[Double] raise {
   let value = element
     .attr(name)
@@ -445,7 +487,7 @@ fn svg_text_numbers(
       if name == "rotate" {
         result.push(svg_number(item.to_owned()))
       } else {
-        result.push(svg_dimension(item.to_owned()))
+        result.push(svg_relative_length(item.to_owned(), size))
       }
     }
   }
@@ -469,14 +511,7 @@ fn svg_unpositioned_spans(element : @dom.Element) -> Bool {
 fn svg_spacing(value : String?, size : Double) -> Double raise {
   match value {
     None | Some("normal") => 0.0
-    Some(raw) => {
-      let trimmed = raw[:].trim().to_owned()
-      if trimmed.has_suffix("em") {
-        svg_number(trimmed[:trimmed.length() - 2].to_owned()) * size
-      } else {
-        svg_dimension(trimmed)
-      }
-    }
+    Some(raw) => svg_relative_length(raw, size)
   }
 }
 
@@ -499,6 +534,13 @@ fn svg_glyph_run(
   }
   if text.is_empty() {
     return ([], x, y)
+  }
+  let size = svg_dimension(style.get("font-size").unwrap_or("16"))
+  if size == 0.0 {
+    return ([], x, y)
+  }
+  guard size <= 2048.0 else {
+    raise Unsupported("SVG font size exceeds the rendering budget")
   }
   let family = style.get("font-family").unwrap_or("sans-serif")
   let desired_weight = svg_font_weight(
@@ -562,8 +604,7 @@ fn svg_glyph_run(
   guard selected is Some((uri, font)) else {
     raise Unsupported("Missing or invalid SVG font: " + sources.join(", "))
   }
-  let size = svg_dimension(style.get("font-size").unwrap_or("16"))
-  guard size > 0.0 && size <= 2048.0 && font.units_per_em > 0 else {
+  guard font.units_per_em > 0 else {
     raise Unsupported("Invalid SVG font size or units per em")
   }
   let letter_spacing = svg_spacing(style.get("letter-spacing"), size)
@@ -724,11 +765,12 @@ fn svg_glyph_group(
   sheets : Array[@css.Stylesheet],
   path~ : SvgTextPath? = None,
 ) -> @dom.Element raise {
-  let xs = svg_text_numbers(element, "x")
-  let ys = svg_text_numbers(element, "y")
-  let dx = svg_text_numbers(element, "dx")
-  let dy = svg_text_numbers(element, "dy")
-  let rotations = svg_text_numbers(element, "rotate")
+  let font_size = svg_dimension(style.get("font-size").unwrap_or("16"))
+  let xs = svg_text_numbers(element, "x", font_size)
+  let ys = svg_text_numbers(element, "y", font_size)
+  let dx = svg_text_numbers(element, "dx", font_size)
+  let dy = svg_text_numbers(element, "dy", font_size)
+  let rotations = svg_text_numbers(element, "rotate", font_size)
   let lists = [xs, ys, dx, dy, rotations]
   let explicit = !rotations.is_empty() ||
     lists.any(values => values.length() > 1)
@@ -752,7 +794,7 @@ fn svg_glyph_group(
           "SVG explicit text length with positions, spans, or paths is unsupported",
         )
       }
-      let length = svg_dimension(value)
+      let length = svg_relative_length(value, font_size)
       guard length > 0.0 else {
         raise Unsupported("SVG textLength must be positive")
       }

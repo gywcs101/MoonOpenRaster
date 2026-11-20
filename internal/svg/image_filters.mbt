@@ -269,13 +269,20 @@ fn apply_saturate(color : Color, factor : Double) -> Color {
 /// [B'] = [a20 a21 a22 a23 a24] [B]
 /// [A'] = [a30 a31 a32 a33 a34] [A]
 ///                              [1]
-fn apply_color_matrix(color : Color, matrix : FixedArray[Double]) -> Color {
+fn apply_color_matrix(
+  color : Color,
+  matrix : FixedArray[Double],
+  linear_rgb~ : Bool = false,
+) -> Color {
   if matrix.length() != 20 {
     return color // Invalid matrix
   }
-  let r = color.r.to_double() / 255.0
-  let g = color.g.to_double() / 255.0
-  let b = color.b.to_double() / 255.0
+  fn input(channel : Int32) -> Double {
+    filter_input_channel(channel, linear_rgb)
+  }
+  let r = input(color.r)
+  let g = input(color.g)
+  let b = input(color.b)
   let a = color.a.to_double() / 255.0
   let new_r = r * matrix[0] +
     g * matrix[1] +
@@ -298,9 +305,9 @@ fn apply_color_matrix(color : Color, matrix : FixedArray[Double]) -> Color {
     a * matrix[18] +
     matrix[19]
   {
-    r: clamp_int((new_r * 255.0).round().to_int(), 0, 255),
-    g: clamp_int((new_g * 255.0).round().to_int(), 0, 255),
-    b: clamp_int((new_b * 255.0).round().to_int(), 0, 255),
+    r: filter_output_channel(new_r, linear_rgb),
+    g: filter_output_channel(new_g, linear_rgb),
+    b: filter_output_channel(new_b, linear_rgb),
     a: clamp_int((new_a * 255.0).round().to_int(), 0, 255),
   }
 }
@@ -390,7 +397,11 @@ fn alpha_blend(fg : Color, bg : Color) -> Color {
 
 ///|
 /// Apply a filter to an image (returns new image)
-fn apply_filter(image : Image, filter : Filter) -> Image {
+fn apply_filter(
+  image : Image,
+  filter : Filter,
+  linear_rgb~ : Bool = false,
+) -> Image {
   match filter {
     Blur(radius) => {
       let result = image.clone()
@@ -442,7 +453,7 @@ fn apply_filter(image : Image, filter : Filter) -> Image {
     }
     ColorMatrix(matrix) => {
       let result = image.clone()
-      result.apply_color_matrix_in_place(matrix)
+      result.apply_color_matrix_in_place(matrix, linear_rgb~)
       result
     }
   }

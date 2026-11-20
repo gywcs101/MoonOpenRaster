@@ -44,6 +44,28 @@ const cases = {
     '<defs><filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="16" height="12" primitiveUnits="objectBoundingBox">' +
       '<feFlood x=".25" y=".25" width=".5" height=".5" flood-color="red"/></filter></defs>' +
     '<rect x="2" y="2" width="12" height="8" fill="blue" filter="url(#f)"/>'),
+  'saturation mode': wrap(
+    '<defs>' + filter('<feColorMatrix type="saturate" values="0"/>') + '</defs>' +
+    '<rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
+  'hue rotation mode': wrap(
+    '<defs>' + filter('<feColorMatrix type="hueRotate" values="120"/>') + '</defs>' +
+    '<rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
+  'luminance to alpha mode': wrap(
+    '<defs>' + filter('<feColorMatrix type="luminanceToAlpha"/>') + '</defs>' +
+    '<rect x="2" y="2" width="10" height="8" fill="lime" filter="url(#f)"/>'),
+  'default linear RGB color transfer': wrap(
+    '<defs>' + filter('<feComponentTransfer><feFuncR type="linear" slope=".5"/></feComponentTransfer>')
+      .replace(' color-interpolation-filters="sRGB"', '') + '</defs>' +
+    '<rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
+  'per-primitive linear RGB override': wrap(
+    '<defs>' + filter('<feComponentTransfer style="color-interpolation-filters: linearRGB"><feFuncR type="linear" slope=".5"/></feComponentTransfer>') + '</defs>' +
+    '<rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
+  'seeded fractal noise': wrap(
+    '<defs>' + filter('<feTurbulence type="fractalNoise" baseFrequency=".125 .25" numOctaves="2" seed="17"/>') + '</defs>' +
+    '<rect width="16" height="12" filter="url(#f)"/>'),
+  'stitched fractal noise': wrap(
+    '<defs>' + filter('<feTurbulence type="fractalNoise" baseFrequency=".16 .2" numOctaves="2" seed="17" stitchTiles="stitch"/>') + '</defs>' +
+    '<rect width="16" height="12" filter="url(#f)"/>'),
 };
 
 function run(query) {
@@ -98,7 +120,7 @@ try {
         }
       }
     }
-    const tolerance = name === 'transparent blur' ? 13 : 1;
+    const tolerance = name === 'transparent blur' ? 13 : name.endsWith('fractal noise') ? 2 : 1;
     assert.ok(delta <= tolerance, `${name}: channel ${worst} differs by ${delta}, ${actual[worst]} vs ${reference[worst]}`);
     console.log(`PASS: ${name}, Chromium reference, maximum channel difference ${delta}`);
   }

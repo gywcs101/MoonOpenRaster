@@ -119,6 +119,54 @@ fn parse_filter_matrix(value : String) -> FixedArray[Double]? {
 }
 
 ///|
+fn filter_color_matrix(attrs : Array[(String, String)]) -> FixedArray[Double]? {
+  let values = get_attr(attrs, "values")
+  let kind = get_attr(attrs, "type").unwrap_or("matrix")
+  match kind {
+    "matrix" =>
+      match values {
+        Some(value) => parse_filter_matrix(value)
+        None =>
+          Some([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0])
+      }
+    "saturate" | "hueRotate" => {
+      let (cosine, sine) = if kind == "saturate" {
+        (values.map(parse_number).unwrap_or(1.0), 0.0)
+      } else {
+        let radians = values.map(parse_number).unwrap_or(0.0) *
+          0.017453292519943295
+        (@math.cos(radians), @math.sin(radians))
+      }
+      let luma = [0.213, 0.715, 0.072]
+      let hue = [
+        -0.213, -0.715, 0.928, 0.143, 0.140, -0.283, -0.787, 0.715, 0.072,
+      ]
+      Some(
+        FixedArray::makei(20, i => {
+          let row = i / 5
+          let column = i % 5
+          if row < 3 && column < 3 {
+            let identity = if row == column { 1.0 } else { 0.0 }
+            luma[column] +
+            (identity - luma[column]) * cosine +
+            hue[row * 3 + column] * sine
+          } else if row == 3 && column == 3 {
+            1.0
+          } else {
+            0.0
+          }
+        }),
+      )
+    }
+    "luminanceToAlpha" =>
+      Some([
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2125, 0.7154, 0.0721, 0, 0,
+      ])
+    _ => None
+  }
+}
+
+///|
 priv struct FilterPrimitiveChild {
   tag : String
   attrs : Array[(String, String)]
@@ -236,17 +284,9 @@ fn parse_filter_primitive(
   let result = get_attr(attrs, "result").unwrap_or("")
   match tag {
     "feColorMatrix" =>
-      if get_attr(attrs, "type").unwrap_or("matrix") != "matrix" {
-        None
-      } else {
-        match get_attr(attrs, "values") {
-          Some(value) =>
-            parse_filter_matrix(value).map(fn(matrix) {
-              GraphColorMatrix(input~, result~, matrix~)
-            })
-          None => None
-        }
-      }
+      filter_color_matrix(attrs).map(matrix => {
+        GraphColorMatrix(input~, result~, matrix~)
+      })
     "feGaussianBlur" => {
       let values = get_attr(attrs, "stdDeviation")
         .map(parse_number_list)
@@ -502,6 +542,26 @@ fn parse_filter_primitive_children(
 }
 
 ///|
+fn filter_uses_linear_rgb(
+  attrs : Array[(String, String)],
+  inherited : Bool,
+) -> Bool {
+  let mut value = get_attr(attrs, "color-interpolation-filters")
+  if get_attr(attrs, "style") is Some(style) {
+    for declaration in parse_inline_style_declarations(style) {
+      if declaration.name == "color-interpolation-filters" {
+        value = Some(declaration.value)
+      }
+    }
+  }
+  match value {
+    Some("sRGB") => false
+    Some("linearRGB") => true
+    _ => inherited
+  }
+}
+
+///|
 fn parse_filter_graph(
   parser : SVGParser,
   attrs : Array[(String, String)],
@@ -510,6 +570,8 @@ fn parse_filter_graph(
 ) -> Unit {
   let primitives : Array[FilterGraphPrimitive] = []
   let regions : Array[FilterPrimitiveRegion?] = []
+  let color : Array[Bool] = []
+  let filter_linear = filter_uses_linear_rgb(attrs, true)
   let units = match get_attr(attrs, "primitiveUnits") {
     Some(value) => parse_mask_units(value)
     None => UserSpaceOnUse
@@ -532,6 +594,7 @@ fn parse_filter_graph(
         length("height"),
       )
       primitives.push(primitive)
+      color.push(filter_uses_linear_rgb(element.attributes, filter_linear))
       regions.push(
         if x is Some(_) || y is Some(_) || width is Some(_) || height is Some(_) {
           Some({ x, y, width, height, })
@@ -556,7 +619,7 @@ fn parse_filter_graph(
       _ => ()
     }
   }
-  register_filter_graph(attrs, ctx, primitives, regions~)
+  register_filter_graph(attrs, ctx, primitives, regions~, color~)
 }
 
 ///|
@@ -565,6 +628,7 @@ fn register_filter_graph(
   ctx : SVGParseContext,
   primitives : Array[FilterGraphPrimitive],
   regions~ : Array[FilterPrimitiveRegion?] = [],
+  color~ : Array[Bool] = [],
 ) -> Unit {
   let id = get_attr(attrs, "id").unwrap_or("")
   if id.length() == 0 {
@@ -602,6 +666,7 @@ fn register_filter_graph(
     id,
     primitives,
     primitive_regions: regions,
+    linear_color: color,
     viewport: ctx.current_length_viewport().unwrap_or((300.0, 150.0)),
     units,
     primitive_units,

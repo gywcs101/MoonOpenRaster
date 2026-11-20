@@ -205,6 +205,7 @@ pub(all) struct FilterGraph {
   id : String
   primitives : Array[FilterGraphPrimitive]
   primitive_regions : Array[FilterPrimitiveRegion?]
+  linear_color : Array[Bool]
   viewport : (Double, Double)
   units : MaskUnits
   primitive_units : MaskUnits

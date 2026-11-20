@@ -114,20 +114,20 @@ pub(all) enum FilterGraphPrimitive {
   GraphColorMatrix(
     input~ : String,
     result~ : String,
-    matrix~ : FixedArray[Double]
+    matrix~ : FixedArray[Double],
   )
   GraphGaussianBlur(
     input~ : String,
     result~ : String,
     radius_x~ : Double,
-    radius_y~ : Double
+    radius_y~ : Double,
   )
   GraphOffset(input~ : String, result~ : String, dx~ : Double, dy~ : Double)
   GraphBlend(
     input~ : String,
     input2~ : String,
     result~ : String,
-    mode~ : BlendMode
+    mode~ : BlendMode,
   )
   GraphComposite(
     input~ : String,
@@ -137,7 +137,7 @@ pub(all) enum FilterGraphPrimitive {
     k1~ : Double,
     k2~ : Double,
     k3~ : Double,
-    k4~ : Double
+    k4~ : Double,
   )
   GraphFlood(result~ : String, color~ : Color)
   GraphMerge(result~ : String, inputs~ : Array[String])
@@ -147,14 +147,14 @@ pub(all) enum FilterGraphPrimitive {
     red~ : ComponentTransferFunction,
     green~ : ComponentTransferFunction,
     blue~ : ComponentTransferFunction,
-    alpha~ : ComponentTransferFunction
+    alpha~ : ComponentTransferFunction,
   )
   GraphMorphology(
     input~ : String,
     result~ : String,
     radius_x~ : Double,
     radius_y~ : Double,
-    operator~ : MorphologyOperator
+    operator~ : MorphologyOperator,
   )
   GraphConvolveMatrix(
     input~ : String,
@@ -167,7 +167,7 @@ pub(all) enum FilterGraphPrimitive {
     target_x~ : Int32,
     target_y~ : Int32,
     edge_mode~ : FilterEdgeMode,
-    preserve_alpha~ : Bool
+    preserve_alpha~ : Bool,
   )
   GraphDisplacementMap(
     input~ : String,
@@ -175,7 +175,7 @@ pub(all) enum FilterGraphPrimitive {
     result~ : String,
     scale~ : Double,
     x_channel~ : FilterChannel,
-    y_channel~ : FilterChannel
+    y_channel~ : FilterChannel,
   )
   GraphTurbulence(
     result~ : String,
@@ -184,7 +184,7 @@ pub(all) enum FilterGraphPrimitive {
     octaves~ : Int32,
     seed~ : Double,
     stitch~ : Bool,
-    fractal_noise~ : Bool
+    fractal_noise~ : Bool,
   )
   GraphTile(input~ : String, result~ : String)
   GraphImage(
@@ -193,7 +193,7 @@ pub(all) enum FilterGraphPrimitive {
     x~ : Double,
     y~ : Double,
     width~ : Double,
-    height~ : Double
+    height~ : Double,
   )
   GraphDiffuseLighting(
     input~ : String,
@@ -201,7 +201,7 @@ pub(all) enum FilterGraphPrimitive {
     surface_scale~ : Double,
     diffuse_constant~ : Double,
     color~ : Color,
-    light~ : FilterLight
+    light~ : FilterLight,
   )
   GraphSpecularLighting(
     input~ : String,
@@ -210,7 +210,7 @@ pub(all) enum FilterGraphPrimitive {
     specular_constant~ : Double,
     specular_exponent~ : Double,
     color~ : Color,
-    light~ : FilterLight
+    light~ : FilterLight,
   )
 }
 
@@ -261,7 +261,7 @@ pub(all) enum FilterLight {
     points_at_y~ : Double,
     points_at_z~ : Double,
     exponent~ : Double,
-    limiting_cone_angle~ : Double?
+    limiting_cone_angle~ : Double?,
   )
 }
 
@@ -289,6 +289,7 @@ pub(all) struct FilterGraph {
   id : String
   primitives : Array[FilterGraphPrimitive]
   primitive_regions : Array[FilterPrimitiveRegion?]
+  linear_color : Array[Bool]
   viewport : (Double, Double)
   units : MaskUnits
   primitive_units : MaskUnits

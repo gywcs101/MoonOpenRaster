@@ -210,7 +210,7 @@ pub(all) enum Shape {
     width~ : Double,
     height~ : Double,
     rx~ : Double,
-    ry~ : Double
+    ry~ : Double,
   )
   Circle(cx~ : Double, cy~ : Double, r~ : Double)
   Ellipse(cx~ : Double, cy~ : Double, rx~ : Double, ry~ : Double)
@@ -224,7 +224,7 @@ pub(all) enum Shape {
     y~ : Double,
     width~ : Double,
     height~ : Double,
-    href~ : String
+    href~ : String,
   )
   Group // Container for children
 }

@@ -51,6 +51,7 @@ def check_font_layer(cli, variant="font"):
     weighted = variant == "font-weight"
     slanted = variant == "font-style"
     multiple_sources = variant == "font-alternate-sources"
+    relative_size = variant == "font-relative-size"
     external = variant == "font-svg-resource"
     path_external = variant == "font-path-resource"
     path_text = variant == "font-path" or path_external
@@ -96,8 +97,14 @@ def check_font_layer(cli, variant="font"):
     stylesheet = '<?xml-stylesheet type="text/css" href="../styles/level/index.css"?>' if declaration else ''
     inline_style = '' if declaration else f'<style>{styles}</style>'
     font_attributes = 'class="label"' if cascade else 'font-family="OraTest" font-size="8" fill="red"'
+    parent_attrs = ""
+    if relative_size:
+        position_attrs = 'x="0" y="1em"'
+        font_attributes = 'font-family="OraTest" font-size="50%" fill="red"'
+        parent_attrs = ' font-size="16px"'
+        text = 'A<tspan font-size="1em">中</tspan>'
     svg = (
-        f'{stylesheet}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8">'
+        f'{stylesheet}<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8"{parent_attrs}>'
         f'{inline_style}{definition}'
         f'<text {font_attributes} {position_attrs} id="label">{text}</text></svg>'
     ).encode()
@@ -351,7 +358,7 @@ def main():
         "font", "embedded-font", "font-spans", "font-stylesheet", "font-stylesheet-pi",
         "font-css-cascade", "font-centered-spans", "font-length-spacing", "font-length-glyphs",
         "font-svg-resource", "font-path", "font-path-resource", "font-position-list",
-        "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
+        "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources", "font-relative-size",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)

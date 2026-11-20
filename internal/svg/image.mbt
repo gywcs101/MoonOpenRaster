@@ -177,8 +177,9 @@ fn Image::apply_saturate_in_place(self : Image, factor : Double) -> Unit {
 fn Image::apply_color_matrix_in_place(
   self : Image,
   matrix : FixedArray[Double],
+  linear_rgb~ : Bool = false,
 ) -> Unit {
   for i in 0..<self.pixels.length() {
-    self.pixels[i] = apply_color_matrix(self.pixels[i], matrix)
+    self.pixels[i] = apply_color_matrix(self.pixels[i], matrix, linear_rgb~)
   }
 }
