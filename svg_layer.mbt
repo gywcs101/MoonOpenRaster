@@ -197,8 +197,8 @@ fn svg_hex_digit(byte : Byte) -> Int32 {
 }
 
 ///|
-fn svg_unescape_path(path : String) -> String? {
-  let bytes = @utf8.encode(path)
+fn svg_unescape(value : String, path~ : Bool) -> String? {
+  let bytes = @utf8.encode(value)
   let output : Array[Byte] = []
   let mut cursor = 0
   while cursor < bytes.length() {
@@ -208,7 +208,7 @@ fn svg_unescape_path(path : String) -> String? {
       let lo = svg_hex_digit(bytes[cursor + 2])
       guard hi >= 0 && lo >= 0 else { return None }
       let byte = (hi * 16 + lo).to_byte()
-      guard byte != b'/' && byte != b'\\' && byte != b'\x00' else {
+      guard byte != b'\x00' && (!path || (byte != b'/' && byte != b'\\')) else {
         return None
       }
       output.push(byte)
@@ -228,7 +228,7 @@ fn svg_archive_path(base : String, href : String) -> String? {
   let uri = href[:].trim().to_owned()
   let absolute = uri.has_prefix("ora:/") && !uri.has_prefix("ora://")
   let encoded = if absolute { uri[5:].to_owned() } else { uri }
-  guard svg_unescape_path(encoded) is Some(path) else { return None }
+  guard svg_unescape(encoded, path=true) is Some(path) else { return None }
   if path == "" ||
     path.has_prefix("/") ||
     path.contains(":") ||
@@ -273,15 +273,94 @@ fn svg_archive_resource(
 }
 
 ///|
+priv struct SvgImageResources {
+  images : Map[String, @vector.Image]
+  active : Map[String, Bool]
+  used_pixels : Ref[Int64]
+}
+
+///|
+fn SvgImageResources::reserve(
+  self : SvgImageResources,
+  width : Int32,
+  height : Int32,
+) -> Bool {
+  let area = width.to_int64() * height.to_int64()
+  if self.used_pixels.val + area > 4194304L {
+    return false
+  }
+  self.used_pixels.val += area
+  true
+}
+
+///|
+fn svg_raster_resource(
+  data : Bytes,
+  state : SvgImageResources,
+) -> @vector.Image? {
+  guard data[:].has_prefix(b"\x89PNG\r\n\x1a\n"[:]) ||
+    data[:].has_prefix(b"\xff\xd8"[:]) else {
+    return None
+  }
+  let source = decode_image(data) catch { _ => return None }
+  guard state.reserve(source.width, source.height) else { return None }
+  let pixels = source.pixels()
+  let image = @vector.Image::new(source.width, source.height)
+  for y in 0..<source.height {
+    for x in 0..<source.width {
+      let i = (y * source.width + x) * 4
+      image.set_pixel(
+        x,
+        y,
+        @vector.Color::rgba(
+          pixels[i].to_int(),
+          pixels[i + 1].to_int(),
+          pixels[i + 2].to_int(),
+          pixels[i + 3].to_int(),
+        ),
+      )
+    }
+  }
+  Some(image)
+}
+
+///|
+fn svg_inline_image(href : String) -> Bytes? {
+  guard href.find(",") is Some(comma) else { return None }
+  let media = href[:comma].to_owned().to_lower()
+  let mime = if media.has_prefix("ora-inline-image:") {
+    media[17:].to_owned()
+  } else {
+    media[5:].to_owned()
+  }
+  guard svg_unescape(href[comma + 1:].to_owned(), path=false) is Some(content) else {
+    return None
+  }
+  if ["image/png;base64", "image/jpeg;base64"].contains(mime) ||
+    (mime.has_prefix("image/svg+xml;") && mime.has_suffix(";base64")) {
+    Some(@base64.decode(content[:], ignore_whitespace=true)) catch {
+      _ => None
+    }
+  } else if mime == "image/svg+xml" || mime == "image/svg+xml;charset=utf-8" {
+    Some(@utf8.encode(content))
+  } else {
+    None
+  }
+}
+
+///|
 fn svg_resource_options(
   path : String,
   entries : Array[(String, Bytes)],
   retained : Map[String, Bool],
+  images~ : SvgImageResources = {
+    images: Map([]),
+    active: Map([]),
+    used_pixels: Ref(0L),
+  },
 ) -> @vector.RenderOptions {
   let options = @vector.RenderOptions::default()
   let load = href => svg_archive_resource(path, entries, retained, href)
-  let images : Map[String, @vector.Image] = Map([])
-  let used_pixels = Ref(0L)
   {
     ..options,
     environment: { ..options.environment, base_uri: svg_archive_uri(path), },
@@ -307,54 +386,61 @@ fn svg_resource_options(
       }
     }),
     image_resolver: Some(fn(href) {
-      if images.get(href) is Some(image) {
+      let inline_svg = href.has_prefix("ora-inline-image:")
+      let inline = href.has_prefix("data:") || inline_svg
+      let name = if inline_svg {
+        path + "\u0000" + href
+      } else if inline {
+        href
+      } else {
+        guard svg_archive_path(path, href) is Some(name) else { return None }
+        name
+      }
+      if images.images.get(name) is Some(image) {
         return Some(image)
       }
-      let payload = if href.has_prefix("data:") {
-        guard href.find(",") is Some(comma) else { return None }
-        let media_type = href[:comma].to_owned().to_lower()
-        guard ["data:image/png;base64", "data:image/jpeg;base64"].contains(
-          media_type,
-        ) else {
-          return None
-        }
-        Some(@base64.decode(href[comma + 1:].to_owned())) catch {
-          _ => None
-        }
-      } else {
-        load(href)
-      }
-      guard payload is Some(data) &&
-        (
-          data[:].has_prefix(b"\x89PNG\r\n\x1a\n"[:]) ||
-          data[:].has_prefix(b"\xff\xd8"[:])
-        ) else {
+      guard !images.active.contains(name) && images.active.length() < 8 else {
         return None
       }
-      let source = decode_image(data) catch { _ => return None }
-      used_pixels.val += source.width.to_int64() * source.height.to_int64()
-      guard used_pixels.val <= 4194304L else { return None }
-      let pixels = source.pixels()
-      let image = @vector.Image::new(source.width, source.height)
-      for y in 0..<source.height {
-        for x in 0..<source.width {
-          let i = (y * source.width + x) * 4
-          image.set_pixel(
-            x,
-            y,
-            @vector.Color::rgba(
-              pixels[i].to_int(),
-              pixels[i + 1].to_int(),
-              pixels[i + 2].to_int(),
-              pixels[i + 3].to_int(),
-            ),
-          )
+      let payload = if inline { svg_inline_image(href) } else { load(href) }
+      guard payload is Some(data) else { return None }
+      let image = if (!inline || inline_svg) && looks_like_svg_xml(data[:]) {
+        images.active[name] = true
+        let base = if inline_svg { path } else { name }
+        let result = svg_nested_image(data, base, entries, retained, images) catch {
+          _ => None
         }
+        ignore(images.active.remove(name))
+        result
+      } else {
+        svg_raster_resource(data, images)
       }
-      images[href] = image
-      Some(image)
+      if image is Some(decoded) {
+        images.images[name] = decoded
+      }
+      image
     }),
   }
+}
+
+///|
+fn svg_nested_image(
+  data : Bytes,
+  name : String,
+  entries : Array[(String, Bytes)],
+  retained : Map[String, Bool],
+  images : SvgImageResources,
+) -> @vector.Image? raise {
+  let (source, root) = svg_parse_source(data)
+  let (width, height) = svg_dimensions(root, None)
+  guard images.reserve(width, height) else { return None }
+  let prepared = svg_render_source(source, root, name, href => {
+    svg_archive_resource(name, entries, retained, href)
+  })
+  let options = svg_resource_options(name, entries, retained, images~)
+  let rendered = @vector.render_svg(prepared, width, height, options)
+  guard rendered.diagnostics.is_empty() else { return None }
+  Some(rendered.image)
 }
 
 ///|
@@ -549,7 +635,27 @@ fn svg_render_source(
   path : String,
   font_resource : (String) -> Bytes?,
 ) -> String raise {
-  if outline_svg_text(root, path, font_resource) {
+  let mut inline_images = false
+  fn normalize(element : @dom.Element) -> Unit {
+    if ["image", "feImage"].contains(@dom.local_of(element.name)) {
+      for key in ["href", "{http://www.w3.org/1999/xlink}href"] {
+        if element.attr(key) is Some(href) {
+          let uri = href[:].trim().to_owned()
+          if uri.to_lower().has_prefix("data:image/svg+xml") {
+            // Resolve the child with the same safe parser and resource budget.
+            // Keep the input URI unchanged in the stored layer source.
+            element.set_attr(key, "ora-inline-image:" + uri[5:].to_owned())
+            inline_images = true
+          }
+        }
+      }
+    }
+    for child in element.child_elements() {
+      normalize(child)
+    }
+  }
+  normalize(root)
+  if outline_svg_text(root, path, font_resource) || inline_images {
     @dom.dumps(ElementNode(root))
   } else {
     source

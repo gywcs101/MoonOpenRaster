@@ -296,3 +296,81 @@ test "SVG text uses bundled fonts without filesystem resources" {
     assert_true(ink > 20)
   }
 }
+
+///|
+test "an SVG image can resolve another SVG and its own archived CSS and PNG" {
+  let drawing = b"<svg xmlns='http://www.w3.org/2000/svg' width='4' height='2'><image href='../icons/tile.svg' width='2' height='2'/></svg>"
+  let tile = b"<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2'><style>@import './paint/theme.css';</style><rect class='mark' width='1' height='2'/><image href='./raster/pixel.png' x='1' width='1' height='2' preserveAspectRatio='none'/></svg>"
+  let css = b".mark { fill: red; }"
+  let pixel = Image::new(1, 1, [0, 255, 0, 255]).encode_png()
+  let input = @zip.zip([
+    @zip.Entry::new("mimetype", b"image/openraster", kind=Stored),
+    @zip.Entry::new(
+      "stack.xml",
+      b"<image version='0.0.6' w='4' h='2'><stack><layer name='Vector' src='data/art/main.svg'/></stack></image>",
+      kind=Stored,
+    ),
+    @zip.Entry::new("data/art/main.svg", drawing, kind=Stored),
+    @zip.Entry::new("data/icons/tile.svg", tile, kind=Stored),
+    @zip.Entry::new("data/icons/paint/theme.css", css, kind=Stored),
+    @zip.Entry::new("data/icons/raster/pixel.png", pixel, kind=Stored),
+  ])
+  let saved = read(input)
+    .set_properties([0], Properties::new("Vector", x=1))
+    .write()
+  let entries = archive_entries(saved)
+  assert_eq(resource(entries, "data/art/main.svg"), drawing)
+  assert_eq(resource(entries, "data/icons/tile.svg"), tile)
+  assert_eq(resource(entries, "data/icons/paint/theme.css"), css)
+  assert_eq(resource(entries, "data/icons/raster/pixel.png"), pixel)
+  assert_eq(read(saved).render().pixels(), [
+    0, 0, 0, 0, 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0,
+    255, 0, 255, 0, 255, 0, 0, 0, 0,
+  ])
+}
+
+///|
+test "recursive SVG images fail without silently dropping the nested layer" {
+  let first = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><image href='two.svg' width='1' height='1'/></svg>"
+  let second = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><image href='./one.svg' width='1' height='1'/></svg>"
+  let input = @zip.zip([
+    @zip.Entry::new("mimetype", b"image/openraster", kind=Stored),
+    @zip.Entry::new(
+      "stack.xml",
+      b"<image w='1' h='1'><stack><layer name='Cycle' src='data/one.svg'/></stack></image>",
+      kind=Stored,
+    ),
+    @zip.Entry::new("data/one.svg", first, kind=Stored),
+    @zip.Entry::new("data/two.svg", second, kind=Stored),
+  ])
+  let result = Ok(read(input)) catch { error => Err(error) }
+  match result {
+    Err(Unsupported(message)) =>
+      assert_eq(
+        message, "data/one.svg: SVG rendering failed for resource: two.svg",
+      )
+    Err(error) => fail("Unexpected failure: " + error.to_string())
+    Ok(_) => fail("An SVG resource cycle must report a failure")
+  }
+}
+
+///|
+test "embedded SVG image data goes through the bounded SVG renderer" {
+  let child = b"<svg xmlns='http://www.w3.org/2000/svg' width='2' height='1'><rect width='1' height='1' fill='red'/></svg>"
+  let encoded = @base64.encode(child[:])
+  let inline_text = "%3Csvg%20xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width='2'%20height='1'%3E%3Crect%20width='1'%20height='1'%20fill='red'%2F%3E%3C%2Fsvg%3E"
+  for
+    uri in [
+      "data:image/svg+xml;base64," + encoded,
+      "data:image/svg+xml," + inline_text,
+    ] {
+    let root = @utf8.encode(
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"2\" height=\"1\"><image width=\"2\" height=\"1\" href=\"" +
+      uri +
+      "\"/></svg>",
+    )
+    let image = decode_svg(root)
+    assert_eq(image.pixels(), [255, 0, 0, 255, 0, 0, 0, 0])
+    assert_eq(image.svg_source(), Some(root))
+  }
+}

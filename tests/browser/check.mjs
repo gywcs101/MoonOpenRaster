@@ -211,12 +211,13 @@ try {
     'font', 'font-spans', 'font-stylesheet', 'font-stylesheet-pi',
     'font-css-cascade', 'font-svg-resource', 'font-path', 'font-position-list',
     'font-centered-spans', 'font-length-spacing', 'font-length-glyphs', 'font-letter-spacing',
-    'font-weight', 'font-style', 'sans-serif-generic', 'serif-generic',
+    'font-weight', 'font-style', 'sans-serif-generic', 'serif-generic', 'nested-image',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');
+    const layerName = variant === 'nested-image' ? 'Vector' : 'Text';
     await page.locator('#file').setInputFiles(path.join(fixtureDir, variant + '-input.ora'));
     await idle();
-    assert.equal(await page.locator('#name').inputValue(), 'Text');
+    assert.equal(await page.locator('#name').inputValue(), layerName);
     await page.getByText('Raster', { exact: true }).click();
     await page.locator('#x').fill('1');
     await page.locator('.apply-button').click(); await idle();
@@ -226,7 +227,7 @@ try {
     await (await fontDownload).saveAs(fontOutput); await idle();
     assert.deepEqual(fs.readFileSync(fontOutput), fs.readFileSync(path.join(fixtureDir, variant + '-edited.ora')));
     await page.locator('#file').setInputFiles(fontOutput); await idle();
-    assert.equal(await page.locator('#name').inputValue(), 'Text');
+    assert.equal(await page.locator('#name').inputValue(), layerName);
   }
   for (const variant of ['icc-parametric', 'mab-xyz', 'cicp-p3', 'chrm-p3']) {
     const fixtures = path.join(root, '_build/rgba16');

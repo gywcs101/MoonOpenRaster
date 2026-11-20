@@ -222,6 +222,38 @@ def check_svg_jpeg(cli):
     print("PASS: embedded and archived SVG JPEG match Pillow")
 
 
+def check_nested_svg_image(cli):
+    source = OUT / "nested-image-input.ora"
+    edited = OUT / "nested-image-edited.ora"
+    edited.unlink(missing_ok=True)
+    resources = {
+        "data/main.svg": b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3" height="1"><image xlink:href="icons/sub.svg" width="2" height="1"/></svg>',
+        "data/icons/sub.svg": b'<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1"><style>@import "styles/paint.css";</style><rect class="color" width="1" height="1"/><image href="pixel.png" x="1" width="1" height="1"/></svg>',
+        "data/icons/styles/paint.css": b".color { fill: #ff0000; }",
+        "data/icons/pixel.png": png(1, 1, 8, lambda x, y: (0, 255, 0, 255)),
+        "data/base.png": png(3, 1, 16, lambda x, y: BASE),
+    }
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("mimetype", "image/openraster")
+        archive.writestr("stack.xml", '<image version="0.0.6" w="3" h="1"><stack><layer name="Vector" src="data/main.svg"/><layer name="Raster" src="data/base.png"/></stack></image>')
+        for name, data in resources.items():
+            archive.writestr(name, data)
+        archive.writestr("mergedimage.png", png(3, 1, 16, lambda x, y: BASE))
+        archive.writestr("Thumbnails/thumbnail.png", png(3, 1, 8, lambda x, y: (0, 0, 255, 255)))
+    subprocess.run(["node", str(cli), "edit", str(source), str(edited), str(OUT / "font-edits.json")], check=True)
+    with zipfile.ZipFile(edited) as archive:
+        for name, data in resources.items():
+            if name != "data/base.png":
+                assert archive.read(name) == data, name
+        raster = ET.fromstring(archive.read("stack.xml")).find("./stack/layer[@name='Raster']")
+        assert raster.get("x") == "1"
+        assert decode_rgba(archive.read(raster.get("src"))) == (3, 1, 16, [BASE] * 3)
+        assert decode_rgba(archive.read("mergedimage.png")) == (
+            3, 1, 16, [(65535, 0, 0, 65535), (0, 65535, 0, 65535), BASE]
+        )
+    print("PASS: nested SVG image and its relative resources survive a mixed-depth edit")
+
+
 def probe_krita(executable):
     from PIL import Image
 
@@ -309,6 +341,7 @@ def main():
         check_font_layer(cli, variant)
     check_default_font(cli)
     check_svg_jpeg(cli)
+    check_nested_svg_image(cli)
     if args.krita:
         probe_krita(args.krita)
     check_atlas(ATLAS / "atlas-goal.ora")
