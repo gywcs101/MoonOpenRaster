@@ -40,6 +40,7 @@ jobs:
       - run: python scripts/check_artwork.py
       - run: npm ci --prefix tests/browser
       - run: npx --prefix tests/browser playwright install --with-deps chromium
+      - run: node tests/browser/svg-reference.mjs
       - run: node tests/browser/check.mjs
       - run: node tests/browser/samples.mjs
       - run: python scripts/check_web_server.py

@@ -20,12 +20,38 @@ priv struct SvgTextPath {
 fn svg_text_path(
   element : @dom.Element,
   paths : Map[String, @dom.Element],
+  load~ : (String) -> Bytes? = _ => None,
 ) -> SvgTextPath raise {
   let href = element
     .attr("href")
     .unwrap_or(element.attr("{http://www.w3.org/1999/xlink}href").unwrap_or(""))
-  guard href.has_prefix("#") && paths.get(href[1:].to_owned()) is Some(path) else {
-    raise Unsupported("SVG textPath requires a local path reference")
+  guard href.find("#") is Some(fragment) &&
+    svg_unescape(href[fragment + 1:].to_owned(), path=false) is Some(id) &&
+    !id.is_empty() else {
+    raise Unsupported("SVG textPath requires a path id: " + href)
+  }
+  let path = if fragment == 0 {
+    paths.get(id)
+  } else {
+    guard load(href[:fragment].to_owned()) is Some(resource) else {
+      raise Unsupported("Missing SVG textPath resource: " + href)
+    }
+    let (_, root) = svg_parse_source(resource)
+    fn lookup(node : @dom.Element) -> @dom.Element? {
+      if @dom.local_of(node.name) == "path" && node.attr("id") == Some(id) {
+        return Some(node)
+      }
+      for child in node.child_elements() {
+        if lookup(child) is Some(target) {
+          return Some(target)
+        }
+      }
+      None
+    }
+    lookup(root)
+  }
+  guard path is Some(path) else {
+    raise Unsupported("Unresolved SVG textPath: " + href)
   }
   if element.attr("method").unwrap_or("align") != "align" ||
     element.attr("spacing").unwrap_or("exact") != "exact" {

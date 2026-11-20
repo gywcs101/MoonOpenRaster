@@ -1,0 +1,745 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "gywcs101/MoonOpenRaster/internal/svg"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_path(String) -> Array[PathCommand]
+
+pub fn parse_svg_document(String) -> SVGDocument?
+
+pub fn parse_transform(String) -> Transform
+
+pub fn path_bbox(Array[PathCommand]) -> BoundingBox
+
+pub fn render_path_commands_to_image(Array[PathCommand], Int32, Int32, Color, transform? : Array[Double]) -> Image
+
+pub fn render_svg(String, Int32, Int32, RenderOptions) -> RenderResult
+
+pub fn render_svg_document(SVGDocument, Int32, Int32, RenderOptions) -> RenderResult
+
+pub fn render_svg_to_image(String, Int32, Int32) -> Image?
+
+// Errors
+
+// Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) enum Align {
+  None
+  XMinYMin
+  XMidYMin
+  XMaxYMin
+  XMinYMid
+  XMidYMid
+  XMaxYMid
+  XMinYMax
+  XMidYMax
+  XMaxYMax
+}
+pub fn Align::equal(Self, Self) -> Bool
+pub fn Align::not_equal(Self, Self) -> Bool
+pub fn Align::output(Self, &Logger) -> Unit
+pub fn Align::to_repr(Self) -> @debug.Repr
+pub fn Align::to_string(Self) -> String
+pub impl Show for Align
+
+#derive(Eq, @debug.Debug)
+pub(all) enum BlendMode {
+  Normal
+  Multiply
+  Screen
+  Overlay
+  Darken
+  Lighten
+  ColorDodge
+  ColorBurn
+  HardLight
+  SoftLight
+  Difference
+  Exclusion
+  Hue
+  Saturation
+  ColorMode
+  Luminosity
+}
+pub fn BlendMode::equal(Self, Self) -> Bool
+pub fn BlendMode::not_equal(Self, Self) -> Bool
+pub fn BlendMode::to_repr(Self) -> @debug.Repr
+
+pub(all) struct BoundingBox {
+  min_x : Double
+  min_y : Double
+  max_x : Double
+  max_y : Double
+}
+pub fn BoundingBox::contains_point(Self, Double, Double) -> Bool
+pub fn BoundingBox::empty() -> Self
+pub fn BoundingBox::expand_by_point(Self, Double, Double) -> Self
+pub fn BoundingBox::from_rect(Double, Double, Double, Double) -> Self
+pub fn BoundingBox::height(Self) -> Double
+pub fn BoundingBox::intersects(Self, Self) -> Bool
+pub fn BoundingBox::is_empty(Self) -> Bool
+pub fn BoundingBox::union(Self, Self) -> Self
+pub fn BoundingBox::width(Self) -> Double
+
+pub(all) struct ClipPath {
+  id : String
+  shape : Shape
+  content : Array[SVGNode]
+  transform : Transform
+  clip_rule : FillRule
+  units : ClipPathUnits
+}
+pub fn ClipPath::new(String, Shape) -> Self
+pub fn ClipPath::with_transform(String, Shape, Transform) -> Self
+
+#derive(Eq, @debug.Debug)
+pub(all) enum ClipPathUnits {
+  UserSpaceOnUse
+  ObjectBoundingBox
+}
+pub fn ClipPathUnits::equal(Self, Self) -> Bool
+pub fn ClipPathUnits::not_equal(Self, Self) -> Bool
+pub fn ClipPathUnits::to_repr(Self) -> @debug.Repr
+
+#derive(@debug.Debug)
+pub(all) struct Color {
+  r : Int32
+  g : Int32
+  b : Int32
+  a : Int32
+}
+pub fn Color::black() -> Self
+pub fn Color::is_transparent(Self) -> Bool
+pub fn Color::rgb(Int32, Int32, Int32) -> Self
+pub fn Color::rgba(Int32, Int32, Int32, Int32) -> Self
+pub fn Color::to_repr(Self) -> @debug.Repr
+pub fn Color::transparent() -> Self
+pub fn Color::white() -> Self
+
+#derive(@debug.Debug)
+pub(all) enum ComponentTransferFunction {
+  TransferIdentity
+  TransferTable(Array[Double])
+  TransferDiscrete(Array[Double])
+  TransferLinear(slope~ : Double, intercept~ : Double)
+  TransferGamma(amplitude~ : Double, exponent~ : Double, offset~ : Double)
+}
+pub fn ComponentTransferFunction::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct ElementState {
+  hover : Bool
+  focus : Bool
+  active : Bool
+  focus_visible : Bool
+  focus_within : Bool
+}
+pub fn ElementState::equal(Self, Self) -> Bool
+pub fn ElementState::none() -> Self
+pub fn ElementState::not_equal(Self, Self) -> Bool
+pub fn ElementState::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum FillRule {
+  NonZero
+  EvenOdd
+}
+pub fn FillRule::equal(Self, Self) -> Bool
+pub fn FillRule::not_equal(Self, Self) -> Bool
+pub fn FillRule::output(Self, &Logger) -> Unit
+pub fn FillRule::to_repr(Self) -> @debug.Repr
+pub fn FillRule::to_string(Self) -> String
+pub impl Show for FillRule
+
+pub(all) enum Filter {
+  Blur(Double)
+  DropShadow(Double, Double, Double, Color)
+  Brightness(Double)
+  Contrast(Double)
+  Grayscale(Double)
+  Sepia(Double)
+  HueRotate(Double)
+  Invert(Double)
+  Saturate(Double)
+  ColorMatrix(FixedArray[Double])
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum FilterChannel {
+  ChannelR
+  ChannelG
+  ChannelB
+  ChannelA
+}
+pub fn FilterChannel::equal(Self, Self) -> Bool
+pub fn FilterChannel::not_equal(Self, Self) -> Bool
+pub fn FilterChannel::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum FilterCompositeOperator {
+  CompositeOver
+  CompositeIn
+  CompositeOut
+  CompositeAtop
+  CompositeXor
+  CompositeArithmetic
+}
+pub fn FilterCompositeOperator::equal(Self, Self) -> Bool
+pub fn FilterCompositeOperator::not_equal(Self, Self) -> Bool
+pub fn FilterCompositeOperator::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum FilterEdgeMode {
+  EdgeDuplicate
+  EdgeWrap
+  EdgeNone
+}
+pub fn FilterEdgeMode::equal(Self, Self) -> Bool
+pub fn FilterEdgeMode::not_equal(Self, Self) -> Bool
+pub fn FilterEdgeMode::to_repr(Self) -> @debug.Repr
+
+pub(all) struct FilterGraph {
+  id : String
+  primitives : Array[FilterGraphPrimitive]
+  units : MaskUnits
+  primitive_units : MaskUnits
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+  x_is_percent : Bool
+  y_is_percent : Bool
+  width_is_percent : Bool
+  height_is_percent : Bool
+}
+
+#derive(@debug.Debug)
+pub(all) enum FilterGraphPrimitive {
+  GraphColorMatrix(input~ : String, result~ : String, matrix~ : FixedArray[Double])
+  GraphGaussianBlur(input~ : String, result~ : String, radius_x~ : Double, radius_y~ : Double)
+  GraphOffset(input~ : String, result~ : String, dx~ : Double, dy~ : Double)
+  GraphBlend(input~ : String, input2~ : String, result~ : String, mode~ : BlendMode)
+  GraphComposite(input~ : String, input2~ : String, result~ : String, operator~ : FilterCompositeOperator, k1~ : Double, k2~ : Double, k3~ : Double, k4~ : Double)
+  GraphFlood(result~ : String, color~ : Color)
+  GraphMerge(result~ : String, inputs~ : Array[String])
+  GraphComponentTransfer(input~ : String, result~ : String, red~ : ComponentTransferFunction, green~ : ComponentTransferFunction, blue~ : ComponentTransferFunction, alpha~ : ComponentTransferFunction)
+  GraphMorphology(input~ : String, result~ : String, radius_x~ : Double, radius_y~ : Double, operator~ : MorphologyOperator)
+  GraphConvolveMatrix(input~ : String, result~ : String, order_x~ : Int32, order_y~ : Int32, kernel~ : Array[Double], divisor~ : Double, bias~ : Double, target_x~ : Int32, target_y~ : Int32, edge_mode~ : FilterEdgeMode, preserve_alpha~ : Bool)
+  GraphDisplacementMap(input~ : String, input2~ : String, result~ : String, scale~ : Double, x_channel~ : FilterChannel, y_channel~ : FilterChannel)
+  GraphTurbulence(result~ : String, base_x~ : Double, base_y~ : Double, octaves~ : Int32, seed~ : Double, stitch~ : Bool, fractal_noise~ : Bool)
+  GraphTile(input~ : String, result~ : String)
+  GraphImage(result~ : String, href~ : String, x~ : Double, y~ : Double, width~ : Double, height~ : Double)
+  GraphDiffuseLighting(input~ : String, result~ : String, surface_scale~ : Double, diffuse_constant~ : Double, color~ : Color, light~ : FilterLight)
+  GraphSpecularLighting(input~ : String, result~ : String, surface_scale~ : Double, specular_constant~ : Double, specular_exponent~ : Double, color~ : Color, light~ : FilterLight)
+}
+pub fn FilterGraphPrimitive::to_repr(Self) -> @debug.Repr
+
+#derive(@debug.Debug)
+pub(all) enum FilterLight {
+  DistantLight(azimuth~ : Double, elevation~ : Double)
+  PointLight(x~ : Double, y~ : Double, z~ : Double)
+  SpotLight(x~ : Double, y~ : Double, z~ : Double, points_at_x~ : Double, points_at_y~ : Double, points_at_z~ : Double, exponent~ : Double, limiting_cone_angle~ : Double?)
+}
+pub fn FilterLight::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Gradient {
+  Linear(LinearGradient)
+  Radial(RadialGradient)
+}
+
+pub(all) struct GradientStop {
+  offset : Double
+  color : Color
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum GradientUnits {
+  UserSpaceOnUse
+  ObjectBoundingBox
+}
+pub fn GradientUnits::equal(Self, Self) -> Bool
+pub fn GradientUnits::not_equal(Self, Self) -> Bool
+pub fn GradientUnits::to_repr(Self) -> @debug.Repr
+
+pub struct Image {
+  // private fields
+}
+pub fn Image::filled(Int32, Int32, Color) -> Self
+pub fn Image::from_pixels(Int32, Int32, Array[Color]) -> Self?
+pub fn Image::get_pixel(Self, Int32, Int32) -> Color
+pub fn Image::height(Self) -> Int32
+pub fn Image::new(Int32, Int32) -> Self
+pub fn Image::set_pixel(Self, Int32, Int32, Color) -> Unit
+pub fn Image::width(Self) -> Int32
+
+#derive(Eq, @debug.Debug)
+pub(all) enum ImageSampling {
+  Nearest
+  Bilinear
+  Bicubic
+}
+pub fn ImageSampling::equal(Self, Self) -> Bool
+pub fn ImageSampling::not_equal(Self, Self) -> Bool
+pub fn ImageSampling::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum Isolation {
+  Auto
+  Isolate
+}
+pub fn Isolation::equal(Self, Self) -> Bool
+pub fn Isolation::not_equal(Self, Self) -> Bool
+pub fn Isolation::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum LineCap {
+  Butt
+  Round
+  Square
+}
+pub fn LineCap::equal(Self, Self) -> Bool
+pub fn LineCap::not_equal(Self, Self) -> Bool
+pub fn LineCap::output(Self, &Logger) -> Unit
+pub fn LineCap::to_repr(Self) -> @debug.Repr
+pub fn LineCap::to_string(Self) -> String
+pub impl Show for LineCap
+
+#derive(Eq, @debug.Debug)
+pub(all) enum LineJoin {
+  Miter
+  Round
+  Bevel
+}
+pub fn LineJoin::equal(Self, Self) -> Bool
+pub fn LineJoin::not_equal(Self, Self) -> Bool
+pub fn LineJoin::output(Self, &Logger) -> Unit
+pub fn LineJoin::to_repr(Self) -> @debug.Repr
+pub fn LineJoin::to_string(Self) -> String
+pub impl Show for LineJoin
+
+pub(all) struct LinearGradient {
+  x1 : Double
+  y1 : Double
+  x2 : Double
+  y2 : Double
+  stops : Array[GradientStop]
+  spread_method : SpreadMethod
+  units : GradientUnits
+  transform : Transform
+}
+pub fn LinearGradient::new(Double, Double, Double, Double, Array[GradientStop]) -> Self
+
+pub(all) struct Marker {
+  id : String
+  content : SVGNode
+  ref_x : Double
+  ref_y : Double
+  marker_width : Double
+  marker_height : Double
+  orient : MarkerOrient
+  marker_units : MarkerUnits
+  view_box : ViewBox?
+  preserve_aspect_ratio : PreserveAspectRatio
+  clip_overflow : Bool
+}
+pub fn Marker::new(String, SVGNode) -> Self
+
+pub(all) enum MarkerOrient {
+  Auto
+  AutoStartReverse
+  Angle(Double)
+}
+
+pub(all) enum MarkerUnits {
+  StrokeWidth
+  UserSpaceOnUse_
+}
+
+pub(all) struct Mask {
+  id : String
+  content : Array[SVGNode]
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+  x_is_percent : Bool
+  y_is_percent : Bool
+  width_is_percent : Bool
+  height_is_percent : Bool
+  mask_units : MaskUnits
+  mask_content_units : MaskUnits
+  mask_type : MaskType
+}
+pub fn Mask::new(String, Array[SVGNode]) -> Self
+pub fn Mask::with_bounds(String, Array[SVGNode], Double, Double, Double, Double) -> Self
+
+#derive(Eq, @debug.Debug)
+pub(all) enum MaskType {
+  Luminance
+  Alpha
+}
+pub fn MaskType::equal(Self, Self) -> Bool
+pub fn MaskType::not_equal(Self, Self) -> Bool
+pub fn MaskType::output(Self, &Logger) -> Unit
+pub fn MaskType::to_repr(Self) -> @debug.Repr
+pub fn MaskType::to_string(Self) -> String
+pub impl Show for MaskType
+
+#derive(Eq, @debug.Debug)
+pub(all) enum MaskUnits {
+  UserSpaceOnUse
+  ObjectBoundingBox
+}
+pub fn MaskUnits::equal(Self, Self) -> Bool
+pub fn MaskUnits::not_equal(Self, Self) -> Bool
+pub fn MaskUnits::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum MeetOrSlice {
+  Meet
+  Slice
+}
+pub fn MeetOrSlice::equal(Self, Self) -> Bool
+pub fn MeetOrSlice::not_equal(Self, Self) -> Bool
+pub fn MeetOrSlice::output(Self, &Logger) -> Unit
+pub fn MeetOrSlice::to_repr(Self) -> @debug.Repr
+pub fn MeetOrSlice::to_string(Self) -> String
+pub impl Show for MeetOrSlice
+
+#derive(Eq, @debug.Debug)
+pub(all) enum MorphologyOperator {
+  MorphologyErode
+  MorphologyDilate
+}
+pub fn MorphologyOperator::equal(Self, Self) -> Bool
+pub fn MorphologyOperator::not_equal(Self, Self) -> Bool
+pub fn MorphologyOperator::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Paint {
+  None
+  SolidColor(Color)
+  LinearGrad(LinearGradient)
+  RadialGrad(RadialGradient)
+  CurrentColor
+  PaintServerRef(String, PaintFallback)
+}
+
+pub(all) enum PaintFallback {
+  NoPaint
+  SolidColor(Color)
+  CurrentColor
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) struct PaintOrder {
+  order : Array[PaintOrderItem]
+}
+pub fn PaintOrder::default() -> Self
+pub fn PaintOrder::equal(Self, Self) -> Bool
+pub fn PaintOrder::not_equal(Self, Self) -> Bool
+pub fn PaintOrder::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum PaintOrderItem {
+  Fill
+  Stroke
+  Markers
+}
+pub fn PaintOrderItem::equal(Self, Self) -> Bool
+pub fn PaintOrderItem::not_equal(Self, Self) -> Bool
+pub fn PaintOrderItem::output(Self, &Logger) -> Unit
+pub fn PaintOrderItem::to_repr(Self) -> @debug.Repr
+pub fn PaintOrderItem::to_string(Self) -> String
+pub impl Show for PaintOrderItem
+
+#derive(@debug.Debug)
+pub(all) enum PathCommand {
+  MoveTo(Double, Double)
+  LineTo(Double, Double)
+  HorizontalLineTo(Double)
+  VerticalLineTo(Double)
+  CurveTo(Double, Double, Double, Double, Double, Double)
+  SmoothCurveTo(Double, Double, Double, Double)
+  QuadraticCurveTo(Double, Double, Double, Double)
+  SmoothQuadraticCurveTo(Double, Double)
+  ArcTo(Double, Double, Double, Bool, Bool, Double, Double)
+  ClosePath
+  MoveToRel(Double, Double)
+  LineToRel(Double, Double)
+  HorizontalLineToRel(Double)
+  VerticalLineToRel(Double)
+  CurveToRel(Double, Double, Double, Double, Double, Double)
+  SmoothCurveToRel(Double, Double, Double, Double)
+  QuadraticCurveToRel(Double, Double, Double, Double)
+  SmoothQuadraticCurveToRel(Double, Double)
+  ArcToRel(Double, Double, Double, Bool, Bool, Double, Double)
+}
+pub fn PathCommand::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Pattern {
+  id : String
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+  content : Array[SVGNode]
+  pattern_units : PatternUnits
+  pattern_content_units : PatternUnits
+  transform : Transform
+  view_box : ViewBox?
+  preserve_aspect_ratio : PreserveAspectRatio
+}
+pub fn Pattern::new(String, Double, Double, Array[SVGNode]) -> Self
+
+pub(all) enum PatternUnits {
+  UserSpaceOnUse
+  ObjectBoundingBox
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum PreferredColorScheme {
+  Light
+  Dark
+}
+pub fn PreferredColorScheme::equal(Self, Self) -> Bool
+pub fn PreferredColorScheme::not_equal(Self, Self) -> Bool
+pub fn PreferredColorScheme::to_repr(Self) -> @debug.Repr
+
+pub(all) struct PreserveAspectRatio {
+  align : Align
+  meet_or_slice : MeetOrSlice
+}
+pub fn PreserveAspectRatio::default() -> Self
+
+pub(all) struct RadialGradient {
+  cx : Double
+  cy : Double
+  fx : Double
+  fy : Double
+  r : Double
+  stops : Array[GradientStop]
+  spread_method : SpreadMethod
+  units : GradientUnits
+  transform : Transform
+}
+pub fn RadialGradient::new(Double, Double, Double, Array[GradientStop]) -> Self
+
+pub(all) struct RenderDiagnostic {
+  kind : RenderDiagnosticKind
+  stage : RenderStage
+  resource : String
+  node_id : String
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum RenderDiagnosticKind {
+  ParseFailed
+  ResourceUnresolved
+  ResourceCycle
+  ResourceLimitExceeded
+}
+pub fn RenderDiagnosticKind::equal(Self, Self) -> Bool
+pub fn RenderDiagnosticKind::not_equal(Self, Self) -> Bool
+pub fn RenderDiagnosticKind::to_repr(Self) -> @debug.Repr
+
+pub(all) struct RenderEnvironment {
+  base_uri : String
+  device_pixel_ratio : Double
+  color_scheme : PreferredColorScheme
+  sample_time_seconds : Double
+  element_state_resolver : ((String) -> ElementState)?
+}
+pub fn RenderEnvironment::default() -> Self
+
+pub(all) struct RenderOptions {
+  image_resolver : ((String) -> Image?)?
+  text_resource_resolver : ((String, TextResourceKind) -> String?)?
+  environment : RenderEnvironment
+  max_external_depth : Int32
+  max_external_resources : Int32
+  max_external_bytes : Int32
+}
+pub fn RenderOptions::default() -> Self
+pub fn RenderOptions::with_image_resolver((String) -> Image?) -> Self
+pub fn RenderOptions::with_text_resource_resolver((String, TextResourceKind) -> String?) -> Self
+
+pub(all) struct RenderResult {
+  image : Image
+  diagnostics : Array[RenderDiagnostic]
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum RenderStage {
+  Document
+  Stylesheet
+  Paint
+  Image
+  Effects
+}
+pub fn RenderStage::equal(Self, Self) -> Bool
+pub fn RenderStage::not_equal(Self, Self) -> Bool
+pub fn RenderStage::to_repr(Self) -> @debug.Repr
+
+pub struct SVGDocument {
+  // private fields
+}
+pub fn SVGDocument::add_clip_path(Self, ClipPath) -> Unit
+pub fn SVGDocument::add_definition(Self, String, SVGNode) -> Unit
+pub fn SVGDocument::add_filter_graph(Self, FilterGraph) -> Unit
+pub fn SVGDocument::add_gradient(Self, String, Gradient) -> Unit
+pub fn SVGDocument::add_marker(Self, Marker) -> Unit
+pub fn SVGDocument::add_mask(Self, Mask) -> Unit
+pub fn SVGDocument::add_pattern(Self, Pattern) -> Unit
+pub fn SVGDocument::add_symbol(Self, Symbol) -> Unit
+pub fn SVGDocument::instantiate_use(Self, UseElement) -> SVGNode?
+pub fn SVGDocument::new(SVGNode) -> Self
+pub fn SVGDocument::root(Self) -> SVGNode
+
+pub(all) struct SVGNode {
+  mut id : String
+  mut shape : Shape
+  mut transform : Transform
+  mut view_box : ViewBox?
+  mut viewport_width : Double?
+  mut viewport_height : Double?
+  mut preserve_aspect_ratio : PreserveAspectRatio
+  mut image_sampling : ImageSampling
+  mut fill : Paint
+  mut color : Color?
+  mut paint_order : PaintOrder
+  mut fill_rule : FillRule
+  mut clip_rule : FillRule
+  mut fill_opacity : Double
+  mut stroke : StrokeStyle
+  mut stroke_opacity : Double
+  mut opacity : Double
+  mut blend_mode : BlendMode
+  mut isolation : Isolation
+  mut marker_start : String?
+  mut marker_mid : String?
+  mut marker_end : String?
+  mut clip_overflow : Bool
+  children : Array[SVGNode]
+  // private fields
+}
+pub fn SVGNode::add_filter(Self, Filter) -> Unit
+pub fn SVGNode::clear_clip_path(Self) -> Unit
+pub fn SVGNode::clear_filter_graph(Self) -> Unit
+pub fn SVGNode::clear_filters(Self) -> Unit
+pub fn SVGNode::clear_mask(Self) -> Unit
+pub fn SVGNode::new(Shape) -> Self
+pub fn SVGNode::set_clip_path(Self, String) -> Unit
+pub fn SVGNode::set_filter_graph(Self, String) -> Unit
+pub fn SVGNode::set_mask(Self, String) -> Unit
+
+#derive(@debug.Debug)
+pub(all) enum Shape {
+  Rect(x~ : Double, y~ : Double, width~ : Double, height~ : Double, rx~ : Double, ry~ : Double)
+  Circle(cx~ : Double, cy~ : Double, r~ : Double)
+  Ellipse(cx~ : Double, cy~ : Double, rx~ : Double, ry~ : Double)
+  Line(x1~ : Double, y1~ : Double, x2~ : Double, y2~ : Double)
+  Polyline(points~ : Array[(Double, Double)])
+  Polygon(points~ : Array[(Double, Double)])
+  Path(commands~ : Array[PathCommand])
+  Text(x~ : Double, y~ : Double, text~ : String, font_size~ : Double)
+  Image(x~ : Double, y~ : Double, width~ : Double, height~ : Double, href~ : String)
+  Group
+}
+pub fn Shape::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum SpreadMethod {
+  Pad
+  Repeat
+  Reflect
+}
+pub fn SpreadMethod::equal(Self, Self) -> Bool
+pub fn SpreadMethod::not_equal(Self, Self) -> Bool
+pub fn SpreadMethod::to_repr(Self) -> @debug.Repr
+
+pub(all) struct StrokeStyle {
+  paint : Paint
+  width : Double
+  linecap : LineCap
+  linejoin : LineJoin
+  miterlimit : Double
+  dasharray : Array[Double]?
+  dashoffset : Double
+  non_scaling : Bool
+}
+pub fn StrokeStyle::default() -> Self
+
+pub(all) struct Symbol {
+  id : String
+  content : SVGNode
+  view_box : ViewBox?
+  width : Double?
+  height : Double?
+  preserve_aspect_ratio : PreserveAspectRatio
+  display_none : Bool
+}
+pub fn Symbol::new(String, SVGNode) -> Self
+pub fn Symbol::with_viewbox(String, SVGNode, ViewBox) -> Self
+
+#derive(Eq, @debug.Debug)
+pub(all) enum TextResourceKind {
+  Stylesheet
+  SvgDocument
+}
+pub fn TextResourceKind::equal(Self, Self) -> Bool
+pub fn TextResourceKind::not_equal(Self, Self) -> Bool
+pub fn TextResourceKind::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Transform {
+  a : Double
+  b : Double
+  c : Double
+  d : Double
+  e : Double
+  f : Double
+}
+pub fn Transform::apply(Self, Double, Double) -> (Double, Double)
+pub fn Transform::apply_bbox(Self, BoundingBox) -> BoundingBox
+pub fn Transform::apply_point(Self, (Double, Double)) -> (Double, Double)
+pub fn Transform::determinant(Self) -> Double
+pub fn Transform::get_rotation(Self) -> Double
+pub fn Transform::get_scale(Self) -> (Double, Double)
+pub fn Transform::get_translate(Self) -> (Double, Double)
+pub fn Transform::inverse(Self) -> Self
+pub fn Transform::is_invertible(Self) -> Bool
+pub fn Transform::matrix(Double, Double, Double, Double, Double, Double) -> Self
+pub fn Transform::multiply(Self, Self) -> Self
+pub fn Transform::rotate(Double) -> Self
+pub fn Transform::rotate_around(Double, Double, Double) -> Self
+pub fn Transform::scale(Double, Double) -> Self
+pub fn Transform::scale_uniform(Double) -> Self
+pub fn Transform::skew_x(Double) -> Self
+pub fn Transform::skew_y(Double) -> Self
+pub fn Transform::translate(Double, Double) -> Self
+
+pub(all) struct UseElement {
+  href : String
+  x : Double
+  y : Double
+  width : Double?
+  height : Double?
+  transform : Transform
+}
+pub fn UseElement::get_id(Self) -> String
+pub fn UseElement::new(String, Double, Double) -> Self
+pub fn UseElement::with_size(String, Double, Double, Double, Double) -> Self
+
+pub(all) struct ViewBox {
+  min_x : Double
+  min_y : Double
+  width : Double
+  height : Double
+}
+pub fn ViewBox::get_transform(Self, Double, Double, PreserveAspectRatio) -> Transform
+
+// Type aliases
+
+// Traits

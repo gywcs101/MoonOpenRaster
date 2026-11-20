@@ -50,8 +50,10 @@ def check_font_layer(cli, variant="font"):
     letter_spacing = variant == "font-letter-spacing"
     weighted = variant == "font-weight"
     slanted = variant == "font-style"
+    multiple_sources = variant == "font-alternate-sources"
     external = variant == "font-svg-resource"
-    path_text = variant == "font-path"
+    path_external = variant == "font-path-resource"
+    path_text = variant == "font-path" or path_external
     positions = variant == "font-position-list"
     stem = variant
     source = OUT / f"{stem}-input.ora"
@@ -60,6 +62,8 @@ def check_font_layer(cli, variant="font"):
     font = (ROOT / "fixtures/ora-test.ttf").read_bytes()
     uri = "data:font/ttf;base64," + base64.b64encode(font).decode() if embedded else "../font/%E6%B5%8B%E8%AF%95.ttf"
     face = f'@font-face {{ font-family: OraTest; src: url("{uri}"); }}'
+    if multiple_sources:
+        face = f'@font-face {{ font-family: OraTest; src: local("Uninstalled"), URL("../font/unsupported.woff"), url("{uri}") format("truetype"); }}'
     styles = "@import '../styles/level/index.css';" if imported else face
     if weighted or slanted:
         descriptor = "font-weight: 700" if weighted else "font-style: italic"
@@ -69,8 +73,12 @@ def check_font_layer(cli, variant="font"):
     text = 'A<tspan x="7" dx="1" y="7" dy="1"><tspan>中</tspan></tspan>' if spans else "A中"
     if path_text:
         definition = '<defs><path id="baseline" transform="translate(0 2)" d="M0 6 c2 0 5 0 8 0 s5 0 8 0"/></defs>'
+        path_resource = f'<svg xmlns="http://www.w3.org/2000/svg">{definition}</svg>'
         position_attrs = ''
         text = '<textPath href="#baseline" startOffset="0%">A<tspan>中</tspan></textPath>'
+        if path_external:
+            definition = ""
+            text = text.replace("#baseline", "../paths/layout.svg#baseline")
     else:
         definition = ''
         position_attrs = 'x="0,7" y="8 7" dx="0 1" dy="0 1" rotate="0 0"' if positions else 'x="0" y="8"'
@@ -111,8 +119,12 @@ def check_font_layer(cli, variant="font"):
         archive.writestr("data/art/text.svg", svg)
         if external:
             archive.writestr("data/word/source.svg", external_svg)
+        if path_external:
+            archive.writestr("data/paths/layout.svg", path_resource)
         if not embedded:
             archive.writestr("data/font/测试.ttf", font)
+        if multiple_sources:
+            archive.writestr("data/font/unsupported.woff", b"invalid font")
         if weighted or slanted:
             # The glyphs share the first hmtx advance. Change it from 8 to 12 px
             # at the configured font size to distinguish the two faces.
@@ -136,6 +148,8 @@ def check_font_layer(cli, variant="font"):
         assert archive.read("data/art/text.svg") == svg
         if external:
             assert archive.read("data/word/source.svg") == external_svg
+        if path_external:
+            assert archive.read("data/paths/layout.svg") == path_resource.encode()
         if not embedded:
             assert archive.read("data/font/测试.ttf") == font
             assert archive.getinfo("data/font/测试.ttf").flag_bits & 0x800
@@ -336,7 +350,8 @@ def main():
     for variant in (
         "font", "embedded-font", "font-spans", "font-stylesheet", "font-stylesheet-pi",
         "font-css-cascade", "font-centered-spans", "font-length-spacing", "font-length-glyphs",
-        "font-svg-resource", "font-path", "font-position-list", "font-letter-spacing", "font-weight", "font-style",
+        "font-svg-resource", "font-path", "font-path-resource", "font-position-list",
+        "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)

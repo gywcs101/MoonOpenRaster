@@ -1,6 +1,6 @@
 import {
   "mizchi/font",
-  "Milky2018/svg" @vector,
+  "gywcs101/MoonOpenRaster/internal/svg" @vector,
   "Milky2018/css",
   "moonbitstack/moonzip/zip",
   "moonbitstack/moonimage/png",

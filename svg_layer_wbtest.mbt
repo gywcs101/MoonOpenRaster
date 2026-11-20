@@ -374,3 +374,35 @@ test "embedded SVG image data goes through the bounded SVG renderer" {
     assert_eq(image.svg_source(), Some(root))
   }
 }
+
+///|
+test "static hyperlinks and chosen switch branches retain CSS selector names" {
+  let svg = b"<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='2' height='1'><style>a rect{fill:red} switch rect{fill:lime}</style><a xlink:href='https://example.org/illustration'><rect width='1' height='1'/></a><switch><rect systemLanguage='fr' x='1' width='1' height='1' fill='blue'/><rect x='1' width='1' height='1'/><rect width='2' height='1' fill='white'/></switch></svg>"
+  let image = decode_svg(svg)
+  assert_eq(image.pixels(), [255, 0, 0, 255, 0, 255, 0, 255])
+  assert_eq(image.svg_source(), Some(svg))
+}
+
+///|
+test "SVG text whitespace collapses across spans and honors inherited xml:space" {
+  let start = "<svg xmlns='http://www.w3.org/2000/svg' width='90' height='30'"
+  let end = "</text></svg>"
+  fn render(content : String, preserve : Bool) -> Array[Byte] raise {
+    let mode = if preserve { " xml:space='preserve'" } else { "" }
+    decode_svg(
+      @utf8.encode(
+        start + mode + "><text x='0' y='24' font-size='20'>" + content + end,
+      ),
+    ).pixels()
+  }
+  assert_eq(
+    render(" \n\tA   <tspan>  B</tspan> \n", false),
+    render("A <tspan>B</tspan>", false),
+  )
+  assert_eq(
+    render("A<title>Invisible description</title>B", false),
+    render("AB", false),
+  )
+  assert_eq(render(" \nA\t B ", true), render("  A  B ", true))
+  assert_true(render("  A  B ", true) != render("A B", false))
+}

@@ -132,8 +132,8 @@ fn check_svg_node(
     return
   }
   if ![
-      "svg", "g", "defs", "title", "desc", "metadata", "path", "rect", "circle",
-      "ellipse", "line", "polyline", "polygon", "linearGradient", "radialGradient",
+      "svg", "g", "a", "switch", "defs", "title", "desc", "metadata", "path", "rect",
+      "circle", "ellipse", "line", "polyline", "polygon", "linearGradient", "radialGradient",
       "stop", "clipPath", "style", "text", "tspan", "textPath", "symbol", "use",
       "image", "mask", "pattern", "marker", "filter", "feBlend", "feColorMatrix",
       "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting",
@@ -157,7 +157,9 @@ fn check_svg_node(
       value.has_prefix("data:image/")) {
       raise Unsupported("SVG attribute exceeds size limit")
     }
-    if key == "href" || key == "xlink:href" {
+    // A hyperlink is preserved as source. It does not load a rendering resource.
+    if name != "a" &&
+      (key == "href" || key == "{http://www.w3.org/1999/xlink}href") {
       let href = value[:].trim().to_owned()
       if href.has_prefix("#") {
         refs.push(href[1:].to_owned())
@@ -499,24 +501,17 @@ fn svg_select_branches(
     raise Unsupported("SVG layer exceeds element or nesting limits")
   }
   let mut changed = false
+  let single_branch = @dom.local_of(element.name) == "switch"
+  let mut emitted = false
   for child in element.child_elements() {
-    if !svg_branch_matches(child) {
+    if (single_branch && emitted) || !svg_branch_matches(child) {
       ignore(child.remove())
       changed = true
-    } else if @dom.local_of(child.name) == "switch" {
-      let children : Array[@dom.Node] = []
-      for candidate in child.child_elements() {
-        if svg_branch_matches(candidate) {
-          children.push(ElementNode(candidate))
-          break
-        }
+    } else {
+      emitted = true
+      if svg_select_branches(child, depth + 1, count) {
+        changed = true
       }
-      let group = @dom.Element::new("g", attrs=child.attrs, children~)
-      ignore(svg_select_branches(group, depth + 1, count))
-      ignore(child.replace_with(ElementNode(group)))
-      changed = true
-    } else if svg_select_branches(child, depth + 1, count) {
-      changed = true
     }
   }
   changed

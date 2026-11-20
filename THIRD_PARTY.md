@@ -8,7 +8,7 @@ The OpenRaster document model, compositing formulas, editor bridge and CLI are i
 - moonbitstack/moonxml 0.2.0 supplies XML parsing and serialization.
 - moonbitstack/moonimage 0.2.0 supplies standalone image decoding (PNG, JPEG, WebP, GIF, BMP, TIFF and ICO) and PNG encoding.
 - moonbitlang/x 0.5.7 supplies CLI filesystem access.
-- [Milky2018/svg](https://github.com/Milky2018/svg) 0.6.1 provides the local SVG renderer, with Milky2018/css and Milky2018/xml 0.6.1. Its Apache-2.0 licenses and distributed notices are included under LICENSES/.
+- [Milky2018/svg](https://github.com/Milky2018/svg) 0.6.1 is the source of the renderer in `internal/svg`. MoonOpenRaster updates the MoonBit derive syntax and changes the Gaussian filter implementation. Milky2018/css and Milky2018/xml 0.6.1 remain registry dependencies. The Apache-2.0 licenses and distributed notices are included under LICENSES/.
 
 Dependency source is installed through Mooncakes. Each dependency retains its own license. No dependency source is copied into this repository. The resolved runtime versions, full license copies and file-level asset scopes are recorded in LICENSES/manifest.json and LICENSES/README.md. The index identifies the materials and complete license copies required when redistributing them.
 

@@ -47,9 +47,46 @@ fn svg_css_properties(source : String) -> Map[String, String] {
 
 ///|
 priv struct SvgFontFace {
-  uri : String
+  sources : Array[String]
   weight : Int32
   font_style : String
+}
+
+///|
+fn svg_font_sources(declaration : String, base : String) -> Array[String] {
+  let urls : Array[String] = []
+  let mut quote = 0
+  let mut depth = 0
+  let mut argument : Int32? = None
+  for i in 0..<declaration.length() {
+    let character = declaration[i].to_int()
+    if quote != 0 {
+      if character == quote {
+        quote = 0
+      }
+    } else if character == 34 || character == 39 {
+      quote = character
+    } else if character == 40 {
+      if depth == 0 &&
+        i >= 3 &&
+        declaration[i - 3:i].to_owned().to_lower() == "url" {
+        argument = Some(i + 1)
+      }
+      depth += 1
+    } else if character == 41 && depth > 0 {
+      depth -= 1
+      if depth == 0 && argument is Some(start) {
+        let href = svg_css_unquote(declaration[start:i].to_owned())
+        if href.has_prefix("data:") {
+          urls.push(href)
+        } else if svg_archive_path(base, href) is Some(path) {
+          urls.push(svg_archive_uri(path))
+        }
+        argument = None
+      }
+    }
+  }
+  urls
 }
 
 ///|
@@ -153,20 +190,13 @@ fn svg_font_faces_from_css(
     let properties = svg_css_properties(css[begin + 1:end].to_owned())
     css = css[end + 1:].to_owned()
     if properties.get("font-family") is Some(family) &&
-      properties.get("src") is Some(source) &&
-      source.has_prefix("url(") &&
-      source.find(")") is Some(close) {
-      let href = svg_css_unquote(source[4:close].to_owned())
-      let uri = if href.has_prefix("data:") {
-        Some(href)
-      } else {
-        svg_archive_path(base, href).map(svg_archive_uri)
-      }
-      if uri is Some(uri) {
+      properties.get("src") is Some(source) {
+      let sources = svg_font_sources(source, base)
+      if !sources.is_empty() {
         let name = svg_css_unquote(family).to_lower()
         let variants = faces.get(name).unwrap_or([])
         variants.push({
-          uri,
+          sources,
           weight: svg_font_weight(
             properties.get("font-weight").unwrap_or("normal"),
           ),
@@ -300,6 +330,104 @@ fn svg_load_font(uri : String, load : (String) -> Bytes?) -> Bytes? {
 }
 
 ///|
+fn svg_font_directory_is_bounded(data : BytesView) -> Bool {
+  let limit = data.length().to_int64()
+  guard limit >= 12L && limit <= 8388608L else { return false }
+  // Check sizes before handing the font to the OpenType reader.
+  fn number(offset : Int32, count : Int32) -> Int64 {
+    let mut value = 0L
+    for i in offset..<(offset + count) {
+      value = value * 256L + data[i].to_int().to_int64()
+    }
+    value
+  }
+  if data[:4] == b"wOFF"[:] || data[:4] == b"wOF2"[:] {
+    let woff2 = data[:4] == b"wOF2"[:]
+    let minimum = if woff2 { 48 } else { 44 }
+    guard data.length() >= minimum &&
+      number(8, 4) == limit &&
+      number(16, 4) <= 8388608L else {
+      return false
+    }
+    let count = number(12, 2).to_int()
+    guard count > 0 && count <= 256 else { return false }
+    if !woff2 {
+      guard minimum + 20 * count <= data.length() else { return false }
+      for i in 0..<count {
+        let at = minimum + i * 20
+        let start = number(at + 4, 4)
+        let compressed = number(at + 8, 4)
+        let original = number(at + 12, 4)
+        guard compressed <= original &&
+          original <= 8388608L &&
+          start + compressed <= limit else {
+          return false
+        }
+      }
+      return true
+    }
+    let mut at = minimum
+    fn read_length() -> Bool {
+      let mut value = 0L
+      for _ in 0..<5 {
+        guard at < data.length() else { return false }
+        let byte = data[at].to_int()
+        at += 1
+        value = value * 128L + (byte & 127).to_int64()
+        guard value <= 8388608L else { return false }
+        if byte < 128 {
+          return true
+        }
+      }
+      false
+    }
+    for _ in 0..<count {
+      guard at < data.length() else { return false }
+      let flags = data[at].to_int()
+      let tag = flags & 63
+      let version = flags >> 6
+      at += 1
+      let mut glyph_table = tag == 10 || tag == 11
+      if tag == 63 {
+        guard data.length() - at >= 4 else { return false }
+        glyph_table = data[at:at + 4] == b"glyf"[:] ||
+          data[at:at + 4] == b"loca"[:]
+        at += 4
+      }
+      let transformed = if glyph_table { version == 0 } else { version != 0 }
+      guard read_length() && (!transformed || read_length()) else {
+        return false
+      }
+    }
+    return at.to_int64() + number(20, 4) <= limit
+  }
+  let start = if data[:4] == b"ttcf"[:] {
+    guard limit >= 16L && number(8, 4) > 0L else { return false }
+    number(12, 4)
+  } else {
+    0L
+  }
+  guard start + 12L <= limit else { return false }
+  let at = start.to_int()
+  guard [b"\x00\x01\x00\x00", b"OTTO", b"true"].any(magic => {
+    data[at:at + 4] == magic[:]
+  }) else {
+    return false
+  }
+  let count = number(at + 4, 2).to_int()
+  guard count > 0 && count <= 256 && at + 12 + count * 16 <= data.length() else {
+    return false
+  }
+  for i in 0..<count {
+    let record = at + 12 + i * 16
+    guard number(record + 8, 4) + number(record + 12, 4) <= limit else {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn svg_text_numbers(
   element : @dom.Element,
   name : String,
@@ -329,7 +457,7 @@ fn svg_unpositioned_spans(element : @dom.Element) -> Bool {
   element
   .child_elements()
   .all(child => {
-    @dom.local_of(child.name) == "tspan" &&
+    ["tspan", "a"].contains(@dom.local_of(child.name)) &&
     !["x", "y", "dx", "dy", "rotate", "transform"].any(key => {
       child.has_attr(key)
     }) &&
@@ -377,56 +505,62 @@ fn svg_glyph_run(
     style.get("font-weight").unwrap_or("normal"),
   )
   let desired_style = style.get("font-style").unwrap_or("normal")
-  let mut uri = None
+  let mut sources : Array[String] = []
   for choice in family.split(",") {
-    let candidate = svg_css_unquote(choice.to_owned()).to_lower()
-    if choice[:].trim().to_owned().to_lower() == "sans-serif" {
-      uri = Some("fallback:sans-serif")
+    let name = choice.trim().to_owned()
+    let generic = name.to_lower()
+    if generic == "sans-serif" || generic == "serif" {
+      sources.push("fallback:" + generic)
       break
     }
-    if choice[:].trim().to_owned().to_lower() == "serif" {
-      uri = Some("fallback:serif")
-      break
-    }
+    let candidate = svg_css_unquote(name).to_lower()
     if faces.get(candidate) is Some(variants) {
       let mut best = 10000
       for face in variants {
         let rank = 3000 * svg_font_style_rank(face.font_style, desired_style) +
           svg_font_weight_rank(face.weight, desired_weight)
         if rank <= best {
-          uri = Some(face.uri)
+          sources = face.sources
           best = rank
         }
       }
-      if uri is Some(_) {
+      if !sources.is_empty() {
         break
       }
     }
   }
-  guard uri is Some(uri) else {
+  if sources.is_empty() {
     raise Unsupported("SVG text needs an in-document @font-face for " + family)
   }
-  let font = match fonts.get(uri) {
-    Some(font) => font
-    None => {
-      guard fonts.length() < 8 else {
-        raise Unsupported("SVG exceeds the font resource count")
-      }
-      let bytes = match uri {
-        "fallback:sans-serif" =>
-          Some(@base64.decode(svg_fallback_sans[:], ignore_whitespace=true))
-        "fallback:serif" =>
-          Some(@base64.decode(svg_fallback_serif[:], ignore_whitespace=true))
-        _ => svg_load_font(uri, load)
-      }
-      guard bytes is Some(bytes) &&
-        bytes.length() <= 8388608 &&
-        @font.parse_font(bytes) is Some(font) else {
-        raise Unsupported("Missing or invalid SVG font: " + uri)
-      }
-      fonts[uri] = font
-      font
+  if sources.length() > 8 {
+    raise Unsupported("SVG font has too many alternate sources: " + family)
+  }
+  let mut selected : (String, @font.TTFont)? = None
+  for uri in sources {
+    if fonts.get(uri) is Some(font) {
+      selected = Some((uri, font))
+      break
     }
+    guard fonts.length() < 8 else {
+      raise Unsupported("SVG exceeds the font resource count")
+    }
+    let bytes = match uri {
+      "fallback:sans-serif" =>
+        Some(@base64.decode(svg_fallback_sans[:], ignore_whitespace=true))
+      "fallback:serif" =>
+        Some(@base64.decode(svg_fallback_serif[:], ignore_whitespace=true))
+      _ => svg_load_font(uri, load)
+    }
+    if bytes is Some(bytes) &&
+      svg_font_directory_is_bounded(bytes[:]) &&
+      @font.parse_font(bytes) is Some(font) {
+      fonts[uri] = font
+      selected = Some((uri, font))
+      break
+    }
+  }
+  guard selected is Some((uri, font)) else {
+    raise Unsupported("Missing or invalid SVG font: " + sources.join(", "))
   }
   let size = svg_dimension(style.get("font-size").unwrap_or("16"))
   guard size > 0.0 && size <= 2048.0 && font.units_per_em > 0 else {
@@ -679,7 +813,7 @@ fn svg_glyph_group(
     let parent : @dom.Node = ElementNode(element)
     for node in parent.children() {
       match node {
-        ElementNode(span) if @dom.local_of(span.name) == "tspan" => {
+        ElementNode(span) if ["tspan", "a"].contains(@dom.local_of(span.name)) => {
           let span_selector = svg_text_selector(span, Some(selector))
           let span_style = svg_text_properties(
             span,
@@ -706,7 +840,7 @@ fn svg_glyph_group(
         }
         ElementNode(run) if @dom.local_of(run.name) == "textPath" &&
           path is None => {
-          let geometry = svg_text_path(run, paths)
+          let geometry = svg_text_path(run, paths, load~)
           let run_selector = svg_text_selector(run, Some(selector))
           let run_style = svg_text_properties(
             run,
@@ -802,6 +936,71 @@ fn svg_glyph_group(
 }
 
 ///|
+fn svg_preserve_space(element : @dom.Element, inherited : Bool) -> Bool {
+  match element.attr("{http://www.w3.org/XML/1998/namespace}space") {
+    Some("default") => false
+    Some("preserve") => true
+    _ => inherited
+  }
+}
+
+///|
+fn svg_normalize_text_space(text : @dom.Element, inherited : Bool) -> Unit {
+  let plans : Array[(@dom.Element, Array[(@dom.Node, StringBuilder?)])] = []
+  let mut pending : StringBuilder? = None
+  let mut may_add_space = false
+  fn visit(element : @dom.Element, inherited : Bool) -> Unit {
+    let preserve = svg_preserve_space(element, inherited)
+    let node : @dom.Node = ElementNode(element)
+    let plan : Array[(@dom.Node, StringBuilder?)] = []
+    for child in node.children() {
+      match child {
+        ElementNode(info) if ["title", "desc", "metadata"].contains(
+            @dom.local_of(info.name),
+          ) => ()
+        ElementNode(span) => {
+          visit(span, preserve)
+          plan.push((child, None))
+        }
+        TextNode(raw) | CDataNode(raw) => {
+          let normalized = StringBuilder()
+          for character in raw {
+            let is_linebreak = character == '\n' || character == '\r'
+            let is_space = character == ' ' || character == '\t' || is_linebreak
+            if !preserve && is_space {
+              if !is_linebreak && may_add_space && pending is None {
+                pending = Some(normalized)
+              }
+            } else {
+              if pending is Some(previous) {
+                previous.write_char(' ')
+                pending = None
+              }
+              normalized.write_char(if is_space { ' ' } else { character })
+              may_add_space = !is_space
+            }
+          }
+          plan.push((child, Some(normalized)))
+        }
+        _ => plan.push((child, None))
+      }
+    }
+    plans.push((element, plan))
+  }
+  visit(text, inherited)
+  for (element, plan) in plans {
+    element.set_children(
+      plan.map(item => {
+        match item {
+          (_, Some(value)) => TextNode(value.to_string())
+          (node, None) => node
+        }
+      }),
+    )
+  }
+}
+
+///|
 fn outline_svg_text(
   root : @dom.Element,
   base : String,
@@ -838,7 +1037,9 @@ fn outline_svg_text(
     element : @dom.Element,
     inherited : Map[String, String],
     parent : @css.Element?,
+    preserve : Bool,
   ) -> Unit raise {
+    let preserve = svg_preserve_space(element, preserve)
     let selector = svg_text_selector(element, parent)
     let style = svg_text_properties(
       element,
@@ -847,6 +1048,7 @@ fn outline_svg_text(
     )
     for child in element.child_elements() {
       if @dom.local_of(child.name) == "text" {
+        svg_normalize_text_space(child, preserve)
         let child_selector = svg_text_selector(child, Some(selector))
         let props = svg_text_properties(
           child,
@@ -868,10 +1070,10 @@ fn outline_svg_text(
         ignore(child.replace_with(ElementNode(group)))
         changed = true
       } else {
-        visit(child, style, Some(selector))
+        visit(child, style, Some(selector), preserve)
       }
     }
   }
-  visit(root, Map([]), None)
+  visit(root, Map([]), None, false)
   changed
 }
