@@ -50,13 +50,13 @@ Chromium 的 Canvas 使用同一字体独立绘制字形，并用 50% 覆盖阈�
 
 色彩对照可以运行 `python scripts/check_rgba16.py` 复现。被转换图层的原始 PNG 包含原位深和原色彩配置。写出的合并图使用 sRGB。ICC 采用相对色度转换，超出 sRGB 色域的颜色裁剪到可表示的范围。算法来源见 [ICC.1:2022](https://www.color.org/specifications/ICC.1-2022-05.pdf) 和 [PNG 第三版](https://www.w3.org/TR/png-3/)。
 
-资源测试用独立像素断言检查了 `<image>` 引用归档 SVG，并检查该 SVG 通过自己的相对路径加载 CSS 和 PNG。移动图层、保存和重开后，所有资源字节保持一致，合并画面按新坐标生成。SVG 图像的 Base64 和百分号编码数据也通过了像素对照。循环引用会报告出错的资源。 同一 SVG 资源的两个图像引用可分别使用命名视图和 svgView 中的 viewBox。混合稿保存并重开后，两种裁切仍保留各自的视图，并按原路径读取对应的 CSS 和 PNG。独立像素断言核对了新预览和未修改的 16 位像素。[SVG 1.1 视图片段](https://www.w3.org/TR/SVG11/linking.html#SVGFragmentIdentifiers)
+资源测试用独立像素断言检查了 `<image>` 引用归档 SVG，并检查该 SVG 通过自己的相对路径加载 CSS 和 PNG。移动图层、保存和重开后，所有资源字节保持一致，合并画面按新坐标生成。SVG 图像的 Base64 和百分号编码数据也通过了像素对照。循环引用会报告出错的资源。 同一 SVG 资源的两个图像引用可分别使用命名视图和 svgView 中的 viewBox。混合稿保存并重开后，两种裁切仍保留各自的视图，并按原路径读取对应的 CSS、PNG 和 OpenType 字体。命名视图内的字形遮住滤镜颜色，确保字体和滤镜都参与了重算。独立像素断言核对了新预览和未修改的 16 位像素。[SVG 1.1 视图片段](https://www.w3.org/TR/SVG11/linking.html#SVGFragmentIdentifiers)
 
-Chromium 独立对照覆盖描边标记、渐变图案、剪裁和蒙版叠加滤镜、颜色矩阵和组件传递、滤镜合成、形态学、图像引用，以及变换后的偏移和滤镜区域。二十七例的 8 位预乘通道最大差为 1。不等透明度的形态学膨胀与 Chromium 逐通道一致，计算复用了预乘通道类型。两例有种子的分形噪声误差不到 2，其中一例使用无缝拼接。透明背景上的高斯模糊另由公式逐像素核对透明度，误差最多 1。该例与 Chromium 近似渲染的最大差为 12。测试位于 `tests/browser/svg-reference.mjs`。填充、描边和背景输入由独立预期像素验证。半像素偏移用相邻两像素各半的覆盖度验证，测试样例中 Chromium 的边缘覆盖取整。[SVG 1.1 滤镜规范](https://www.w3.org/TR/SVG11/filters.html)
+Chromium 独立对照覆盖描边标记、渐变图案、剪裁和蒙版叠加滤镜、颜色矩阵和组件传递、滤镜合成、形态学、图像引用，以及变换后的偏移和滤镜区域。三十例的 8 位预乘通道最大差为 1。不等透明度的形态学膨胀与 Chromium 逐通道一致，计算复用了预乘通道类型。两例有种子的分形噪声误差不到 2，其中一例使用无缝拼接。透明背景上的高斯模糊另由公式逐像素核对透明度，误差最多 1。该例与 Chromium 近似渲染的最大差为 12。测试位于 `tests/browser/svg-reference.mjs`。填充、描边和背景输入由独立预期像素验证。半像素偏移用相邻两像素各半的覆盖度验证，测试样例中 Chromium 的边缘覆盖取整。[SVG 1.1 滤镜规范](https://www.w3.org/TR/SVG11/filters.html)
 
 带倾斜变换的滤镜在旧版会填满外接矩形。当前版本复用 SVG 剪裁算法计算用户空间滤镜区域的实际像素覆盖，逐像素对照变换后的四边形与像素交叠面积，8 位透明度误差最多为 1。同一样例与 Chromium 的最大通道差为 127，resvg 0.50.0 生成图的透明度与几何预期最大差为 143。两者在该样例的边缘覆盖计算不同。这个结果只验证外层用户空间区域，图元区域及多阶段变换还需分别验收。[SVG 1.1 滤镜区域](https://www.w3.org/TR/SVG11/filters.html#FilterEffectsRegion) · [resvg 0.50.0](https://github.com/linebender/resvg/releases/tag/v0.50.0)
 
-滤镜色彩空间的两例复用现有 CSS 层叠，分别验证从祖先样式表继承 sRGB，以及图元选择器覆盖滤镜的线性 RGB 属性。旧版在祖先继承案例的红色通道差为 61。修复后两例与 Chromium 的最大 8 位通道差均为 1。
+滤镜色彩空间的两例复用现有 CSS 层叠，分别验证从祖先样式表继承 sRGB，以及图元选择器覆盖滤镜的线性 RGB 属性。旧版在祖先继承案例的红色通道差为 61。修复后两例与 Chromium 的最大 8 位通道差均为 1。填充颜色、透明度以及光源颜色也复用样式层叠，覆盖 currentColor 和 CSS 变量。灰度高度图的边缘法线采用 SVG 规范给出的加权差分。新增三个对应样例与 Chromium 逐通道一致。
 
 对嵌套双向文字，当前库对 `אב<tspan>A</tspan>` 样例仍会明确报错。在独立的 MoonBit 探针中，moon_cosmic 0.3.9 能为同样的两份随稿字体返回混排顺序、字形、字形位置和所选字体。JS、wasm 和 wasm-gc 实际运行结果一致，native 通过类型检查。接入还需验证分段样式、字体回退以及 SVG 逐字坐标，并用归档往返验证实际像素。[moon_cosmic 0.3.9](https://mooncakes.io/docs/Milky2018/moon_cosmic%400.3.9)
 

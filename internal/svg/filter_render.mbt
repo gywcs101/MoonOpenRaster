@@ -668,18 +668,27 @@ fn lighting_filter_image(
   for y in 0..<source.height {
     for x in 0..<source.width {
       let height = source.get_pixel(x, y).a.to_double() / 255.0 * surface_scale
-      let dx = (
-          source.get_pixel(x + 1, y).a.to_double() -
-          source.get_pixel(x - 1, y).a.to_double()
-        ) /
-        510.0 *
-        surface_scale
-      let dy = (
-          source.get_pixel(x, y + 1).a.to_double() -
-          source.get_pixel(x, y - 1).a.to_double()
-        ) /
-        510.0 *
-        surface_scale
+      let left = max_int(0, x - 1)
+      let right = min_int(source.width - 1, x + 1)
+      let top = max_int(0, y - 1)
+      let bottom = min_int(source.height - 1, y + 1)
+      // SVG's lighting kernel uses one-sided differences at the image edge
+      // and weights the center row or column twice.
+      let mut dx = 0.0
+      let mut dy = 0.0
+      for row in top..<=bottom {
+        let weight = if row == y { 2.0 } else { 1.0 }
+        dx += weight *
+          (source.get_pixel(right, row).a - source.get_pixel(left, row).a).to_double()
+      }
+      for col in left..<=right {
+        let weight = if col == x { 2.0 } else { 1.0 }
+        dy += weight *
+          (source.get_pixel(col, bottom).a - source.get_pixel(col, top).a).to_double()
+      }
+      let scale = 2.0 * surface_scale / 255.0
+      dx *= scale / ((bottom - top + 2) * max_int(1, right - left)).to_double()
+      dy *= scale / ((right - left + 2) * max_int(1, bottom - top)).to_double()
       let normal = normalize_filter_vector(-dx, -dy, 1.0)
       let light_vector = filter_light_vector(
         light,

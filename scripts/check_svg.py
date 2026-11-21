@@ -324,7 +324,19 @@ def check_nested_svg_image(cli, *, views=False):
     }
     if views:
         resources["data/main.svg"] = b'<svg xmlns="http://www.w3.org/2000/svg" width="3" height="1"><image href="icons/sub.svg#left" width="1" height="1"/><image href="icons/sub.svg#svgView(viewBox(1,0,1,1))" x="1" width="1" height="1"/></svg>'
-        resources["data/icons/sub.svg"] = b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 2 1"><view id="left" viewBox="0 0 1 1"/><style>@import "styles/paint.css";</style><rect class="color" width="1" height="1"/><image href="pixel.png" x="1" width="1" height="1"/></svg>'
+        resources["data/icons/sub.svg"] = (
+            b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 2 1">'
+            b'<view id="left" viewBox="0 0 1 1"/><style>@import "styles/paint.css";</style>'
+            b'<defs><filter id="ink" filterUnits="userSpaceOnUse" x="0" y="0" width="1" height="1">'
+            b'<feFlood result="tone"/><feComposite in="tone" in2="SourceGraphic" operator="in"/>'
+            b'</filter></defs><text font-family="OraTest" font-size="2" x="0" y="1" filter="url(#ink)">A</text>'
+            b'<image href="pixel.png" x="1" width="1" height="1"/></svg>'
+        )
+        resources["data/icons/styles/paint.css"] = (
+            b'@font-face { font-family: OraTest; src: url("../../font/press.ttf"); } '
+            b'filter { color: #ff0000; } filter > feFlood { flood-color: currentColor; }'
+        )
+        resources["data/font/press.ttf"] = (ROOT / "fixtures/ora-test.ttf").read_bytes()
     with zipfile.ZipFile(source, "w") as archive:
         archive.writestr("mimetype", "image/openraster")
         archive.writestr("stack.xml", '<image version="0.0.6" w="3" h="1"><stack><layer name="Vector" src="data/main.svg"/><layer name="Raster" src="data/base.png"/></stack></image>')

@@ -270,15 +270,11 @@ fn parse_filter_light(children : Array[FilterPrimitiveChild]) -> FilterLight {
 }
 
 ///|
-fn parse_filter_lighting_color(attrs : Array[(String, String)]) -> Color {
-  parse_color(get_attr(attrs, "lighting-color").unwrap_or("white"))
-}
-
-///|
 fn parse_filter_primitive(
   tag : String,
   attrs : Array[(String, String)],
   children : Array[FilterPrimitiveChild],
+  style : FilterStyle,
 ) -> FilterGraphPrimitive? {
   let input = get_attr(attrs, "in").unwrap_or("")
   let result = get_attr(attrs, "result").unwrap_or("")
@@ -336,11 +332,8 @@ fn parse_filter_primitive(
       )
     }
     "feFlood" => {
-      let base = parse_color(get_attr(attrs, "flood-color").unwrap_or("black"))
-      let opacity = get_attr(attrs, "flood-opacity")
-        .map(parse_number)
-        .unwrap_or(1.0)
-      let alpha = (base.a.to_double() * opacity).round().to_int()
+      let base = style.flood_color
+      let alpha = (base.a.to_double() * style.flood_opacity).round().to_int()
       Some(GraphFlood(result~, color={ ..base, a: alpha, }))
     }
     "feMerge" => {
@@ -491,7 +484,7 @@ fn parse_filter_primitive(
           diffuse_constant=get_attr(attrs, "diffuseConstant")
             .map(parse_number)
             .unwrap_or(1.0),
-          color=parse_filter_lighting_color(attrs),
+          color=style.lighting_color,
           light=parse_filter_light(children),
         ),
       )
@@ -509,7 +502,7 @@ fn parse_filter_primitive(
           specular_exponent=get_attr(attrs, "specularExponent")
             .map(parse_number)
             .unwrap_or(1.0),
-          color=parse_filter_lighting_color(attrs),
+          color=style.lighting_color,
           light=parse_filter_light(children),
         ),
       )
@@ -582,7 +575,12 @@ fn parse_filter_graph(
       false,
     )
     ctx.previous_sibling_stack[stack_index] = ctx.selector_element_slots[ctx.element_stack.length()]
-    if parse_filter_primitive(element.name, element.attributes, children)
+    if parse_filter_primitive(
+        element.name,
+        element.attributes,
+        children,
+        primitive_style.filters,
+      )
       is Some(primitive) {
       fn length(key : String) -> (Double, Bool)? {
         get_attr(element.attributes, key).map(value => {
@@ -596,7 +594,7 @@ fn parse_filter_graph(
         length("height"),
       )
       primitives.push(primitive)
-      color.push(primitive_style.filter_linear_rgb)
+      color.push(primitive_style.filters.linear_rgb)
       regions.push(
         if x is Some(_) || y is Some(_) || width is Some(_) || height is Some(_) {
           Some({ x, y, width, height, })

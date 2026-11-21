@@ -76,6 +76,14 @@ fn SVGParseContext::new(
 }
 
 ///|
+priv struct FilterStyle {
+  linear_rgb : Bool
+  flood_color : Color
+  flood_opacity : Double
+  lighting_color : Color
+}
+
+///|
 priv struct InheritedStyle {
   fill : Paint
   fill_rule : FillRule
@@ -91,7 +99,7 @@ priv struct InheritedStyle {
   image_sampling : ImageSampling
   stop_color : Color
   stop_opacity : Double
-  filter_linear_rgb : Bool
+  filters : FilterStyle
   css_style : @css_style.Style
   custom_properties : Map[String, String]
   root_font_size : Double
@@ -114,7 +122,12 @@ fn InheritedStyle::default() -> InheritedStyle {
     image_sampling: Bilinear,
     stop_color: Color::black(),
     stop_opacity: 1.0,
-    filter_linear_rgb: true,
+    filters: {
+      linear_rgb: true,
+      flood_color: Color::black(),
+      flood_opacity: 1.0,
+      lighting_color: Color::white(),
+    },
     css_style: @css_style.Style::default(),
     custom_properties: Map([]),
     root_font_size: 16.0,
@@ -248,7 +261,7 @@ fn inherited_style_from_node(
   custom_properties : Map[String, String],
   stop_color : Color,
   stop_opacity : Double,
-  filter_linear_rgb : Bool,
+  filters : FilterStyle,
   root_font_size : Double,
 ) -> InheritedStyle {
   {
@@ -266,7 +279,7 @@ fn inherited_style_from_node(
     image_sampling: node.image_sampling,
     stop_color,
     stop_opacity,
-    filter_linear_rgb,
+    filters,
     css_style,
     custom_properties,
     root_font_size,

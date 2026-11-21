@@ -23,6 +23,9 @@ priv enum ComputedStyleProperty {
   StyleStopColor
   StyleStopOpacity
   StyleFilterColorInterpolation
+  StyleFloodColor
+  StyleFloodOpacity
+  StyleLightingColor
   StyleFontSize
 }
 
@@ -52,6 +55,9 @@ fn computed_style_property(name : String) -> ComputedStyleProperty? {
     "stop-color" => Some(StyleStopColor)
     "stop-opacity" => Some(StyleStopOpacity)
     "color-interpolation-filters" => Some(StyleFilterColorInterpolation)
+    "flood-color" => Some(StyleFloodColor)
+    "flood-opacity" => Some(StyleFloodOpacity)
+    "lighting-color" => Some(StyleLightingColor)
     "font-size" => Some(StyleFontSize)
     _ => None
   }
@@ -83,6 +89,9 @@ fn ComputedStyleProperty::name(self : ComputedStyleProperty) -> String {
     StyleStopColor => "stop-color"
     StyleStopOpacity => "stop-opacity"
     StyleFilterColorInterpolation => "color-interpolation-filters"
+    StyleFloodColor => "flood-color"
+    StyleFloodOpacity => "flood-opacity"
+    StyleLightingColor => "lighting-color"
     StyleFontSize => "font-size"
   }
 }
@@ -259,12 +268,16 @@ fn svg_property_value_is_valid(property : String, value : String) -> Bool {
   }
   match property {
     "fill" | "stroke" => valid_svg_paint(trimmed)
-    "color" | "stop-color" => !(@css_computed.parse_color(trimmed) is Invalid)
+    "color" | "stop-color" | "flood-color" | "lighting-color" =>
+      !(@css_computed.parse_color(trimmed) is Invalid)
     "color-interpolation-filters" =>
       ["auto", "linearRGB", "sRGB"].contains(trimmed)
     "fill-rule" | "clip-rule" => trimmed == "nonzero" || trimmed == "evenodd"
-    "fill-opacity" | "stroke-opacity" | "stop-opacity" | "opacity" =>
-      valid_svg_number(trimmed, false)
+    "fill-opacity"
+    | "stroke-opacity"
+    | "stop-opacity"
+    | "opacity"
+    | "flood-opacity" => valid_svg_number(trimmed, false)
     "stroke-width" =>
       valid_svg_number(trimmed, true) && parse_length(trimmed) >= 0.0
     "stroke-dashoffset" => valid_svg_number(trimmed, true)
@@ -312,7 +325,11 @@ fn svg_declaration_is_valid(
 ///|
 fn ComputedStyleProperty::is_inherited(self : ComputedStyleProperty) -> Bool {
   match self {
-    StyleOpacity | StyleVectorEffect => false
+    StyleOpacity
+    | StyleVectorEffect
+    | StyleFloodColor
+    | StyleFloodOpacity
+    | StyleLightingColor => false
     _ => true
   }
 }

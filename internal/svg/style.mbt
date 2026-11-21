@@ -361,8 +361,40 @@ fn resolve_computed_style(
       StyleFilterColorInterpolation,
     ) {
     StyleInitial => true
-    StyleInherited => parent.filter_linear_rgb
+    StyleInherited => parent.filters.linear_rgb
     StyleSpecified(value) => value != "sRGB"
+  }
+  fn effect_color(
+    property : ComputedStyleProperty,
+    initial : Color,
+    inherited : Color,
+  ) -> Color {
+    match resolve_style_choice(declarations, custom_properties, property) {
+      StyleInitial => initial
+      StyleInherited => inherited
+      StyleSpecified(value) if value.to_lower() == "currentcolor" =>
+        node.color.unwrap_or(Color::black())
+      StyleSpecified(value) => parse_color(value)
+    }
+  }
+  let filters : FilterStyle = {
+    linear_rgb: filter_linear_rgb,
+    flood_color: effect_color(
+      StyleFloodColor,
+      Color::black(),
+      parent.filters.flood_color,
+    ),
+    flood_opacity: match
+      resolve_style_choice(declarations, custom_properties, StyleFloodOpacity) {
+      StyleInitial => 1.0
+      StyleInherited => parent.filters.flood_opacity
+      StyleSpecified(value) => clamp_svg_opacity(value)
+    },
+    lighting_color: effect_color(
+      StyleLightingColor,
+      Color::white(),
+      parent.filters.lighting_color,
+    ),
   }
   match
     resolve_style_choice(declarations, custom_properties, StyleStrokeDasharray) {
@@ -435,7 +467,6 @@ fn resolve_computed_style(
   node.marker_mid_is_set = true
   node.marker_end_is_set = true
   inherited_style_from_node(
-    node, css_style, custom_property_map, stop_color, stop_opacity, filter_linear_rgb,
-    root_font_size,
+    node, css_style, custom_property_map, stop_color, stop_opacity, filters, root_font_size,
   )
 }

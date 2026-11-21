@@ -72,6 +72,18 @@ const cases = {
     '<style>defs > filter > .transfer { color-interpolation-filters: sRGB }</style><defs>' +
     filter('<feComponentTransfer class="transfer"><feFuncR type="linear" slope=".5"/></feComponentTransfer>', 'linearRGB') +
     '</defs><rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
+  'filter flood color and opacity use the CSS cascade': wrap(
+    '<style>filter { color: blue; --flood: .5 } filter > feFlood { flood-color: currentColor; flood-opacity: var(--flood) }</style>' +
+    '<defs>' + filter('<feFlood flood-color="red" flood-opacity=".25"/>') + '</defs>' +
+    '<rect width="16" height="12" filter="url(#f)"/>'),
+  'filter lighting color resolves currentColor': wrap(
+    '<style>filter { color: lime } feDiffuseLighting { lighting-color: currentColor }</style>' +
+    '<defs>' + filter('<feDiffuseLighting><feDistantLight elevation="90"/></feDiffuseLighting>') + '</defs>' +
+    '<rect width="16" height="12" filter="url(#f)"/>'),
+  'diffuse light follows alpha slopes and filter boundaries': wrap(
+    '<defs>' + filter('<feDiffuseLighting surfaceScale="2"><feDistantLight azimuth="45" elevation="45"/></feDiffuseLighting>') + '</defs>' +
+    '<g filter="url(#f)"><rect width="8" height="12" fill="red"/>' +
+    '<rect x="8" y="6" width="8" height="6" fill="red" fill-opacity=".25"/></g>'),
   'seeded fractal noise': wrap(
     '<defs>' + filter('<feTurbulence type="fractalNoise" baseFrequency=".125 .25" numOctaves="2" seed="17"/>') + '</defs>' +
     '<rect width="16" height="12" filter="url(#f)"/>'),
