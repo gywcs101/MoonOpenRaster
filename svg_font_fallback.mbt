@@ -15,6 +15,7 @@ fn svg_positioned_glyph(
     y: glyph.y,
     advance_width: glyph.advance_width,
     scale: size / font.units_per_em.to_double(),
+    sideways: false,
     outline: () => {
       @font.path_commands_to_svg_d(
         font.glyph_outline_at(glyph.glyph_id, variations),

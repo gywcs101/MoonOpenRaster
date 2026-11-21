@@ -7,6 +7,7 @@ priv struct SvgRunGlyph {
   y : Double
   advance_width : Double
   scale : Double
+  sideways : Bool
   outline : () -> String
 }
 
@@ -185,6 +186,7 @@ fn svg_shape_inline_font(
       y: origin_y,
       advance_width: advance,
       scale,
+      sideways: false,
       outline: () => glyph.outline,
     })
     previous = Some(glyph)

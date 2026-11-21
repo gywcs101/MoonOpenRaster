@@ -575,6 +575,7 @@ fn svg_shape_font_sources(
   direction : @font.TextDirection,
   language : String,
   vertical : Bool,
+  orientation : String,
 ) -> SvgTextRun raise {
   let families = [sources, ..fallbacks]
   let mut selected : (String, @font.TTFont)? = None
@@ -619,34 +620,9 @@ fn svg_shape_font_sources(
     axes["wght"] = desired_weight.to_double()
   }
   if vertical {
-    let scale = size / font.units_per_em.to_double()
-    let glyphs : Array[SvgRunGlyph] = []
-    let mut end = 0
-    let mut advance = 0.0
-    for glyph in font.layout_text_vertical(text, size) {
-      if glyph.glyph_id == 0 {
-        raise Unsupported("SVG font is missing characters: " + uri)
-      }
-      let start = end
-      end += if glyph.codepoint > 0xffff { 2 } else { 1 }
-      let metrics = font.glyph_metrics_at(glyph.glyph_id, axes)
-      glyphs.push({
-        codepoint: glyph.codepoint,
-        text_start: start,
-        text_end: end,
-        x: -metrics.advance_width.to_double() * scale / 2.0,
-        y: glyph.y_offset + glyph.x_offset,
-        advance_width: glyph.x_advance,
-        scale,
-        outline: () => {
-          @font.path_commands_to_svg_d(
-            font.glyph_outline_at(glyph.glyph_id, axes),
-          )
-        },
-      })
-      advance += glyph.x_advance
-    }
-    return { glyphs, advance, left_to_right: true, }
+    return svg_vertical_open_type(
+      font, text, size, axes, orientation, ligatures, language, uri,
+    )
   }
   let shaped = font.shape_text(
     text,
@@ -723,21 +699,17 @@ fn svg_glyph_run(
   let rtl = style.get("direction").unwrap_or("ltr") == "rtl" ||
     mode == "rl" ||
     mode == "rl-tb"
+  let orientation = style.get("glyph-orientation-vertical").unwrap_or("auto")
   if vertical {
     guard !rtl && path is None && positioning is None && length_adjust is None else {
       raise Unsupported(
         "This combination of SVG vertical text and positioning is unsupported",
       )
     }
-    let orientation = style.get("glyph-orientation-vertical").unwrap_or("auto")
-    let upright = ["0", "0deg"].contains(orientation)
-    guard (upright || orientation == "auto") &&
+    guard ["auto", "0", "0deg", "90", "90deg"].contains(orientation) &&
       text.all(character => {
         let code = character.to_int()
-        code == 32 ||
-        (code >= 0x3400 && code <= 0x4dbf) ||
-        (code >= 0x4e00 && code <= 0x9fff) ||
-        (upright && code >= 33 && code <= 126)
+        svg_vertical_han(code) || (code >= 32 && code <= 126)
       }) else {
       raise Unsupported("Unsupported glyph orientation in SVG vertical text")
     }
@@ -804,6 +776,7 @@ fn svg_glyph_run(
         },
         style.get("language").unwrap_or("und"),
         vertical,
+        orientation,
       )
   }
   let glyphs = shaped.glyphs
@@ -902,6 +875,10 @@ fn svg_glyph_run(
             Some(transform) => transform
             None => continue
           }
+        None if glyph.sideways => {
+          let values = [0.0, scale, scale, 0.0, gx, gy]
+          "matrix(" + values.map(value => value.to_string()).join(" ") + ")"
+        }
         None if angle != 0.0 => {
           let radians = angle * 3.141592653589793 / 180.0
           let cosine = @math.cos(radians) * scale
@@ -955,11 +932,14 @@ fn svg_glyph_group(
   viewport : (Double, Double),
   path~ : SvgTextPath? = None,
 ) -> @dom.Element raise {
-  if !element.child_elements().is_empty() &&
-    ["tb", "tb-rl", "vertical-rl", "vertical-lr"].contains(
-      style.get("writing-mode").unwrap_or("horizontal-tb"),
-    ) {
-    raise Unsupported("Nested SVG vertical text layout is unsupported")
+  let writing_mode = style.get("writing-mode").unwrap_or("horizontal-tb")
+  let vertical = ["tb", "tb-rl", "vertical-rl", "vertical-lr"].contains(
+    writing_mode,
+  )
+  if vertical && !svg_unpositioned_spans(element) {
+    raise Unsupported(
+      "Positioned spans within SVG vertical text are unsupported",
+    )
   }
   let font_size = svg_dimension(style.get("font-size").unwrap_or("16"))
   let (width, height) = viewport
@@ -1081,6 +1061,9 @@ fn svg_glyph_group(
             layout,
             svg_text_cascade(span, span_selector, sheets),
           )
+          if vertical {
+            span_style["writing-mode"] = writing_mode
+          }
           children.push(
             ElementNode(
               svg_glyph_group(
@@ -1153,18 +1136,21 @@ fn svg_glyph_group(
     }
     if anchored {
       let (end_x, end_y) = cursor.val
+      let distance = if vertical { y - end_y } else { x - end_x }
       let shift = match anchor {
-        "middle" => (x - end_x) / 2.0
-        "end" => x - end_x
+        "middle" => distance / 2.0
+        "end" => distance
         _ => raise Unsupported("Invalid SVG text-anchor")
       }
+      let (dx, dy) = if vertical { (0.0, shift) } else { (shift, 0.0) }
+      let transform = "translate(" + dx.to_string() + " " + dy.to_string() + ")"
       let inner = @dom.Element::new(
         "g",
-        attrs=[("transform", "translate(" + shift.to_string() + " 0)")],
+        attrs=[("transform", transform)],
         children~,
       )
       children = [ElementNode(inner)]
-      cursor.val = (end_x + shift, end_y)
+      cursor.val = (end_x + dx, end_y + dy)
     }
   }
   svg_wrap_glyph_group(element, selector, sheets, children)

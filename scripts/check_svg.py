@@ -58,9 +58,12 @@ def check_font_layer(cli, variant="font"):
     unavailable_primary = variant == "font-unavailable-primary"
     fallback_all = variant == "font-glyph-fallback-all"
     fallback = variant == "font-glyph-fallback" or fallback_all
-    bidi_spans = variant == "font-rtl-spans"
+    bidi_embed = variant == "font-rtl-embed"
+    bidi_spans = variant == "font-rtl-spans" or bidi_embed
     right_to_left = variant == "font-rtl" or bidi_spans
-    vertical = variant in ("font-vertical", "font-vertical-centered")
+    vertical_spans = variant == "font-vertical-spans"
+    vertical_mixed = variant == "font-vertical-mixed" or vertical_spans
+    vertical = variant in ("font-vertical", "font-vertical-centered") or vertical_mixed
     centered_vertical = variant == "font-vertical-centered"
     external_tref = variant == "font-tref-resource"
     text_reference = variant == "font-tref" or external_tref
@@ -164,11 +167,18 @@ def check_font_layer(cli, variant="font"):
         text = "אב"
         if bidi_spans:
             font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
-            text = 'אב<tspan font-family="Latin" fill="blue">A</tspan>'
+            span_direction = ' direction="ltr" unicode-bidi="embed"' if bidi_embed else ""
+            text = f'אב<tspan font-family="Latin" fill="blue"{span_direction}>A</tspan>'
     if vertical:
         position_attrs = 'x="5" y="4" writing-mode="tb-rl" text-anchor="middle"' if centered_vertical else 'x="5" y="0" writing-mode="tb" glyph-orientation-vertical="0"'
         font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
         text = "中中"
+        if vertical_mixed:
+            text = "A中"
+            position_attrs = 'x="5" y="0" writing-mode="tb"'
+        if vertical_spans:
+            text = "A<tspan>中</tspan>"
+            position_attrs = 'x="5" y="4" writing-mode="tb" text-anchor="middle"'
     if text_reference:
         definition = '<defs><text id="fragment" font-family="OraTest">中</text></defs>'
         referenced_text = f'<svg xmlns="http://www.w3.org/2000/svg">{definition}</svg>'.encode()
@@ -211,6 +221,8 @@ def check_font_layer(cli, variant="font"):
             return (x < 4 and y >= 4) or (7 <= x < 13 and y >= 2)
         if right_to_left:
             return (x < 6 and y >= 2) or (8 <= x < 12 and y >= 4)
+        if vertical_mixed:
+            return (3 <= x < 5 and y < 2) or (3 <= x < 6 and y >= 5)
         if vertical:
             return 3 <= x < 6 and y % 4 != 0
         return (x < 4 and y >= 4) or (8 <= x < 14 and y >= 2)
@@ -508,7 +520,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered", "font-rtl-spans", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
+        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-rtl-spans", "font-rtl-embed", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)

@@ -29,9 +29,20 @@ fn svg_bidi_glyphs(
     let bidi_mode = computed
       .get_value("unicode-bidi")
       .unwrap_or(element.attr("unicode-bidi").unwrap_or("normal"))
-    guard bidi_mode == "normal" && !element.has_attr("textLength") else {
+    let embedded = bidi_mode == "embed"
+    guard (bidi_mode == "normal" || embedded) && !element.has_attr("textLength") else {
       raise Unsupported(
         "Unsupported bidi override or explicit length in SVG text spans",
+      )
+    }
+    if embedded {
+      owners.push(-1)
+      text.write_char(
+        if style.get("direction") == Some("rtl") {
+          '\u{202b}'
+        } else {
+          '\u{202a}'
+        },
       )
     }
     let children : Array[() -> Array[@dom.Node]] = []
@@ -69,6 +80,10 @@ fn svg_bidi_glyphs(
         }
         _ => ()
       }
+    }
+    if embedded {
+      owners.push(-1)
+      text.write_char('\u{202c}')
     }
     () => {
       let result : Array[@dom.Node] = []
