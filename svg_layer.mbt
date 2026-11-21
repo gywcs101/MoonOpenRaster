@@ -148,7 +148,7 @@ fn check_svg_node(
       "svg", "g", "a", "switch", "defs", "title", "desc", "metadata", "path", "rect",
       "circle", "ellipse", "line", "polyline", "polygon", "linearGradient", "radialGradient",
       "stop", "clipPath", "style", "text", "tspan", "tref", "textPath", "symbol",
-      "use", "image", "mask", "pattern", "marker", "filter", "feBlend", "feColorMatrix",
+      "use", "image", "view", "mask", "pattern", "marker", "filter", "feBlend", "feColorMatrix",
       "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting",
       "feDisplacementMap", "feDistantLight", "feFlood", "feFuncA", "feFuncB", "feFuncG",
       "feFuncR", "feGaussianBlur", "feImage", "feMerge", "feMergeNode", "feMorphology",
@@ -407,39 +407,104 @@ fn svg_resource_options(
     image_resolver: Some(fn(href) {
       let inline_svg = href.has_prefix("ora-inline-image:")
       let inline = href.has_prefix("data:") || inline_svg
+      let (location, fragment) = match href.find("#") {
+        Some(at) if !inline =>
+          (href[:at].to_owned(), Some(href[at + 1:].to_owned()))
+        _ => (href, None)
+      }
       let name = if inline_svg {
-        path + "\u0000" + href
+        path + "\u0000" + location
       } else if inline {
-        href
+        location
       } else {
-        guard svg_archive_path(path, href) is Some(name) else { return None }
+        guard svg_archive_path(path, location) is Some(name) else {
+          return None
+        }
         name
       }
-      if images.images.get(name) is Some(image) {
+      let key = match fragment {
+        Some(value) => name + "#" + value
+        None => name
+      }
+      if images.images.get(key) is Some(image) {
         return Some(image)
       }
       guard !images.active.contains(name) && images.active.length() < 8 else {
         return None
       }
-      let payload = if inline { svg_inline_image(href) } else { load(href) }
+      let payload = if inline {
+        svg_inline_image(location)
+      } else {
+        load(location)
+      }
       guard payload is Some(data) else { return None }
       let image = if (!inline || inline_svg) && looks_like_svg_xml(data[:]) {
         images.active[name] = true
         let base = if inline_svg { path } else { name }
-        let result = svg_nested_image(data, base, entries, retained, images) catch {
+        let result = svg_nested_image(
+          data, base, entries, retained, images, fragment,
+        ) catch {
           _ => None
         }
         ignore(images.active.remove(name))
         result
-      } else {
+      } else if fragment is None {
         svg_raster_resource(data, images)
+      } else {
+        None
       }
       if image is Some(decoded) {
-        images.images[name] = decoded
+        images.images[key] = decoded
       }
       image
     }),
   }
+}
+
+///|
+fn svg_apply_image_view(root : @dom.Element, fragment : String) -> Unit raise {
+  guard svg_unescape(fragment, path=false) is Some(view) else {
+    raise Unsupported("Invalid SVG image view fragment")
+  }
+  if view.has_prefix("svgView(") && view.has_suffix(")") {
+    let applied : Map[String, Bool] = Map([])
+    for spec in view[8:view.length() - 1].split(";") {
+      guard spec.find("(") is Some(open) && spec.has_suffix(")") else {
+        raise Unsupported("Invalid SVG image view parameter")
+      }
+      let name = spec[:open].to_owned()
+      guard !applied.contains(name) &&
+        ["viewBox", "preserveAspectRatio"].contains(name) else {
+        raise Unsupported("Unsupported SVG image view parameter: " + name)
+      }
+      root.set_attr(name, spec[open + 1:spec.length() - 1].to_owned())
+      applied[name] = true
+    }
+  } else {
+    fn lookup(element : @dom.Element, in_root : Bool) -> @dom.Element? {
+      if element.attr("id") == Some(view) &&
+        @dom.local_of(element.name) == "view" &&
+        in_root {
+        return Some(element)
+      }
+      for child in element.child_elements() {
+        let in_root = in_root && @dom.local_of(child.name) != "svg"
+        if lookup(child, in_root) is Some(found) {
+          return Some(found)
+        }
+      }
+      None
+    }
+    guard lookup(root, true) is Some(target) else {
+      raise Unsupported("Unresolved SVG image view: " + view)
+    }
+    for name in ["viewBox", "preserveAspectRatio"] {
+      if target.attr(name) is Some(value) {
+        root.set_attr(name, value)
+      }
+    }
+  }
+  ignore(svg_viewbox_size(root))
 }
 
 ///|
@@ -449,8 +514,16 @@ fn svg_nested_image(
   entries : Array[(String, Bytes)],
   retained : Map[String, Bool],
   images : SvgImageResources,
+  fragment : String?,
 ) -> @vector.Image? raise {
   let (source, root) = svg_parse_source(data)
+  let source = match fragment {
+    Some(fragment) => {
+      svg_apply_image_view(root, fragment)
+      @dom.dumps(ElementNode(root))
+    }
+    None => source
+  }
   let (width, height) = svg_dimensions(root, None)
   guard images.reserve(width, height) else { return None }
   let prepared = svg_render_source(

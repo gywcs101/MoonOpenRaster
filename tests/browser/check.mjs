@@ -214,10 +214,10 @@ try {
     'font-weight', 'font-style', 'font-alternate-sources', 'font-relative-size', 'font-percentage-position', 'font-svg-outline',
     'font-svg-outline-resource', 'font-rtl', 'font-tref', 'font-tref-resource',
     'font-vertical', 'font-vertical-centered',
-    'sans-serif-generic', 'serif-generic', 'nested-image',
+    'sans-serif-generic', 'serif-generic', 'nested-image', 'nested-image-views',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');
-    const layerName = variant === 'nested-image' ? 'Vector' : 'Text';
+    const layerName = variant.startsWith('nested-image') ? 'Vector' : 'Text';
     await page.locator('#file').setInputFiles(path.join(fixtureDir, variant + '-input.ora'));
     await idle();
     assert.equal(await page.locator('#name').inputValue(), layerName);

@@ -330,6 +330,31 @@ test "an SVG image can resolve another SVG and its own archived CSS and PNG" {
 }
 
 ///|
+test "archived SVG image views keep distinct zooms and their original resource" {
+  let drawing = b"<svg xmlns='http://www.w3.org/2000/svg' width='4' height='1'><image href='../icons/tile.svg#left' width='2' height='1'/><image href='../icons/tile.svg#svgView(viewBox(2,0,2,1))' x='2' width='2' height='1'/></svg>"
+  let tile = b"<svg xmlns='http://www.w3.org/2000/svg' width='2' height='1' viewBox='0 0 4 1'><view id='left' viewBox='0 0 2 1'/><rect width='2' height='1' fill='red'/><rect x='2' width='2' height='1' fill='blue'/></svg>"
+  let input = @zip.zip([
+    @zip.Entry::new("mimetype", b"image/openraster", kind=Stored),
+    @zip.Entry::new(
+      "stack.xml",
+      b"<image version='0.0.6' w='5' h='1'><stack><layer name='Views' src='data/art/main.svg'/></stack></image>",
+      kind=Stored,
+    ),
+    @zip.Entry::new("data/art/main.svg", drawing, kind=Stored),
+    @zip.Entry::new("data/icons/tile.svg", tile, kind=Stored),
+  ])
+  let saved = read(input)
+    .set_properties([0], Properties::new("Views", x=1))
+    .write()
+  let entries = archive_entries(saved)
+  assert_eq(resource(entries, "data/art/main.svg"), drawing)
+  assert_eq(resource(entries, "data/icons/tile.svg"), tile)
+  assert_eq(read(saved).render().pixels(), [
+    0, 0, 0, 0, 255, 0, 0, 255, 255, 0, 0, 255, 0, 0, 255, 255, 0, 0, 255, 255,
+  ])
+}
+
+///|
 test "recursive SVG images fail without silently dropping the nested layer" {
   let first = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><image href='two.svg' width='1' height='1'/></svg>"
   let second = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><image href='./one.svg' width='1' height='1'/></svg>"

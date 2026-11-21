@@ -310,9 +310,10 @@ def check_svg_jpeg(cli):
     print("PASS: embedded and archived SVG JPEG match Pillow")
 
 
-def check_nested_svg_image(cli):
-    source = OUT / "nested-image-input.ora"
-    edited = OUT / "nested-image-edited.ora"
+def check_nested_svg_image(cli, *, views=False):
+    variant = "nested-image-views" if views else "nested-image"
+    source = OUT / f"{variant}-input.ora"
+    edited = OUT / f"{variant}-edited.ora"
     edited.unlink(missing_ok=True)
     resources = {
         "data/main.svg": b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3" height="1"><image xlink:href="icons/sub.svg" width="2" height="1"/></svg>',
@@ -321,6 +322,9 @@ def check_nested_svg_image(cli):
         "data/icons/pixel.png": png(1, 1, 8, lambda x, y: (0, 255, 0, 255)),
         "data/base.png": png(3, 1, 16, lambda x, y: BASE),
     }
+    if views:
+        resources["data/main.svg"] = b'<svg xmlns="http://www.w3.org/2000/svg" width="3" height="1"><image href="icons/sub.svg#left" width="1" height="1"/><image href="icons/sub.svg#svgView(viewBox(1,0,1,1))" x="1" width="1" height="1"/></svg>'
+        resources["data/icons/sub.svg"] = b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 2 1"><view id="left" viewBox="0 0 1 1"/><style>@import "styles/paint.css";</style><rect class="color" width="1" height="1"/><image href="pixel.png" x="1" width="1" height="1"/></svg>'
     with zipfile.ZipFile(source, "w") as archive:
         archive.writestr("mimetype", "image/openraster")
         archive.writestr("stack.xml", '<image version="0.0.6" w="3" h="1"><stack><layer name="Vector" src="data/main.svg"/><layer name="Raster" src="data/base.png"/></stack></image>')
@@ -339,7 +343,7 @@ def check_nested_svg_image(cli):
         assert decode_rgba(archive.read("mergedimage.png")) == (
             3, 1, 16, [(65535, 0, 0, 65535), (0, 65535, 0, 65535), BASE]
         )
-    print("PASS: nested SVG image and its relative resources survive a mixed-depth edit")
+    print(f"PASS: {variant} and its relative resources survive a mixed-depth edit")
 
 
 def probe_krita(executable):
@@ -434,6 +438,7 @@ def main():
     check_default_font(cli)
     check_svg_jpeg(cli)
     check_nested_svg_image(cli)
+    check_nested_svg_image(cli, views=True)
     if args.krita:
         probe_krita(args.krita)
     check_atlas(ATLAS / "atlas-goal.ora")
