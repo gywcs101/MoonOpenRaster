@@ -13,6 +13,7 @@ preferred_target = "native"
 description = "OpenRaster layered document editing and compositing in MoonBit"
 
 import {
+  "Milky2018/moon_swash@0.1.15",
   "moonbit-community/unicode-bidi@0.7.1",
   "Milky2018/css@0.6.1",
   "Milky2018/xml@0.6.1",

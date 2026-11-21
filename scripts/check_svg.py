@@ -38,6 +38,30 @@ def check_atlas(path):
     print("PASS: atlas retains exact SVG and 16-bit terrain after saving")
 
 
+def with_vertical_substitution(font):
+    # Single OpenType vert substitution from original glyph 2 (中) to glyph 1
+    # (the smaller square). This is the same table used in the HarfBuzz probe.
+    gsub = bytes.fromhex(
+        "00010000000a001e002c000144464c540008000400000000ffff000100000001"
+        "76657274000800000001000000010004000100000001000800010006ffff000100010002"
+    )
+    count = struct.unpack_from(">H", font, 4)[0]
+    tables = [(tag, font[start:start + length]) for tag, _, start, length in struct.iter_unpack(">4sIII", font[12:12 + count * 16])]
+    tables.append((b"GSUB", gsub))
+    tables.sort()
+    count = len(tables)
+    power = count.bit_length() - 1
+    result = bytearray(struct.pack(">4sHHHH", font[:4], count, 16 << power, power, count * 16 - (16 << power)))
+    data = bytearray()
+    offset = 12 + count * 16
+    for tag, table in tables:
+        padded = table + bytes(-len(table) % 4)
+        checksum = sum(word for (word,) in struct.iter_unpack(">I", padded)) & 0xFFFFFFFF
+        result += struct.pack(">4sIII", tag, checksum, offset + len(data), len(table))
+        data += padded
+    return bytes(result + data)
+
+
 def check_font_layer(cli, variant="font"):
     embedded = variant == "embedded-font"
     spans = variant == "font-spans"
@@ -61,9 +85,10 @@ def check_font_layer(cli, variant="font"):
     bidi_embed = variant == "font-rtl-embed"
     bidi_spans = variant == "font-rtl-spans" or bidi_embed
     right_to_left = variant == "font-rtl" or bidi_spans
+    vertical_substitution = variant == "font-vertical-substitution"
     vertical_spans = variant == "font-vertical-spans"
     vertical_mixed = variant == "font-vertical-mixed" or vertical_spans
-    vertical = variant in ("font-vertical", "font-vertical-centered") or vertical_mixed
+    vertical = variant in ("font-vertical", "font-vertical-centered") or vertical_mixed or vertical_substitution
     centered_vertical = variant == "font-vertical-centered"
     external_tref = variant == "font-tref-resource"
     text_reference = variant == "font-tref" or external_tref
@@ -77,6 +102,8 @@ def check_font_layer(cli, variant="font"):
     edited.unlink(missing_ok=True)
     font = (ROOT / "fixtures/ora-test.ttf").read_bytes()
     latin_font = font
+    if vertical_substitution:
+        font = with_vertical_substitution(font)
     if right_to_left:
         # Keep the authored outlines and advances. Map them to two Hebrew letters.
         modified = bytearray(font)
@@ -207,6 +234,8 @@ def check_font_layer(cli, variant="font"):
     red = (65535, 0, 0, 65535)
 
     def glyph_ink(x, y):
+        if vertical_substitution:
+            return 3 <= x < 5 and y % 4 >= 2
         if fallback_all:
             return x < 6 and y >= 2
         if bidi_spans:
@@ -520,7 +549,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-rtl-spans", "font-rtl-embed", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
+        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)

@@ -39,6 +39,8 @@ Chromium 的 Canvas 使用同一字体独立绘制字形，并用 50% 覆盖阈�
 
 四个竖排样例验证同一随稿 OpenType 字体的汉字字形、纵向进给、汉字与拉丁字母混排、普通嵌套片段和纵向居中。旧版拒绝这些布局。当前版本复用 mizchi/font 的纵向字形和度量，移动相邻 16 位层后保存并重开，保留源字形和栅格精度。
 
+另一例用含 OpenType vert 表的随稿字体验证竖排会改用指定字形。HarfBuzz 12.3.2 在同一字体的横排返回字形 2，竖排返回字形 1。MoonBit 复用项目已有的 moon_swash 处理该字形替换，继续沿用现有字体度量，保存后按像素核对替换结果。复杂竖排字形组合仍待验证。[HarfBuzz 的 OpenType 塑形说明](https://harfbuzz.github.io/shaping-opentype-features.html)
+
 ## SVG 1.1 静态特性核对
 
 | W3C 特性 | 已有证据 | 待验收 |

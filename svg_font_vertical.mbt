@@ -4,6 +4,76 @@ fn svg_vertical_han(code : Int32) -> Bool {
 }
 
 ///|
+fn svg_vertical_substitutions(
+  font : @font.TTFont,
+  text : String,
+  axes : Map[String, Double],
+  language : String,
+) -> Map[Int32, Int32] raise OraError {
+  guard @swash.FontRef::from_offset(font.data, font.sfnt_offset) is Some(face) else {
+    raise Unsupported("Invalid OpenType font in SVG vertical layout")
+  }
+  let replacements : Map[Int32, Int32] = Map([])
+  let vertical_tag = 0x76657274U // vert
+  if !face.features().iter().any(feature => feature.tag() == vertical_tag) {
+    return replacements
+  }
+  let context = @swash_shape.ShapeContext::ShapeContext()
+  let features : Array[@swash.Setting[UInt16]] = [
+    @swash.Setting::Setting(vertical_tag, (1).to_uint16()),
+  ]
+  let variations : Array[@swash.Setting[Double]] = []
+  if axes.get("wght") is Some(weight) {
+    variations.push(@swash.Setting::Setting(0x77676874U, weight))
+  }
+  let shaper = context
+    .builder(face)
+    .script(@swash.Han)
+    .language(@swash.Language::parse(language))
+    .features(features.iter())
+    .variations(variations.iter())
+    .build()
+  let mut offset = 0
+  let tokens : Array[@swash.Token] = []
+  for character in text {
+    let length = if character.to_int() > 0xffff { 2 } else { 1 }
+    tokens.push(
+      @swash.Token::Token(
+        character,
+        offset.reinterpret_as_uint(),
+        length.reinterpret_as_uint(),
+        @swash.CharInfo::from_char(character),
+        0U,
+      ),
+    )
+    offset += length
+  }
+  let parser = @swash.Parser::Parser(@swash.Han, tokens.iter())
+  let cluster = @swash.CharCluster::CharCluster()
+  let charmap = @swash.Charmap::from_font(face)
+  while parser.next(cluster) {
+    ignore(cluster.map(character => charmap.map(character.to_uint())))
+    shaper.add_cluster(cluster)
+  }
+  let mut complex = false
+  shaper.shape_with(cluster => {
+    let glyphs = cluster.glyphs()
+    let source = cluster.source()
+    if glyphs.length() == 1 && source.end() - source.start() == 1U {
+      replacements[source.start().reinterpret_as_int()] = glyphs[0]
+        .id()
+        .to_int()
+    } else {
+      complex = true
+    }
+  })
+  guard !complex else {
+    raise Unsupported("Complex vertical OpenType substitutions are unsupported")
+  }
+  replacements
+}
+
+///|
 fn svg_vertical_open_type(
   font : @font.TTFont,
   text : String,
@@ -41,32 +111,38 @@ fn svg_vertical_open_type(
     if upright {
       let mut end = offset
       let layout = font.layout_text_vertical(text, size)
+      let substitutes = svg_vertical_substitutions(font, text, axes, language)
       for glyph in layout {
         if glyph.glyph_id == 0 {
           raise Unsupported("SVG font is missing characters: " + uri)
         }
         let start = end
         end += if glyph.codepoint > 0xffff { 2 } else { 1 }
-        let metrics = font.glyph_metrics_at(glyph.glyph_id, axes)
+        let id = substitutes.get(start - offset).unwrap_or(glyph.glyph_id)
+        let metrics = font.glyph_metrics_at(id, axes)
+        let step = if id != glyph.glyph_id && font.vertical is Some(vertical) {
+          vertical.advance_heights
+          .get(id)
+          .unwrap_or(font.units_per_em)
+          .to_double() *
+          scale
+        } else {
+          glyph.x_advance
+        }
         glyphs.push({
           codepoint: glyph.codepoint,
           text_start: start,
           text_end: end,
           x: -metrics.advance_width.to_double() * scale / 2.0,
-          y: advance + glyph.y_offset + glyph.x_offset,
-          advance_width: glyph.x_advance,
+          y: advance + font.vert_origin_y(id).to_double() * scale,
+          advance_width: step,
           scale,
           sideways: false,
           outline: () => {
-            @font.path_commands_to_svg_d(
-              font.glyph_outline_at(glyph.glyph_id, axes),
-            )
+            @font.path_commands_to_svg_d(font.glyph_outline_at(id, axes))
           },
         })
-      }
-      // The shaper reports y offsets relative to this upright run's origin.
-      for glyph in layout {
-        advance += glyph.x_advance
+        advance += step
       }
     } else {
       let run = font.shape_text(
