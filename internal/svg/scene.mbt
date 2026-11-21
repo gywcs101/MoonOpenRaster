@@ -139,20 +139,21 @@ fn SVGDocument::render(
     pattern_tiles: Map([]),
     surface_pool: RenderSurfacePool::new(),
   }
-  let viewport = match self.root.view_box {
-    Some(vb) =>
+  let viewport = match (self.root.view_box, self.view_root) {
+    (Some(vb), None) =>
       vb.get_transform(
         ctx.width.to_double(),
         ctx.height.to_double(),
         self.root.preserve_aspect_ratio,
       )
-    None => Transform::identity()
+    _ => Transform::identity()
   }
   let transform = match view_transform {
     Some(value) => viewport.multiply(value)
     None => viewport
   }
-  render_node(self.root, transform, ctx, resources, true, Color::black())
+  let root = self.view_root.unwrap_or(self.root)
+  render_node(root, transform, ctx, resources, true, Color::black())
 }
 
 ///|

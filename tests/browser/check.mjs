@@ -220,8 +220,8 @@ try {
     'font-centered-spans', 'font-length-spacing', 'font-length-glyphs', 'font-letter-spacing',
     'font-weight', 'font-style', 'font-alternate-sources', 'font-relative-size', 'font-percentage-position', 'font-svg-outline',
     'font-svg-outline-resource', 'font-rtl', 'font-tref', 'font-tref-resource',
-    'font-vertical', 'font-vertical-centered', 'font-vertical-mixed', 'font-vertical-spans', 'font-vertical-substitution', 'font-rtl-spans', 'font-rtl-embed', 'font-bidi-override', 'font-glyph-fallback', 'font-glyph-fallback-all', 'font-unavailable-primary',
-    'sans-serif-generic', 'serif-generic', 'nested-image', 'nested-image-views', 'nested-image-transform',
+    'font-vertical', 'font-vertical-centered', 'font-vertical-mixed', 'font-vertical-spans', 'font-vertical-substitution', 'font-rtl-spans', 'font-rtl-embed', 'font-rtl-chunks', 'font-rtl-offsets', 'font-bidi-override', 'font-glyph-fallback', 'font-glyph-fallback-all', 'font-unavailable-primary',
+    'sans-serif-generic', 'serif-generic', 'nested-image', 'nested-image-views', 'nested-image-transform', 'nested-image-viewport',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');
     const layerName = variant.startsWith('nested-image') ? 'Vector' : 'Text';
@@ -277,25 +277,27 @@ try {
   }
   await reference.close();
   const nestedViews = path.join(root, '_build/svg-roundtrip');
-  await page.locator('#file').setInputFiles(path.join(nestedViews, 'nested-image-views-input.ora'));
-  await idle();
-  assert.equal(await page.locator('#name').inputValue(), 'Vector');
-  await page.locator('#x').fill('1');
-  await page.locator('#opacity').evaluate(el => {
-    el.value = '0.5';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await page.locator('.apply-button').click();
-  await idle();
-  const viewDownload = page.waitForEvent('download');
-  await page.locator('#save').click();
-  const viewOutput = path.join(temp, 'nested-views-vector.ora');
-  await (await viewDownload).saveAs(viewOutput);
-  assert.deepEqual(fs.readFileSync(viewOutput), fs.readFileSync(path.join(nestedViews, 'nested-image-views-vector-edited.ora')));
-  await page.locator('#file').setInputFiles(viewOutput);
-  await idle();
-  assert.equal(await page.locator('#name').inputValue(), 'Vector');
-  assert.equal(await page.locator('#x').inputValue(), '1');
+  for (const variant of ['nested-image-views', 'nested-image-viewport']) {
+    await page.locator('#file').setInputFiles(path.join(nestedViews, variant + '-input.ora'));
+    await idle();
+    assert.equal(await page.locator('#name').inputValue(), 'Vector');
+    await page.locator('#x').fill('1');
+    await page.locator('#opacity').evaluate(el => {
+      el.value = '0.5';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.locator('.apply-button').click();
+    await idle();
+    const viewDownload = page.waitForEvent('download');
+    await page.locator('#save').click();
+    const viewOutput = path.join(temp, variant + '-vector.ora');
+    await (await viewDownload).saveAs(viewOutput);
+    assert.deepEqual(fs.readFileSync(viewOutput), fs.readFileSync(path.join(nestedViews, variant + '-vector-edited.ora')));
+    await page.locator('#file').setInputFiles(viewOutput);
+    await idle();
+    assert.equal(await page.locator('#name').inputValue(), 'Vector');
+    assert.equal(await page.locator('#x').inputValue(), '1');
+  }
   for (const variant of ['icc-parametric', 'mab-xyz', 'mpet-curves', 'mpet-fallback', 'mpet-rgba16', 'cicp-p3', 'chrm-p3']) {
     const fixtures = path.join(root, '_build/rgba16');
     await page.locator('#file').setInputFiles(path.join(fixtures, variant + '.ora')); await idle();

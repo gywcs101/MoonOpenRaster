@@ -10,6 +10,7 @@ pub fn render_svg(
   height : Int32,
   options : RenderOptions,
   view_transform~ : Transform? = None,
+  view_index~ : Int32? = None,
 ) -> RenderResult {
   let diagnostics : Array[RenderDiagnostic] = []
   match
@@ -19,6 +20,7 @@ pub fn render_svg(
       height.to_double(),
       options,
       diagnostics,
+      view_index~,
     ) {
     Some(document) =>
       render_svg_document_with_diagnostics(

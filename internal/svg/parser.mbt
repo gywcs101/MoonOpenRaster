@@ -30,6 +30,8 @@ priv struct SVGParseContext {
   viewport_stack : Array[(Double, Double)]
   length_viewport_stack : Array[(Double, Double)]
   css_viewport : (Double, Double)
+  view_event : Int32?
+  mut view_root : SVGNode?
   media_environment : @css_media.MediaEnvironment
   element_state_resolver : ((String) -> ElementState)?
   sample_time_seconds : Double
@@ -40,6 +42,7 @@ fn SVGParseContext::new(
   stylesheets : Array[@css_cascade.Stylesheet],
   initial_length_viewport~ : (Double, Double) = (300.0, 150.0),
   environment~ : RenderEnvironment = RenderEnvironment::default(),
+  view_event~ : Int32? = None,
 ) -> SVGParseContext {
   let color_scheme = match environment.color_scheme {
     Light => @css_media.Light
@@ -64,6 +67,8 @@ fn SVGParseContext::new(
     viewport_stack: [],
     length_viewport_stack: [initial_length_viewport],
     css_viewport: initial_length_viewport,
+    view_event,
+    view_root: None,
     media_environment: {
       viewport_width: initial_length_viewport.0,
       viewport_height: initial_length_viewport.1,
@@ -394,6 +399,7 @@ fn parse_svg_document_with_options(
   viewport_height : Double,
   options : RenderOptions,
   diagnostics : Array[RenderDiagnostic],
+  view_index~ : Int32? = None,
 ) -> SVGDocument? {
   let state = TextResourceLoadState::new(
     options, diagnostics, viewport_width, viewport_height,
@@ -405,6 +411,7 @@ fn parse_svg_document_with_options(
     options,
     state,
     options.environment.base_uri,
+    view_index~,
   )
 }
 
@@ -416,18 +423,37 @@ fn parse_svg_document_with_state(
   options : RenderOptions,
   resource_state : TextResourceLoadState,
   base_uri : String,
+  view_index~ : Int32? = None,
 ) -> SVGDocument? {
   let raw_events = match read_xml_events(svg_str) {
     Some(events) => events
     None => return None
   }
   let events = canonicalize_svg_reference_events(raw_events, base_uri)
+  let mut view_event : Int32? = None
+  if view_index is Some(index) {
+    let mut ordinal = 0
+    for pos, event in events {
+      match event {
+        XmlStart(element) | XmlEmpty(element) if element.name == "svg" => {
+          if ordinal == index {
+            view_event = Some(pos)
+            break
+          }
+          ordinal += 1
+        }
+        _ => ()
+      }
+    }
+    guard view_event is Some(_) else { return None }
+  }
   let parser = SVGParser::new(events)
   let stylesheets = load_document_stylesheets(events, resource_state, base_uri)
   let ctx = SVGParseContext::new(
     stylesheets,
     initial_length_viewport=(viewport_width, viewport_height),
     environment=options.environment,
+    view_event~,
   )
   for uri in collect_external_document_uris(events, stylesheets) {
     match
@@ -437,9 +463,10 @@ fn parse_svg_document_with_state(
     }
   }
   match parse_element(parser, ctx, "") {
-    Some(root) =>
+    Some(root) if view_event is None || ctx.view_root is Some(_) =>
       Some({
         root,
+        view_root: ctx.view_root,
         symbols: ctx.symbols,
         definitions: ctx.defs,
         clips: ctx.clips,
@@ -449,7 +476,7 @@ fn parse_svg_document_with_state(
         gradients: ctx.gradients,
         markers: ctx.markers,
       })
-    None => None
+    _ => None
   }
 }
 
@@ -477,6 +504,7 @@ fn parse_element(
     None => return None
   }
   let tag_name = element.name
+  let selected_view = ctx.view_event == Some(parser.pos - 1)
   let attrs = element.attributes
   let _ = ctx.record_selector_element(tag_name, attrs)
   match tag_name {
@@ -737,7 +765,14 @@ fn parse_element(
         )
       }
       if tag_name == "svg" {
-        if parent_tag != "" {
+        if selected_view {
+          // Render the selected SVG into the image viewport, keeping the
+          // original ancestor styles and document-wide resource registries.
+          node.viewport_width = Some(ctx.css_viewport.0)
+          node.viewport_height = Some(ctx.css_viewport.1)
+          node.color = Some(computed_style.color)
+          ctx.view_root = Some(node)
+        } else if parent_tag != "" {
           if geometry_value("width") is Some(v) {
             node.viewport_width = Some(
               parse_length_with_context(v, Horizontal, element_length_context),
@@ -764,7 +799,7 @@ fn parse_element(
             parse_length_with_context(v, Vertical, element_length_context)
           None => 0.0
         }
-        if x != 0.0 || y != 0.0 {
+        if !selected_view && (x != 0.0 || y != 0.0) {
           node.transform = Transform::translate(x, y).multiply(node.transform)
         }
       }

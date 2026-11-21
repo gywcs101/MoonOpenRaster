@@ -85,7 +85,9 @@ def check_font_layer(cli, variant="font"):
     bidi_override = variant == "font-bidi-override"
     bidi_embed = variant == "font-rtl-embed"
     bidi_spans = variant == "font-rtl-spans" or bidi_embed
-    right_to_left = variant == "font-rtl" or bidi_spans
+    bidi_chunks = variant == "font-rtl-chunks"
+    bidi_offsets = variant == "font-rtl-offsets"
+    right_to_left = variant == "font-rtl" or bidi_spans or bidi_chunks or bidi_offsets
     vertical_substitution = variant == "font-vertical-substitution"
     vertical_spans = variant == "font-vertical-spans"
     vertical_mixed = variant == "font-vertical-mixed" or vertical_spans
@@ -196,6 +198,10 @@ def check_font_layer(cli, variant="font"):
     if right_to_left:
         position_attrs = 'x="16" y="8" direction="rtl" xml:lang="he"'
         text = "אב"
+        if bidi_chunks:
+            position_attrs = 'x="16 7" y="8 7" direction="rtl" xml:lang="he"'
+        if bidi_offsets:
+            position_attrs = 'x="16" y="8" dx="0 2" direction="rtl" xml:lang="he"'
         if bidi_spans:
             font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
             span_direction = ' direction="ltr" unicode-bidi="embed"' if bidi_embed else ""
@@ -256,6 +262,10 @@ def check_font_layer(cli, variant="font"):
             return (x < 4 and y >= 4) or (x >= 12 and y >= 2)
         if outline_font:
             return (x < 4 and y >= 4) or (7 <= x < 13 and y >= 2)
+        if bidi_chunks:
+            return (x < 5 and 1 <= y < 7) or (8 <= x < 12 and y >= 4)
+        if bidi_offsets:
+            return (2 <= x < 8 and y >= 2) or (10 <= x < 14 and y >= 4)
         if right_to_left:
             return (x < 6 and y >= 2) or (8 <= x < 12 and y >= 4)
         if vertical_mixed:
@@ -449,8 +459,13 @@ def check_position_cluster(cli):
     print("PASS: decomposed accent and precomposed glyph keep following-character placement")
 
 
-def check_nested_svg_image(cli, *, views=False, transform=False):
-    variant = "nested-image-transform" if transform else "nested-image-views" if views else "nested-image"
+def check_nested_svg_image(cli, *, views=False, transform=False, nested_view=False):
+    if nested_view:
+        variant = "nested-image-viewport"
+    elif transform:
+        variant = "nested-image-transform"
+    else:
+        variant = "nested-image-views" if views else "nested-image"
     source = OUT / f"{variant}-input.ora"
     edited = OUT / f"{variant}-edited.ora"
     edited.unlink(missing_ok=True)
@@ -479,6 +494,26 @@ def check_nested_svg_image(cli, *, views=False, transform=False):
     if transform:
         resources["data/main.svg"] = resources["data/main.svg"].replace(
             b"viewBox(1,0,1,1)", b"viewBox(0,0,1,1);transform(translate(-1,0))"
+        )
+    if nested_view:
+        resources["data/main.svg"] = resources["data/main.svg"].replace(
+            b"#svgView(viewBox(1,0,1,1))", b"#xpointer(id('photo'))"
+        )
+        resources["data/icons/sub.svg"] = (
+            b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">'
+            b'<style>@import "styles/paint.css";</style><defs>'
+            b'<filter id="ink" filterUnits="userSpaceOnUse" x="0" y="0" width="1" height="1">'
+            b'<feFlood result="tone"/><feComposite in="tone" in2="SourceGraphic" operator="in"/>'
+            b'</filter></defs><rect width="1" height="1" fill="blue"/>'
+            b'<g class="sheet"><svg x="40" width="50%" height="100%" viewBox="1 0 1 1">'
+            b'<view id="left" viewBox="0 0 1 1"/><text font-family="OraTest" font-size="2" '
+            b'x="0" y="100%" filter="url(#ink)">A</text>'
+            b'<image id="photo" href="pixel.png" x="1" width="1" height="1"/>'
+            b'</svg></g></svg>'
+        )
+        resources["data/icons/styles/paint.css"] += (
+            b' .sheet > svg:not([id]) > text { fill: white; } '
+            b'.sheet > svg[id] > text { fill: none; }'
         )
     with zipfile.ZipFile(source, "w") as archive:
         archive.writestr("mimetype", "image/openraster")
@@ -602,7 +637,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-bidi-override", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
+        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-rtl-chunks", "font-rtl-offsets", "font-bidi-override", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
     ):
         check_font_layer(cli, variant)
     check_position_cluster(cli)
@@ -611,6 +646,7 @@ def main():
     check_nested_svg_image(cli)
     check_nested_svg_image(cli, views=True)
     check_nested_svg_image(cli, views=True, transform=True)
+    check_nested_svg_image(cli, views=True, nested_view=True)
     if args.krita:
         probe_krita(args.krita)
     check_atlas(ATLAS / "atlas-goal.ora")

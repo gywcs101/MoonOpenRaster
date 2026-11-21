@@ -1197,16 +1197,33 @@ fn evaluate_filter_graph(
           apply_filter(input_surface(input), ColorMatrix(matrix), linear_rgb~),
           result,
         )
-      GraphGaussianBlur(input~, result~, radius_x~, radius_y~) =>
+      GraphGaussianBlur(input~, result~, radius_x~, radius_y~) => {
+        let x = filter_primitive_x(graph, radius_x, target_local)
+        let y = filter_primitive_y(graph, radius_y, target_local)
+        // A Gaussian with zero device-space cross covariance is still
+        // separable on the raster axes, even when its source axes are rotated.
+        let ax = transform.a * x
+        let bx = transform.b * x
+        let cy = transform.c * y
+        let dy = transform.d * y
+        let xx = ax * ax + cy * cy
+        let yy = bx * bx + dy * dy
+        let cross = ax * bx + cy * dy
+        let (radius_x, radius_y) = if cross.abs() <= 1.0e-12 * xx.max(yy) {
+          (xx.sqrt(), yy.sqrt())
+        } else {
+          (scaled_x(radius_x), scaled_y(radius_y))
+        }
         (
           blur_filter_image_xy(
             input_surface(input),
-            scaled_x(radius_x),
-            scaled_y(radius_y),
+            radius_x,
+            radius_y,
             linear_rgb,
           ),
           result,
         )
+      }
       GraphOffset(input~, result~, dx~, dy~) => {
         let (dx, dy) = match graph.primitive_units {
           ObjectBoundingBox =>
@@ -1274,17 +1291,30 @@ fn evaluate_filter_graph(
           ),
           result,
         )
-      GraphMorphology(input~, result~, radius_x~, radius_y~, operator~) =>
+      GraphMorphology(input~, result~, radius_x~, radius_y~, operator~) => {
+        let axes_swapped = transform.a.abs() <= 1.0e-12 * scale_x &&
+          transform.d.abs() <= 1.0e-12 * scale_y
+        let (radius_x, radius_y) = if axes_swapped {
+          (
+            filter_primitive_y(graph, radius_y, target_local) *
+            transform.c.abs(),
+            filter_primitive_x(graph, radius_x, target_local) *
+            transform.b.abs(),
+          )
+        } else {
+          (scaled_x(radius_x), scaled_y(radius_y))
+        }
         (
           morphology_filter_image(
             input_surface(input),
-            scaled_x(radius_x),
-            scaled_y(radius_y),
+            radius_x,
+            radius_y,
             operator,
             linear_rgb,
           ),
           result,
         )
+      }
       GraphConvolveMatrix(
         input~,
         result~,

@@ -167,6 +167,12 @@ const cases = {
     '<defs>' + filter('<feFlood flood-color="red" result="map"/>' +
       '<feDisplacementMap in="SourceGraphic" in2="map" scale="4" xChannelSelector="R" yChannelSelector="R"/>') + '</defs>' +
     '<rect x="5" y="5" width="1" height="1" transform="matrix(0 1 -1 0 12 0)" fill="blue" filter="url(#f)"/>'),
+  'quarter-turn anisotropic blur': wrap(
+    '<defs>' + filter('<feGaussianBlur stdDeviation="1 0" color-interpolation-filters="sRGB"/>') + '</defs>' +
+    '<rect x="3" y="4" width="6" height="3" transform="matrix(0 1 -1 0 12 0)" fill="red" filter="url(#f)"/>'),
+  'quarter-turn anisotropic morphology': wrap(
+    '<defs>' + filter('<feMorphology operator="dilate" radius="1 0" color-interpolation-filters="sRGB"/>') + '</defs>' +
+    '<rect x="3" y="4" width="6" height="3" transform="matrix(0 1 -1 0 12 0)" fill="red" filter="url(#f)"/>'),
   'scaled user-space filter primitive region': wrap(
     '<defs>' + filter('<feFlood x="1" y="1" width="4" height="3" flood-color="red"/>') + '</defs>' +
     '<rect width="12" height="10" transform="translate(3 2) scale(2)" fill="blue" filter="url(#f)"/>'),
@@ -224,6 +230,21 @@ try {
         }
       }
     }
+    if (name === 'quarter-turn anisotropic blur') {
+      const weights = [-3, -2, -1, 0, 1, 2, 3].map(i => Math.exp(-i * i / 2));
+      const total = weights.reduce((sum, weight) => sum + weight, 0);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const coverage = weights.reduce((sum, weight, i) => {
+            const sy = y + i - 3;
+            return x >= 5 && x < 8 && sy >= 3 && sy < 9 ? sum + weight : sum;
+          }, 0) / total;
+          const opacity = Math.round(255 * coverage);
+          assert.ok(Math.abs(actual[(y * width + x) * 4 + 3] - opacity) <= 1,
+            `rotated Gaussian opacity at ${x},${y}`);
+        }
+      }
+    }
     if (name.startsWith('sheared ')) {
       // Exact coverage from intersecting the transformed quadrilateral
       // (4.5,3.5) (8.5,5.5) (10,8.5) (6,6.5) with each pixel square.
@@ -256,7 +277,7 @@ try {
       console.log(`PASS: ${name}, exact geometric displacement, Chromium differs by up to ${delta}`);
       continue;
     }
-    const tolerance = name === 'transparent blur' ? 13 : name.endsWith('fractal noise') ? 2 : 1;
+    const tolerance = name.endsWith(' blur') ? 13 : name.endsWith('fractal noise') ? 2 : 1;
     assert.ok(delta <= tolerance, `${name}: channel ${worst} differs by ${delta}, ${actual[worst]} vs ${reference[worst]}`);
     console.log(`PASS: ${name}, Chromium reference, maximum channel difference ${delta}`);
   }

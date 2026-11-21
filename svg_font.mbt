@@ -826,19 +826,14 @@ fn svg_glyph_run(
       count += 1
     }
     offsets[offset] = count
-    guard shaped.left_to_right else {
-      raise Unsupported(
-        "SVG position lists across right-to-left text require separate text chunks",
-      )
-    }
   }
   let mut previous_start = -1
-  let mut previous_end = 0
+  let positioned_characters : Map[Int32, Bool] = Map([])
+  let logical_paths : Array[(Int32, Int32, @dom.Node)] = []
   for index, glyph in shaped.glyphs {
     if positioning is Some(lists) && glyph.text_start != previous_start {
       guard offsets.get(glyph.text_start) is Some(first) &&
         offsets.get(glyph.text_end) is Some(last) &&
-        glyph.text_start >= previous_end &&
         first < last else {
         raise Unsupported("SVG position lists cross reordered glyph clusters")
       }
@@ -850,19 +845,32 @@ fn svg_glyph_run(
       }
       shift_x += lists[2].get(first).unwrap_or(0.0)
       shift_y += lists[3].get(first).unwrap_or(0.0)
-      angle = lists[4].get(first).unwrap_or(angle)
-      let following = first + 1
-      for character in following..<last {
+      let angles = lists[4]
+      angle = if angles.is_empty() {
+        0.0
+      } else {
+        angles[first.min(angles.length() - 1)]
+      }
+      for character in first..<last {
+        guard !positioned_characters.contains(character) else {
+          raise Unsupported("SVG positions overlap glyph clusters")
+        }
+        positioned_characters[character] = true
+        if character == first {
+          continue
+        }
         if lists[0].get(character) is Some(_) ||
           lists[1].get(character) is Some(_) ||
           lists[2].get(character).unwrap_or(0.0) != 0.0 ||
           lists[3].get(character).unwrap_or(0.0) != 0.0 ||
-          lists[4].get(character).unwrap_or(angle) != angle {
+          (
+            !angles.is_empty() &&
+            angles[character.min(angles.length() - 1)] != angle
+          ) {
           raise Unsupported("SVG positions split a shaped glyph cluster")
         }
       }
       previous_start = glyph.text_start
-      previous_end = glyph.text_end
     }
     let d = (glyph.outline)()
     outline_size.val += d.length()
@@ -913,23 +921,39 @@ fn svg_glyph_run(
           (-scale).to_string() +
           ")"
       }
-      children.push(
-        ElementNode(
-          @dom.Element::new("path", attrs=[
-            ("d", d),
-            ("transform", transform),
-            (
-              "style", "fill:inherit !important;stroke:inherit !important;filter:none !important;mask:none !important;clip-path:none !important;opacity:1 !important",
-            ),
-          ]),
-        ),
+      let node : @dom.Node = ElementNode(
+        @dom.Element::new("path", attrs=[
+          ("d", d),
+          ("transform", transform),
+          (
+            "style", "fill:inherit !important;stroke:inherit !important;filter:none !important;mask:none !important;clip-path:none !important;opacity:1 !important",
+          ),
+        ]),
       )
+      if positioning is Some(_) && !shaped.left_to_right {
+        logical_paths.push((glyph.text_start, index, node))
+      } else {
+        children.push(node)
+      }
+    }
+  }
+  if !logical_paths.is_empty() {
+    logical_paths.sort_by((left, right) => {
+      if left.0 == right.0 {
+        left.1.compare(right.1)
+      } else {
+        left.0.compare(right.0)
+      }
+    })
+    for entry in logical_paths {
+      children.push(entry.2)
     }
   }
   if vertical {
     (children, x, y - anchor + adjusted)
   } else {
-    (children, x - anchor + adjusted + shift_x, y + shift_y)
+    let flow_end = if rtl && positioning is Some(_) { 0.0 } else { adjusted }
+    (children, x - anchor + flow_end + shift_x, y + shift_y)
   }
 }
 
@@ -1010,7 +1034,15 @@ fn svg_glyph_group(
   let explicit = inherited_positions is Some(_) ||
     !rotations.is_empty() ||
     lists.any(values => values.length() > 1)
+  let rtl = style.get("direction") == Some("rtl") ||
+    ["rl", "rl-tb"].contains(style.get("writing-mode").unwrap_or(""))
+  let bidi_chunks = explicit &&
+    !vertical &&
+    path is None &&
+    element.child_elements().is_empty() &&
+    (rtl || @bidi.requires_bidi(element.text()))
   if explicit &&
+    !bidi_chunks &&
     (
       style.get("text-anchor").unwrap_or("start") != "start" ||
       vertical ||
@@ -1058,8 +1090,6 @@ fn svg_glyph_group(
   cursor.val = (x, y)
   let mut children : Array[@dom.Node] = []
   let anchor = style.get("text-anchor").unwrap_or("start")
-  let rtl = style.get("direction") == Some("rtl") ||
-    ["rl", "rl-tb"].contains(style.get("writing-mode").unwrap_or(""))
   let has_bidi_mode = !vertical && svg_has_bidi_mode(element, selector, sheets)
   if has_bidi_mode ||
     (
@@ -1077,6 +1107,55 @@ fn svg_glyph_group(
         "SVG bidirectional text spans define multiple positioning contexts",
       )
     }
+  }
+  if bidi_chunks {
+    // Absolute positions start independent chunks before bidi reordering.
+    let text = element.text()
+    guard text.length() <= 4096 else {
+      raise Unsupported("SVG text exceeds the shaping budget")
+    }
+    let mut from = 0
+    let mut count = 0
+    let mut buffer = StringBuilder()
+    fn finish_chunk() -> Unit raise {
+      let text = buffer.to_string()
+      if text.is_empty() {
+        return
+      }
+      let (positioning, _) = svg_position_slice(lists, from, text)
+      let (previous_x, previous_y) = cursor.val
+      let x = positioning[0].get(0).unwrap_or(previous_x)
+      let y = positioning[1].get(0).unwrap_or(previous_y)
+      positioning[0] = []
+      positioning[1] = []
+      let (glyphs, next_x, next_y) = svg_glyph_run(
+        text,
+        x,
+        y,
+        style,
+        faces,
+        fonts,
+        outline_size,
+        load,
+        positioning=Some(positioning),
+      )
+      for glyph in glyphs {
+        children.push(glyph)
+      }
+      cursor.val = (next_x, next_y)
+    }
+    for character in text {
+      if count > from &&
+        (lists[0].get(count) is Some(_) || lists[1].get(count) is Some(_)) {
+        finish_chunk()
+        from = count
+        buffer = StringBuilder()
+      }
+      buffer.write_char(character)
+      count += 1
+    }
+    finish_chunk()
+    return svg_wrap_glyph_group(element, selector, sheets, children)
   }
   if element.child_elements().is_empty() {
     let (paths, next_x, next_y) = svg_glyph_run(
@@ -1350,6 +1429,7 @@ fn outline_svg_text(
   base : String,
   load : (String) -> Bytes?,
   size : (Int32, Int32)?,
+  view_element~ : @dom.Element? = None,
 ) -> Bool raise {
   let mut contains_text = false
   let styles : Array[String] = []
@@ -1447,6 +1527,9 @@ fn outline_svg_text(
         let viewport = if @dom.local_of(child.name) == "svg" {
           match svg_viewbox_size(child) {
             Some(view) => view
+            None if view_element is Some(selected) &&
+              physical_equal(child, selected) &&
+              size is Some((w, h)) => (w.to_double(), h.to_double())
             None => {
               let (w, h) = viewport
               (

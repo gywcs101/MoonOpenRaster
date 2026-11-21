@@ -2,20 +2,27 @@
 from pathlib import Path
 from io import BytesIO
 import argparse, json, subprocess, tempfile, zipfile, xml.etree.ElementTree as ET
-from check_rgba16 import verify_saved
+from check_rgba16 import decode_rgba, verify_saved
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 subprocess.run(["moon", "build", "--target", "js", "--deny-warn"], cwd=ROOT, check=True)
 parser = argparse.ArgumentParser()
-parser.add_argument("--rgba16", action="store_true")
-wide = parser.parse_args().rgba16
+mode = parser.add_mutually_exclusive_group()
+mode.add_argument("--rgba16", action="store_true")
+mode.add_argument("--svg-viewport", action="store_true")
+args = parser.parse_args()
+wide = args.rgba16 or args.svg_viewport
 fixture = ROOT / "fixtures" / ("gradient16.ora" if wide else "krita-5.3.4.ora")
-out = ROOT / "_build" / ("consistency16" if wide else "consistency")
+out = ROOT / "_build" / ("consistency-svg" if args.svg_viewport else "consistency16" if wide else "consistency")
+if args.svg_viewport:
+    fixture = ROOT / "_build/svg-roundtrip/nested-image-viewport-input.ora"
 out.mkdir(parents=True, exist_ok=True)
 edit = {"path":[0,0],"name":"接口一致性 · 中文","x":-3,"y":7,"opacity":0.5,"visible":True,"composite_op":"svg:multiply"}
 if wide:
     edit = {"path": [0, 0], "name": "Light", "x": 9, "y": 6, "opacity": 0.5, "visible": True, "composite_op": "svg:src-over"}
+if args.svg_viewport:
+    edit = {"path": [0], "name": "Vector", "x": 1, "y": 0, "opacity": 0.5, "visible": True, "composite_op": "svg:src-over"}
 (out / "edits.json").write_text(json.dumps([edit], ensure_ascii=False), encoding="utf-8")
 # Workspaces are separate from the main checkout; only public APIs are used.
 with tempfile.TemporaryDirectory(prefix="moonora-parity-") as directory:
@@ -28,9 +35,12 @@ with tempfile.TemporaryDirectory(prefix="moonora-parity-") as directory:
     (consumer / "main.mbt").write_text(f'''fn main raise {{
       let args=@env.args()
       let doc=@ora.read(@fs.read_file_to_bytes(args[2]))
-      let edited=doc.set_properties([0,0],@ora.Properties::new({json.dumps(edit["name"], ensure_ascii=False)},x={edit["x"]},y={edit["y"]},opacity=0.5,visible=true,composite_op={json.dumps(edit["composite_op"])}))
+      let edited=doc.set_properties({json.dumps(edit["path"])},@ora.Properties::new({json.dumps(edit["name"], ensure_ascii=False)},x={edit["x"]},y={edit["y"]},opacity=0.5,visible=true,composite_op={json.dumps(edit["composite_op"])}))
       assert_eq(edited.bit_depth(), {16 if wide else 8})
-      @fs.write_bytes_to_file(args[3],edited.write())
+      let saved = edited.write()
+      let reopened = @ora.read(saved)
+      assert_eq(reopened.render().pixels_rgba16(), edited.render().pixels_rgba16())
+      @fs.write_bytes_to_file(args[3],saved)
     }}''', encoding="utf-8")
     subprocess.run(["moon","run",".","--target","js","--",str(fixture),str(out / "library.ora")],cwd=consumer,check=True)
 cli = ROOT / "_build/js/debug/build/cmd/main/main.js"
@@ -49,13 +59,17 @@ subprocess.run(["node","--input-type=module","-e",script,str(fixture),str(out / 
 pixels, trees = [], []
 for name in ["library", "cli", "bridge"]:
     archive = out / (name + ".ora")
-    if wide:
+    if args.rgba16:
         verify_saved(archive)
     with zipfile.ZipFile(archive) as z:
         png = z.read("mergedimage.png")
-        pixels.append(Image.open(BytesIO(png)).convert("RGBA").tobytes())
+        pixels.append(decode_rgba(png) if args.svg_viewport else Image.open(BytesIO(png)).convert("RGBA").tobytes())
         trees.append(ET.tostring(ET.fromstring(z.read("stack.xml"))))
         if name == "library": (out / "edited.png").write_bytes(png)
 assert pixels[0] == pixels[1] == pixels[2]
 assert trees[0] == trees[1] == trees[2]
+if args.svg_viewport:
+    expected = fixture.with_name("nested-image-viewport-vector-edited.ora").read_bytes()
+    for name in ["library", "cli", "bridge"]:
+        assert (out / (name + ".ora")).read_bytes() == expected
 print("PASS: external library, CLI and web bridge produce identical edited tree and pixels; browser reference ready")

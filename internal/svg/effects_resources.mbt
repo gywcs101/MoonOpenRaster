@@ -476,6 +476,7 @@ fn resolve_mask_size(
 /// Parsed SVG document with reusable resources
 pub struct SVGDocument {
   priv root : SVGNode
+  priv view_root : SVGNode?
   priv symbols : SymbolRegistry
   priv definitions : DefsRegistry
   priv clips : ClipPathRegistry
@@ -490,6 +491,7 @@ pub struct SVGDocument {
 pub fn SVGDocument::new(root : SVGNode) -> SVGDocument {
   {
     root,
+    view_root: None,
     symbols: SymbolRegistry::new(),
     definitions: DefsRegistry::new(),
     clips: ClipPathRegistry::new(),

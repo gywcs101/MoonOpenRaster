@@ -465,11 +465,12 @@ fn svg_resource_options(
 fn svg_apply_image_view(
   root : @dom.Element,
   fragment : String,
-) -> @vector.Transform? raise {
+) -> (@dom.Element, @vector.Transform?) raise {
   guard svg_unescape(fragment, path=false) is Some(view) else {
     raise Unsupported("Invalid SVG image view fragment")
   }
   let mut transform = None
+  let mut viewport = root
   if view.has_prefix("svgView(") && view.has_suffix(")") {
     let applied : Map[String, Bool] = Map([])
     for spec in view[8:view.length() - 1].split(";") {
@@ -490,31 +491,74 @@ fn svg_apply_image_view(
       applied[name] = true
     }
   } else {
-    fn lookup(element : @dom.Element, in_root : Bool) -> @dom.Element? {
-      if element.attr("id") == Some(view) &&
-        @dom.local_of(element.name) == "view" &&
-        in_root {
-        return Some(element)
+    let id = if view.has_prefix("xpointer(id(") && view.has_suffix("))") {
+      let quoted = view[12:view.length() - 2]
+      guard quoted.length() >= 3 &&
+        (
+          (quoted.has_prefix("'") && quoted.has_suffix("'")) ||
+          (quoted.has_prefix("\"") && quoted.has_suffix("\""))
+        ) else {
+        raise Unsupported("Invalid SVG image ID pointer")
+      }
+      quoted[1:quoted.length() - 1].to_owned()
+    } else {
+      view
+    }
+    fn lookup(
+      element : @dom.Element,
+      viewport : @dom.Element,
+    ) -> (@dom.Element, @dom.Element)? {
+      let viewport = if @dom.local_of(element.name) == "svg" {
+        element
+      } else {
+        viewport
+      }
+      if element.attr("id") == Some(id) {
+        return Some((element, viewport))
       }
       for child in element.child_elements() {
-        let in_root = in_root && @dom.local_of(child.name) != "svg"
-        if lookup(child, in_root) is Some(found) {
+        if lookup(child, viewport) is Some(found) {
           return Some(found)
         }
       }
       None
     }
-    guard lookup(root, true) is Some(target) else {
-      raise Unsupported("Unresolved SVG image view: " + view)
+    guard lookup(root, root) is Some((target, owner)) else {
+      raise Unsupported("Unresolved SVG image view: " + id)
     }
-    for name in ["viewBox", "preserveAspectRatio"] {
-      if target.attr(name) is Some(value) {
-        root.set_attr(name, value)
+    viewport = owner
+    if @dom.local_of(target.name) == "view" {
+      for name in ["viewBox", "preserveAspectRatio"] {
+        if target.attr(name) is Some(value) {
+          viewport.set_attr(name, value)
+        }
       }
     }
   }
-  ignore(svg_viewbox_size(root))
-  transform
+  ignore(svg_viewbox_size(viewport))
+  (viewport, transform)
+}
+
+///|
+/// Address the viewport by its position in the prepared SVG. The renderer
+/// can keep the authored ID and stylesheet selectors intact.
+fn svg_viewport_index(root : @dom.Element, target : @dom.Element) -> Int32? {
+  let mut next = 0
+  fn visit(element : @dom.Element) -> Int32? {
+    if @dom.local_of(element.name) == "svg" {
+      if physical_equal(element, target) {
+        return Some(next)
+      }
+      next += 1
+    }
+    for child in element.child_elements() {
+      if visit(child) is Some(index) {
+        return Some(index)
+      }
+    }
+    None
+  }
+  visit(root)
 }
 
 ///|
@@ -527,12 +571,17 @@ fn svg_nested_image(
   fragment : String?,
 ) -> @vector.Image? raise {
   let (source, root) = svg_parse_source(data)
-  let (source, view_transform) = match fragment {
+  let (source, viewport, view_transform) = match fragment {
     Some(fragment) => {
-      let transform = svg_apply_image_view(root, fragment)
-      (@dom.dumps(ElementNode(root)), transform)
+      let (viewport, transform) = svg_apply_image_view(root, fragment)
+      (@dom.dumps(ElementNode(root)), viewport, transform)
     }
-    None => (source, None)
+    None => (source, root, None)
+  }
+  let view_element = if physical_equal(root, viewport) {
+    None
+  } else {
+    Some(viewport)
   }
   let (width, height) = svg_dimensions(root, None)
   guard images.reserve(width, height) else { return None }
@@ -542,7 +591,17 @@ fn svg_nested_image(
     name,
     href => svg_archive_resource(name, entries, retained, href),
     size=Some((width, height)),
+    view_element~,
   )
+  let view_index = match view_element {
+    Some(element) => {
+      guard svg_viewport_index(root, element) is Some(index) else {
+        raise Unsupported("SVG image view is outside the rendered document")
+      }
+      Some(index)
+    }
+    None => None
+  }
   let options = svg_resource_options(name, entries, retained, images~)
   let rendered = @vector.render_svg(
     prepared,
@@ -550,6 +609,7 @@ fn svg_nested_image(
     height,
     options,
     view_transform~,
+    view_index~,
   )
   guard rendered.diagnostics.is_empty() else { return None }
   Some(rendered.image)
@@ -778,6 +838,7 @@ fn svg_render_source(
   path : String,
   font_resource : (String) -> Bytes?,
   size~ : (Int32, Int32)? = None,
+  view_element~ : @dom.Element? = None,
 ) -> String raise {
   let mut normalized = false
   let mut references_text = false
@@ -816,7 +877,13 @@ fn svg_render_source(
     ignore(expand_svg_text_references(root, path, font_resource))
     normalized = true
   }
-  let outlined = outline_svg_text(root, path, font_resource, size)
+  let outlined = outline_svg_text(
+    root,
+    path,
+    font_resource,
+    size,
+    view_element~,
+  )
   for font in fonts {
     ignore(font.remove())
   }
