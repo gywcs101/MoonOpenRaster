@@ -532,9 +532,40 @@ fn svg_spacing(value : String?, size : Double) -> Double raise {
 }
 
 ///|
+fn svg_font_for_uri(
+  uri : String,
+  fonts : Map[String, @font.TTFont],
+  load : (String) -> Bytes?,
+) -> @font.TTFont? raise {
+  if fonts.get(uri) is Some(font) {
+    return Some(font)
+  }
+  guard fonts.length() < 8 else {
+    raise Unsupported("SVG exceeds the font resource count")
+  }
+  let bytes = match uri {
+    "fallback:sans-serif" =>
+      Some(@base64.decode(svg_fallback_sans[:], ignore_whitespace=true))
+    "fallback:serif" =>
+      Some(@base64.decode(svg_fallback_serif[:], ignore_whitespace=true))
+    _ => svg_load_font(uri, load)
+  }
+  if bytes is Some(bytes) &&
+    svg_font_directory_is_bounded(bytes[:]) &&
+    @font.parse_font(bytes) is Some(font) &&
+    font.units_per_em > 0 {
+    fonts[uri] = font
+    Some(font)
+  } else {
+    None
+  }
+}
+
+///|
 fn svg_shape_font_sources(
   family : String,
   sources : Array[String],
+  fallbacks : Array[Array[String]],
   fonts : Map[String, @font.TTFont],
   load : (String) -> Bytes?,
   text : String,
@@ -545,44 +576,35 @@ fn svg_shape_font_sources(
   language : String,
   vertical : Bool,
 ) -> SvgTextRun raise {
-  if sources.length() > 8 {
-    raise Unsupported("SVG font has too many alternate sources: " + family)
-  }
+  let families = [sources, ..fallbacks]
   let mut selected : (String, @font.TTFont)? = None
-  for uri in sources {
-    if !uri.has_prefix("data:") && uri.find("#") is Some(at) {
-      let fragment = uri[at + 1:].to_owned()
-      if svg_unescape(fragment, path=false) is Some(id) &&
-        load(uri[:at].to_owned()) is Some(bytes) {
-        let (_, root) = svg_parse_source(bytes)
-        if svg_inline_font_by_id(root, id) is Some(font) {
-          guard direction != Rtl && !vertical else {
-            raise Unsupported("This SVG layout requires an OpenType font")
+  let mut chosen_family = 0
+  for index, options in families {
+    if options.length() > 8 {
+      raise Unsupported("SVG font has too many alternate sources: " + family)
+    }
+    for uri in options {
+      if !uri.has_prefix("data:") && uri.find("#") is Some(at) {
+        let fragment = uri[at + 1:].to_owned()
+        if svg_unescape(fragment, path=false) is Some(id) &&
+          load(uri[:at].to_owned()) is Some(bytes) {
+          let (_, root) = svg_parse_source(bytes)
+          if svg_inline_font_by_id(root, id) is Some(font) {
+            guard direction != Rtl && !vertical else {
+              raise Unsupported("This SVG layout requires an OpenType font")
+            }
+            return svg_shape_inline_font(font, text, size, ligatures)
           }
-          return svg_shape_inline_font(font, text, size, ligatures)
         }
+        continue
       }
-      continue
+      if svg_font_for_uri(uri, fonts, load) is Some(font) {
+        selected = Some((uri, font))
+        chosen_family = index
+        break
+      }
     }
-    if fonts.get(uri) is Some(font) {
-      selected = Some((uri, font))
-      break
-    }
-    guard fonts.length() < 8 else {
-      raise Unsupported("SVG exceeds the font resource count")
-    }
-    let bytes = match uri {
-      "fallback:sans-serif" =>
-        Some(@base64.decode(svg_fallback_sans[:], ignore_whitespace=true))
-      "fallback:serif" =>
-        Some(@base64.decode(svg_fallback_serif[:], ignore_whitespace=true))
-      _ => svg_load_font(uri, load)
-    }
-    if bytes is Some(bytes) &&
-      svg_font_directory_is_bounded(bytes[:]) &&
-      @font.parse_font(bytes) is Some(font) {
-      fonts[uri] = font
-      selected = Some((uri, font))
+    if selected is Some(_) {
       break
     }
   }
@@ -615,6 +637,7 @@ fn svg_shape_font_sources(
         x: -metrics.advance_width.to_double() * scale / 2.0,
         y: glyph.y_offset + glyph.x_offset,
         advance_width: glyph.x_advance,
+        scale,
         outline: () => {
           @font.path_commands_to_svg_d(
             font.glyph_outline_at(glyph.glyph_id, axes),
@@ -623,7 +646,7 @@ fn svg_shape_font_sources(
       })
       advance += glyph.x_advance
     }
-    return { glyphs, advance, scale, left_to_right: true, }
+    return { glyphs, advance, left_to_right: true, }
   }
   let shaped = font.shape_text(
     text,
@@ -636,24 +659,25 @@ fn svg_shape_font_sources(
     _ => raise Unsupported("Unable to shape text with SVG font: " + family)
   }
   if !shaped.missing_codepoints.is_empty() {
-    raise Unsupported("SVG font is missing characters: " + uri)
+    return svg_fallback_glyphs(
+      shaped,
+      font,
+      uri,
+      fallbacks[chosen_family:].to_owned(),
+      fonts,
+      load,
+      text,
+      size,
+      desired_weight,
+      ligatures,
+      language,
+    )
   }
   {
     glyphs: shaped.bounds.glyphs.map(glyph => {
-      codepoint: glyph.codepoint,
-      text_start: glyph.text_start,
-      text_end: glyph.text_end,
-      x: glyph.x,
-      y: glyph.y,
-      advance_width: glyph.advance_width,
-      outline: () => {
-        @font.path_commands_to_svg_d(
-          font.glyph_outline_at(glyph.glyph_id, shaped.variations),
-        )
-      },
+      svg_positioned_glyph(font, glyph, shaped.variations, size, 0.0, 0)
     }),
     advance: shaped.bounds.advance_width,
-    scale: size / font.units_per_em.to_double(),
     left_to_right: shaped.direction == "ltr",
   }
 }
@@ -718,39 +742,44 @@ fn svg_glyph_run(
       raise Unsupported("Unsupported glyph orientation in SVG vertical text")
     }
   }
-  let mut sources : Array[String] = []
-  let mut embedded : SvgInlineFont? = None
+  let candidates : Array[SvgFontFace] = []
   for choice in family.split(",") {
     let name = choice.trim().to_owned()
     let generic = name.to_lower()
     if generic == "sans-serif" || generic == "serif" {
-      sources.push("fallback:" + generic)
-      break
+      candidates.push({
+        sources: ["fallback:" + generic],
+        embedded: None,
+        weight: desired_weight,
+        font_style: desired_style,
+      })
+      continue
     }
     let candidate = svg_css_unquote(name).to_lower()
     if faces.get(candidate) is Some(variants) {
       let mut best = 10000
+      let mut selected = None
       for face in variants {
         let rank = 3000 * svg_font_style_rank(face.font_style, desired_style) +
           svg_font_weight_rank(face.weight, desired_weight)
         if rank <= best {
-          sources = face.sources
-          embedded = face.embedded
+          selected = Some(face)
           best = rank
         }
       }
-      if !sources.is_empty() || embedded is Some(_) {
-        break
+      if selected is Some(face) &&
+        (!face.sources.is_empty() || face.embedded is Some(_)) {
+        candidates.push(face)
       }
     }
   }
-  if sources.is_empty() && embedded is None {
+  guard candidates.get(0) is Some(first_face) else {
     raise Unsupported("SVG text needs an in-document @font-face for " + family)
   }
   let letter_spacing = svg_spacing(style.get("letter-spacing"), size)
   let word_spacing = svg_spacing(style.get("word-spacing"), size)
   let ligatures = positioning is None && letter_spacing == 0.0
-  let shaped = match embedded {
+  let shaped = match first_face.embedded {
     Some(font) => {
       guard !rtl && !vertical else {
         raise Unsupported("This SVG layout requires an OpenType font")
@@ -760,7 +789,8 @@ fn svg_glyph_run(
     None =>
       svg_shape_font_sources(
         family,
-        sources,
+        first_face.sources,
+        candidates[1:].map(face => face.sources),
         fonts,
         load,
         text,
@@ -809,7 +839,6 @@ fn svg_glyph_run(
     "end" => if rtl { 0.0 } else { adjusted }
     _ => raise Unsupported("Invalid SVG text-anchor")
   }
-  let scale = shaped.scale
   let children : Array[@dom.Node] = []
   let mut shift_x = 0.0
   let mut shift_y = 0.0
@@ -866,6 +895,7 @@ fn svg_glyph_run(
           y + glyph.y + shift_y,
         )
       }
+      let scale = glyph.scale
       let transform = match path {
         Some(path) =>
           match path.glyph_transform(gx, gy, glyph.advance_width, scale) {

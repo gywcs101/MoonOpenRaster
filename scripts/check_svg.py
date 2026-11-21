@@ -55,6 +55,9 @@ def check_font_layer(cli, variant="font"):
     percentage_position = variant == "font-percentage-position"
     external_outline_font = variant == "font-svg-outline-resource"
     outline_font = variant == "font-svg-outline" or external_outline_font
+    unavailable_primary = variant == "font-unavailable-primary"
+    fallback_all = variant == "font-glyph-fallback-all"
+    fallback = variant == "font-glyph-fallback" or fallback_all
     bidi_spans = variant == "font-rtl-spans"
     right_to_left = variant == "font-rtl" or bidi_spans
     vertical = variant in ("font-vertical", "font-vertical-centered")
@@ -88,12 +91,26 @@ def check_font_layer(cli, variant="font"):
             struct.pack_into(">H", modified, starts + index * 2, codepoint)
             struct.pack_into(">h", modified, deltas + index * 2, index + 1 - codepoint)
         font = bytes(modified)
+    if fallback:
+        primary = bytearray(font)
+        count = struct.unpack_from(">H", font, 4)[0]
+        font_tables = {tag: offset for tag, _, offset, _ in struct.iter_unpack(">4sIII", font[12:12 + count * 16])}
+        cmap = font_tables[b"cmap"]
+        table = cmap + struct.unpack_from(">I", font, cmap + 8)[0]
+        struct.pack_into(">H", primary, table + 16, 0x05D1)
+        struct.pack_into(">H", primary, table + 24, 0x05D1)
+        struct.pack_into(">h", primary, table + 30, 2 - 0x05D1)
+        struct.pack_into(">H", primary, font_tables[b"hmtx"], 1500)
     uri = "data:font/ttf;base64," + base64.b64encode(font).decode() if embedded else "../font/%E6%B5%8B%E8%AF%95.ttf"
     face = f'@font-face {{ font-family: OraTest; src: url("{uri}"); }}'
     if multiple_sources:
         face = f'@font-face {{ font-family: OraTest; src: local("Uninstalled"), URL("../font/unsupported.woff"), url("{uri}") format("truetype"); }}'
     if bidi_spans:
         face += '@font-face { font-family: Latin; src: url("../font/latin.ttf"); }'
+    if fallback:
+        face += '@font-face { font-family: Limited; src: url("../font/limited.ttf"); }'
+    if unavailable_primary:
+        face += '@font-face { font-family: Absent; src: url("../font/absent.ttf"); }'
     styles = "@import '../styles/level/index.css';" if imported else face
     if weighted or slanted:
         descriptor = "font-weight: 700" if weighted else "font-style: italic"
@@ -112,6 +129,8 @@ def check_font_layer(cli, variant="font"):
     else:
         definition = ''
         position_attrs = 'x="0,7" y="8 7" dx="0 1" dy="0 1" rotate="0 0"' if positions else 'x="0" y="8"'
+    if fallback_all:
+        text = "中"
     if centered:
         position_attrs = 'x="8" y="8" text-anchor="middle"'
         text = "A<tspan>中</tspan>"
@@ -126,6 +145,10 @@ def check_font_layer(cli, variant="font"):
     stylesheet = '<?xml-stylesheet type="text/css" href="../styles/level/index.css"?>' if declaration else ''
     inline_style = '' if declaration else f'<style>{styles}</style>'
     font_attributes = 'class="label"' if cascade else 'font-family="OraTest" font-size="8" fill="red"'
+    if unavailable_primary:
+        font_attributes = 'font-family="Absent, OraTest" font-size="8" fill="red"'
+    if fallback:
+        font_attributes = 'font-family="Limited, OraTest" font-size="8" fill="red"'
     parent_attrs = ""
     if relative_size:
         position_attrs = 'x="0" y="1em"'
@@ -174,8 +197,12 @@ def check_font_layer(cli, variant="font"):
     red = (65535, 0, 0, 65535)
 
     def glyph_ink(x, y):
+        if fallback_all:
+            return x < 6 and y >= 2
         if bidi_spans:
             return (8 <= x < 11 and y >= 5) or (12 <= x < 14 and y >= 6)
+        if fallback:
+            return (x < 4 and y >= 4) or (x >= 12 and y >= 2)
         if stretched:
             return (x < 6 and y >= 4) or (x >= 12 and y >= 2)
         if spacing or letter_spacing or weighted or slanted:
@@ -207,6 +234,8 @@ def check_font_layer(cli, variant="font"):
             archive.writestr("data/word/label.svg", referenced_text)
         if not embedded and not outline_font:
             archive.writestr("data/font/测试.ttf", font)
+        if fallback:
+            archive.writestr("data/font/limited.ttf", primary)
         if bidi_spans:
             archive.writestr("data/font/latin.ttf", latin_font)
         if multiple_sources:
@@ -243,6 +272,8 @@ def check_font_layer(cli, variant="font"):
         if not embedded and not outline_font:
             assert archive.read("data/font/测试.ttf") == font
             assert archive.getinfo("data/font/测试.ttf").flag_bits & 0x800
+        if fallback:
+            assert archive.read("data/font/limited.ttf") == primary
         if bidi_spans:
             assert archive.read("data/font/latin.ttf") == latin_font
         if imported:
@@ -477,7 +508,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered", "font-rtl-spans",
+        "font-vertical", "font-vertical-centered", "font-rtl-spans", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)
