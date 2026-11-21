@@ -663,8 +663,12 @@ fn lighting_filter_image(
   lighting_color : Color,
   light : FilterLight,
   specular : Bool,
+  linear_rgb : Bool,
 ) -> Image {
   let result = Image::new(source.width, source.height)
+  let lr = filter_input_channel(lighting_color.r, linear_rgb)
+  let lg = filter_input_channel(lighting_color.g, linear_rgb)
+  let lb = filter_input_channel(lighting_color.b, linear_rgb)
   for y in 0..<source.height {
     for x in 0..<source.width {
       let height = source.get_pixel(x, y).a.to_double() / 255.0 * surface_scale
@@ -716,25 +720,25 @@ fn lighting_filter_image(
           normal.2 * light_vector.2,
         )
       }
-      let intensity = clamp_filter_unit(
-        constant *
+      let intensity = constant *
         (if specular { @math.pow(dot, exponent) } else { dot }) *
-        light_vector.3,
-      )
-      let red = (lighting_color.r.to_double() * intensity).round().to_int()
-      let green = (lighting_color.g.to_double() * intensity).round().to_int()
-      let blue = (lighting_color.b.to_double() * intensity).round().to_int()
-      let alpha = if specular {
-        let red_green = if red > green { red } else { green }
-        if red_green > blue {
-          red_green
-        } else {
-          blue
-        }
-      } else {
-        255
+        light_vector.3
+      let red = clamp_filter_unit(lr * intensity)
+      let green = clamp_filter_unit(lg * intensity)
+      let blue = clamp_filter_unit(lb * intensity)
+      let alpha = if specular { max(red, max(green, blue)) } else { 1.0 }
+      if alpha > 0.0 {
+        result.set_pixel(
+          x,
+          y,
+          Color::rgba(
+            filter_output_channel(red / alpha, linear_rgb),
+            filter_output_channel(green / alpha, linear_rgb),
+            filter_output_channel(blue / alpha, linear_rgb),
+            filter_output_channel(alpha, false),
+          ),
+        )
       }
-      result.set_pixel(x, y, Color::rgba(red, green, blue, alpha))
     }
   }
   result
@@ -1389,6 +1393,7 @@ fn evaluate_filter_graph(
               graph, light, target_bounds, origin_x, origin_y,
             ),
             false,
+            linear_rgb,
           ),
           result,
         )
@@ -1412,6 +1417,7 @@ fn evaluate_filter_graph(
               graph, light, target_bounds, origin_x, origin_y,
             ),
             true,
+            linear_rgb,
           ),
           result,
         )

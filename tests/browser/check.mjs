@@ -232,6 +232,26 @@ try {
     await page.locator('#file').setInputFiles(fontOutput); await idle();
     assert.equal(await page.locator('#name').inputValue(), layerName);
   }
+  const nestedViews = path.join(root, '_build/svg-roundtrip');
+  await page.locator('#file').setInputFiles(path.join(nestedViews, 'nested-image-views-input.ora'));
+  await idle();
+  assert.equal(await page.locator('#name').inputValue(), 'Vector');
+  await page.locator('#x').fill('1');
+  await page.locator('#opacity').evaluate(el => {
+    el.value = '0.5';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('.apply-button').click();
+  await idle();
+  const viewDownload = page.waitForEvent('download');
+  await page.locator('#save').click();
+  const viewOutput = path.join(temp, 'nested-views-vector.ora');
+  await (await viewDownload).saveAs(viewOutput);
+  assert.deepEqual(fs.readFileSync(viewOutput), fs.readFileSync(path.join(nestedViews, 'nested-image-views-vector-edited.ora')));
+  await page.locator('#file').setInputFiles(viewOutput);
+  await idle();
+  assert.equal(await page.locator('#name').inputValue(), 'Vector');
+  assert.equal(await page.locator('#x').inputValue(), '1');
   for (const variant of ['icc-parametric', 'mab-xyz', 'mpet-curves', 'mpet-fallback', 'mpet-rgba16', 'cicp-p3', 'chrm-p3']) {
     const fixtures = path.join(root, '_build/rgba16');
     await page.locator('#file').setInputFiles(path.join(fixtures, variant + '.ora')); await idle();

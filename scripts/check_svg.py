@@ -362,18 +362,33 @@ def check_nested_svg_image(cli, *, views=False):
             archive.writestr(name, data)
         archive.writestr("mergedimage.png", png(3, 1, 16, lambda x, y: BASE))
         archive.writestr("Thumbnails/thumbnail.png", png(3, 1, 8, lambda x, y: (0, 0, 255, 255)))
-    subprocess.run(["node", str(cli), "edit", str(source), str(edited), str(OUT / "font-edits.json")], check=True)
-    with zipfile.ZipFile(edited) as archive:
-        for name, data in resources.items():
-            if name != "data/base.png":
-                assert archive.read(name) == data, name
-        raster = ET.fromstring(archive.read("stack.xml")).find("./stack/layer[@name='Raster']")
-        assert raster.get("x") == "1"
-        assert decode_rgba(archive.read(raster.get("src"))) == (3, 1, 16, [BASE] * 3)
-        assert decode_rgba(archive.read("mergedimage.png")) == (
-            3, 1, 16, [(65535, 0, 0, 65535), (0, 65535, 0, 65535), BASE]
-        )
+    raster_edits = OUT / "font-edits.json"
+    vector_edits = OUT / "view-vector-edits.json"
+    vector_edits.write_text('[{"path":[0],"x":1,"opacity":0.5}]', encoding="utf-8")
+    results = [(edited, raster_edits, [(65535, 0, 0, 65535), (0, 65535, 0, 65535), BASE])]
+    if views:
+        results.append((OUT / f"{variant}-vector-edited.ora", vector_edits, [
+            BASE,
+            (37768, 10001, 15002, 65535),
+            (5001, 42769, 15002, 65535),
+        ]))
+    for output, edits, pixels in results:
+        output.unlink(missing_ok=True)
+        subprocess.run(["node", str(cli), "edit", str(source), str(output), str(edits)], check=True)
+        with zipfile.ZipFile(output) as archive:
+            for name, data in resources.items():
+                if name != "data/base.png":
+                    assert archive.read(name) == data, name
+            stack = ET.fromstring(archive.read("stack.xml")).find("stack")
+            assert [node.get("name") for node in stack] == ["Vector", "Raster"]
+            if edits == vector_edits:
+                assert stack[0].get("x") == "1" and float(stack[0].get("opacity")) == 0.5
+            else:
+                assert stack[1].get("x") == "1"
+            assert decode_rgba(archive.read(stack[1].get("src"))) == (3, 1, 16, [BASE] * 3)
+            assert decode_rgba(archive.read("mergedimage.png")) == (3, 1, 16, pixels)
     print(f"PASS: {variant} and its relative resources survive a mixed-depth edit")
+
 
 
 def probe_krita(executable):

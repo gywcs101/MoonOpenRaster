@@ -84,6 +84,12 @@ const cases = {
     '<defs>' + filter('<feDiffuseLighting surfaceScale="2"><feDistantLight azimuth="45" elevation="45"/></feDiffuseLighting>') + '</defs>' +
     '<g filter="url(#f)"><rect width="8" height="12" fill="red"/>' +
     '<rect x="8" y="6" width="8" height="6" fill="red" fill-opacity=".25"/></g>'),
+  'translucent specular reflection preserves premultiplied light': wrap(
+    '<defs>' + filter('<feSpecularLighting surfaceScale="0" specularConstant=".5" lighting-color="red"><feDistantLight elevation="90"/></feSpecularLighting>') + '</defs>' +
+    '<rect width="16" height="12" filter="url(#f)"/>'),
+  'linear RGB diffuse lighting converts light intensity': wrap(
+    '<defs>' + filter('<feDiffuseLighting surfaceScale="0" diffuseConstant=".5" lighting-color="#8060a0"><feDistantLight elevation="90"/></feDiffuseLighting>', 'linearRGB') + '</defs>' +
+    '<rect width="16" height="12" filter="url(#f)"/>'),
   'seeded fractal noise': wrap(
     '<defs>' + filter('<feTurbulence type="fractalNoise" baseFrequency=".125 .25" numOctaves="2" seed="17"/>') + '</defs>' +
     '<rect width="16" height="12" filter="url(#f)"/>'),
