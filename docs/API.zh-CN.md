@@ -4,7 +4,7 @@
 
 ## 引入与可运行示例
 
-模块名为 `gywcs101/MoonOpenRaster`，`0.2.0` 提供以下 8 位及 16 位接口。在自己的模块中运行 `moon add gywcs101/MoonOpenRaster@0.2.0`，再在包中添加 `import { "gywcs101/MoonOpenRaster" @ora }`。
+模块名为 `gywcs101/MoonOpenRaster`。Mooncakes 发布的 `0.2.0` 提供 8 位及 16 位栅格和自包含静态 SVG 编辑。本文也说明 GitHub 评审分支中的归档内 SVG 引用和随稿字体支持。在自己的模块中运行 `moon add gywcs101/MoonOpenRaster@0.2.0`，再在包中添加 `import { "gywcs101/MoonOpenRaster" @ora }`。
 
 以下 `examples/` 与 `web/` 路径的命令在克隆的 GitHub 仓库根目录运行；通过 Mooncakes 安装核心库不包含网页样例。
 

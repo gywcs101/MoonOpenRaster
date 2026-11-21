@@ -1,6 +1,6 @@
 # OpenRaster 0.0.6 Full baseline 核对记录
 
-本页记录仓库版本的验证证据。Full baseline 是交付目标，表中未完成的条目仍需补齐。规范固定到上游修订 `febacf9ae879a95fc9200d5bccb67d15db4de298`。SVG 1.1 静态特性用于补充渲染验收，OpenRaster 未在所查条款中逐项列出 SVG 特性。[文件布局](https://github.com/KDE/websites-openraster-org/blob/febacf9ae879a95fc9200d5bccb67d15db4de298/baseline/file-layout-spec.rst) · [图层栈](https://github.com/KDE/websites-openraster-org/blob/febacf9ae879a95fc9200d5bccb67d15db4de298/baseline/layer-stack-spec.rst) · [配套 schema](https://github.com/KDE/websites-openraster-org/blob/febacf9ae879a95fc9200d5bccb67d15db4de298/openraster-standard/schema.rnc) · [SVG 静态特性](https://www.w3.org/TR/SVG11/feature.html)
+本页记录仓库版本的验证证据。Full baseline 是格式目标。当前交付以已验证的 SVG 和 16 位 PNG 分层稿能够编辑、重算、保存并重开为准。规范固定到上游修订 `febacf9ae879a95fc9200d5bccb67d15db4de298`。SVG 1.1 静态特性用于补充渲染验收，OpenRaster 未在所查条款中逐项列出 SVG 特性。[文件布局](https://github.com/KDE/websites-openraster-org/blob/febacf9ae879a95fc9200d5bccb67d15db4de298/baseline/file-layout-spec.rst) · [图层栈](https://github.com/KDE/websites-openraster-org/blob/febacf9ae879a95fc9200d5bccb67d15db4de298/baseline/layer-stack-spec.rst) · [配套 schema](https://github.com/KDE/websites-openraster-org/blob/febacf9ae879a95fc9200d5bccb67d15db4de298/openraster-standard/schema.rnc) · [SVG 静态特性](https://www.w3.org/TR/SVG11/feature.html)
 
 | 条款 | 读取与写回 | 证据或待验证项 |
 | --- | --- | --- |
@@ -22,7 +22,7 @@
 
 在仓库根目录运行 `python scripts/check_svg.py`。打开生成的 `_build/svg-roundtrip/input.ora`，选中 Vector，把 X 改为 2，不透明度改为 50%，保存新 ORA。CLI 生成的对照文件位于同目录的 `edited.ora`。该案例由测试程序生成，用已知颜色和样本值核对 SVG、CSS、16 位合成及缩略图。Playwright 在 Chromium 中执行相同修改并得到与 CLI 字节一致的 ORA，再从网页重开。MyPaint 已对带路径 SVG 的混合稿完成独立重开和合成。MyPaint 也独立重算了包含图形复用、剪裁和偏移滤镜的混合稿。含定制字体的其他独立应用对照仍待补齐。
 
-内部 CSS 与 use 两条独立回归各自移动邻接栅格层，然后验证重新打开时的图层和像素。另一条回归复制引用归档内 CSS 和 PNG 的 SVG 图层，检查共享资源和路径继续有效。实验还需完成 SVG 1.1 静态特性对照，其中完整蒙版、滤镜、复杂文字和嵌套资源是当前优先项。已通过重复图案、亮度蒙版及偏移滤镜的独立像素断言。
+内部 CSS 与 use 两条独立回归各自移动邻接栅格层，然后验证重新打开时的图层和像素。另一条回归复制引用归档内 CSS 和 PNG 的 SVG 图层，检查共享资源和路径继续有效。重复图案、亮度蒙版、偏移滤镜、嵌套引用和样式文字均有独立像素对照。
 
 同一命令另外生成 `font-input.ora`、`font-edited.ora` 和内嵌字体变体。在工作台打开 `font-input.ora`，选中 Raster，把 X 改为 1，再保存。独立逐像素检查确认 SVG 的 A 和中仍使用随稿字形，未修改的 16 位栅格样本保持原值。
 
@@ -49,7 +49,7 @@ Chromium 的 Canvas 使用同一字体独立绘制字形，并用 50% 覆盖阈�
 
 ## SVG 1.1 静态特性核对
 
-| W3C 特性 | 已有证据 | 待验收 |
+| W3C 特性 | 已有证据 | 当前边界 |
 | --- | --- | --- |
 | 文档结构、坐标和视口 | UTF-8 和 UTF-16、嵌套组、百分比视口和文字坐标、物理单位、负偏移、基础变换、SVG 1.1 文档类型及内部实体、带 CSS 的 switch 分支、根 SVG 的语言条件和超链接图形。元数据随源文件保留 | 全部条件特性、语言环境和扩展元素 |
 | 图形、填充、描边与透明度 | 路径、常见几何、RGBA 像素、渐变及图案 | 渐变和图案的全部组合、标记对照 |

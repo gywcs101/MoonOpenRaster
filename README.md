@@ -19,7 +19,7 @@ MoonOpenRaster 是用 MoonBit 编写的 **OpenRaster（`.ora`）分层图像读�
 启动工作台需要 MoonBit、Node.js 和 Python 3。当前仓库版本使用 MoonBit 0.10.22 完成验证。
 
 ```sh
-git clone https://github.com/gywcs101/MoonOpenRaster.git
+git clone --branch validation/baseline-20261120 https://github.com/gywcs101/MoonOpenRaster.git
 cd MoonOpenRaster
 moon update
 python scripts/serve_web.py
@@ -35,7 +35,7 @@ python scripts/serve_web.py
 
 ## 在 MoonBit 项目中使用
 
-从 Mooncakes 安装 0.2.0 即可使用 8 位和 16 位图层编辑、自包含静态 SVG 图层及图片格式导入。网页工作台和示例素材随 GitHub 仓库提供。
+Mooncakes 已发布的 0.2.0 支持 8 位和 16 位图层编辑、自包含静态 SVG 图层及图片格式导入。混合稿案例所用的归档内 SVG 引用和随稿字体，在上面的 GitHub 评审分支中提供。网页工作台和示例素材随仓库提供。
 
 ```sh
 moon add gywcs101/MoonOpenRaster@0.2.0
@@ -91,7 +91,7 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 ## 16 位 ORA 往返
 
-在网页打开 16 位渐变样例，选中 Light 图层，把 X 改为 9、Y 改为 6，并将不透明度设为 50%。保存并重新打开 ORA，仍可继续编辑图层。新合并图保留 16 位精度。[下载样例](https://github.com/gywcs101/MoonOpenRaster/blob/main/fixtures/gradient16.ora) · [案例与复现说明](docs/ROUNDTRIP16.zh-CN.md)
+在网页打开 16 位渐变样例，选中 Light 图层，把 X 改为 9、Y 改为 6，并将不透明度设为 50%。保存并重新打开 ORA，仍可继续编辑图层。新合并图保留 16 位精度。[下载样例](fixtures/gradient16.ora) · [案例与复现说明](docs/ROUNDTRIP16.zh-CN.md)
 
 ## SVG 矢量图层
 
@@ -103,7 +103,7 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 ## 兼容性与限制
 
-- 交付目标为 **OpenRaster 0.0.6 Full baseline**，当前已验证的栅格编辑流程包括 8 位与 16 位每通道的 sRGB 图层、混合位深、嵌套组、负偏移及 20 种基线合成操作。各图层按原精度保存，含 16 位层时重新生成 16 位合成，归档缩略图为 8 位。
+- 格式目标为 **OpenRaster 0.0.6 Full baseline**。本版交付已验证的栅格和静态 SVG 图层编辑、重算、保存及重开。栅格编辑流程包括 8 位与 16 位每通道的 sRGB 图层、混合位深、嵌套组、负偏移及 20 种基线合成操作。各图层按原精度保存，含 16 位层时重新生成 16 位合成，归档缩略图为 8 位。
 - 含受支持静态 SVG 的 ORA 可继续移动图层、调整透明度和顺序。保存会保留矢量源和归档内引用的资源，并按当前内容重新合成。包含随稿字体、样式表或 SVG 片段的原稿，可按[兼容矩阵](docs/COMPATIBILITY.zh-CN.md)核对支持范围。
 - 未标记色彩的 PNG 按 sRGB 处理。仓库版本还可将受支持的矩阵型、查找表型和多阶段浮点 ICC、PNG gamma 和色度，以及常见全范围 SDR cICP 转为 sRGB。保存 ORA 时保留转换过的原图层 PNG。其他色彩配置与 SVG 限制见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
 - `svg:plus` 遵循 W3C 规则，和 Krita Addition 可能有像素差异。Krita 5.3.4 可重开本项目的案例，但实测其 ORA 重存会将图层变回 8 位。
