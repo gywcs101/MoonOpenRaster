@@ -484,12 +484,16 @@ fn convolve_filter_image(
 }
 
 ///|
-fn filter_channel_value(color : Color, channel : FilterChannel) -> Double {
+fn filter_channel_value(
+  color : Color,
+  channel : FilterChannel,
+  linear_rgb : Bool,
+) -> Double {
   match channel {
-    ChannelR => color.r.to_double() / 255.0
-    ChannelG => color.g.to_double() / 255.0
-    ChannelB => color.b.to_double() / 255.0
-    ChannelA => color.a.to_double() / 255.0
+    ChannelR => filter_input_channel(color.r, linear_rgb)
+    ChannelG => filter_input_channel(color.g, linear_rgb)
+    ChannelB => filter_input_channel(color.b, linear_rgb)
+    ChannelA => filter_input_channel(color.a, false)
   }
 }
 
@@ -497,19 +501,21 @@ fn filter_channel_value(color : Color, channel : FilterChannel) -> Double {
 fn displacement_filter_image(
   source : Image,
   displacement : Image,
-  scale_x : Double,
-  scale_y : Double,
+  displacement_transform : Transform,
   x_channel : FilterChannel,
   y_channel : FilterChannel,
+  linear_rgb : Bool,
 ) -> Image {
   let result = Image::new(source.width, source.height)
   for y in 0..<source.height {
     for x in 0..<source.width {
       let map_color = displacement.get_pixel(x, y)
-      let source_x = x.to_double() +
-        scale_x * (filter_channel_value(map_color, x_channel) - 0.5)
-      let source_y = y.to_double() +
-        scale_y * (filter_channel_value(map_color, y_channel) - 0.5)
+      let (dx, dy) = displacement_transform.apply(
+        filter_channel_value(map_color, x_channel, linear_rgb) - 0.5,
+        filter_channel_value(map_color, y_channel, linear_rgb) - 0.5,
+      )
+      let source_x = x.to_double() + dx
+      let source_y = y.to_double() + dy
       result.set_pixel(
         x,
         y,
@@ -1315,18 +1321,26 @@ fn evaluate_filter_graph(
         scale~,
         x_channel~,
         y_channel~,
-      ) =>
+      ) => {
+        let scale_x = filter_primitive_x(graph, scale, target_local)
+        let scale_y = filter_primitive_y(graph, scale, target_local)
+        let displacement_transform = {
+          ..transform.multiply(Transform::scale(scale_x, scale_y)),
+          e: 0.0,
+          f: 0.0,
+        }
         (
           displacement_filter_image(
             input_surface(input),
             input_surface(input2),
-            scaled_x(scale),
-            scaled_y(scale),
+            displacement_transform,
             x_channel,
             y_channel,
+            linear_rgb,
           ),
           result,
         )
+      }
       GraphTurbulence(
         result~,
         base_x~,

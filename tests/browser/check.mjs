@@ -106,8 +106,15 @@ try {
   } catch (error) {
     throw new Error('Batch layer export failed. Workbench status: ' + await page.locator('#status').innerText(), { cause: error });
   }
-  const save = page.waitForEvent('download'); await page.locator('#save').click();
-  await (await save).saveAs(path.join(temp, 'edited.ora')); await idle();
+  try {
+    const [save] = await Promise.all([
+      page.waitForEvent('download', { timeout: 90000 }),
+      page.locator('#save').click(),
+    ]);
+    await save.saveAs(path.join(temp, 'edited.ora')); await idle();
+  } catch (error) {
+    throw new Error('ORA save failed. Workbench status: ' + await page.locator('#status').innerText(), { cause: error });
+  }
   const savedImage = await page.locator('#canvas').getAttribute('src');
   await page.locator('#file').setInputFiles(path.join(temp, 'edited.ora')); await idle();
   assert.equal(await page.locator('#canvas').getAttribute('src'), savedImage);

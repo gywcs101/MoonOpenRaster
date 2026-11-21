@@ -155,6 +155,18 @@ const cases = {
     '<defs><filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="16" height="12" primitiveUnits="objectBoundingBox">' +
     '<feFlood x="0" y="0" width="1" height="1" flood-color="red"/></filter></defs>' +
     '<rect x="1" y="1" width="4" height="3" transform="matrix(1 .5 .5 1 3 2)" fill="blue" filter="url(#f)"/>'),
+  'displacement channels in linear RGB': wrap(
+    '<defs>' + filter('<feFlood flood-color="#808080" result="map"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="map" scale="4" xChannelSelector="R" yChannelSelector="A"/>') + '</defs>' +
+    '<rect x="5" y="5" width="1" height="1" fill="blue" filter="url(#f)"/>'),
+  'displacement channels in sRGB': wrap(
+    '<defs>' + filter('<feFlood flood-color="#808080" result="map"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="map" scale="4" xChannelSelector="R" yChannelSelector="A" color-interpolation-filters="sRGB"/>') + '</defs>' +
+    '<rect x="5" y="5" width="1" height="1" fill="blue" filter="url(#f)"/>'),
+  'rotated displacement map': wrap(
+    '<defs>' + filter('<feFlood flood-color="red" result="map"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="map" scale="4" xChannelSelector="R" yChannelSelector="R"/>') + '</defs>' +
+    '<rect x="5" y="5" width="1" height="1" transform="matrix(0 1 -1 0 12 0)" fill="blue" filter="url(#f)"/>'),
   'scaled user-space filter primitive region': wrap(
     '<defs>' + filter('<feFlood x="1" y="1" width="4" height="3" flood-color="red"/>') + '</defs>' +
     '<rect width="12" height="10" transform="translate(3 2) scale(2)" fill="blue" filter="url(#f)"/>'),
@@ -233,6 +245,15 @@ try {
         }
       }
       console.log(`PASS: ${name}, exact geometric coverage, Chromium differs by up to ${delta}`);
+      continue;
+    }
+    if (name === 'rotated displacement map') {
+      // Source at (6, 5). Local sampling displacement (2, 2) rotates to
+      // (-2, 2), putting the visible result at (8, 3).
+      const blue = (3 * width + 8) * 4;
+      assert.deepEqual(actual.slice(blue, blue + 4), [0, 0, 255, 255]);
+      assert.equal(actual.filter((value, index) => index % 4 === 3 && value !== 0).length, 1);
+      console.log(`PASS: ${name}, exact geometric displacement, Chromium differs by up to ${delta}`);
       continue;
     }
     const tolerance = name === 'transparent blur' ? 13 : name.endsWith('fractal noise') ? 2 : 1;
