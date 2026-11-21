@@ -297,12 +297,12 @@ pub(all) struct FilterGraph {
 }
 
 ///|
-fn FilterGraph::get_filter_bounds(
+fn FilterGraph::local_filter_bounds(
   self : FilterGraph,
   target : BoundingBox,
-  transform : Transform,
 ) -> BoundingBox {
   match self.units {
+    ObjectBoundingBox if target.is_empty() => target
     ObjectBoundingBox => {
       let width = target.width()
       let height = target.height()
@@ -313,7 +313,7 @@ fn FilterGraph::get_filter_bounds(
         max_y: target.min_y + (self.y + self.height) * height,
       }
     }
-    UserSpaceOnUse => transform.apply_bbox(self.user_space_bounds())
+    UserSpaceOnUse => self.user_space_bounds()
   }
 }
 

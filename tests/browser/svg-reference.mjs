@@ -131,6 +131,10 @@ const cases = {
     '<defs><filter id="f" filterUnits="userSpaceOnUse" x="1" y="1" width="4" height="3">' +
     '<feFlood flood-color="red"/></filter></defs>' +
     '<rect width="12" height="10" transform="matrix(1 .5 .5 1 3 2)" fill="blue" filter="url(#f)"/>'),
+  'sheared object-bounds filter region': wrap(
+    '<defs><filter id="f" x="0" y="0" width="1" height="1">' +
+    '<feFlood flood-color="red"/></filter></defs>' +
+    '<rect x="1" y="1" width="4" height="3" transform="matrix(1 .5 .5 1 3 2)" fill="blue" filter="url(#f)"/>'),
   'scaled user-space filter primitive region': wrap(
     '<defs>' + filter('<feFlood x="1" y="1" width="4" height="3" flood-color="red"/>') + '</defs>' +
     '<rect width="12" height="10" transform="translate(3 2) scale(2)" fill="blue" filter="url(#f)"/>'),
@@ -188,7 +192,7 @@ try {
         }
       }
     }
-    if (name === 'sheared user-space filter region') {
+    if (name.startsWith('sheared ')) {
       // Exact coverage from intersecting the transformed quadrilateral
       // (4.5,3.5) (8.5,5.5) (10,8.5) (6,6.5) with each pixel square.
       const rows = [

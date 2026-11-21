@@ -1054,6 +1054,7 @@ fn evaluate_filter_graph(
   graph : FilterGraph,
   source : Image,
   target_bounds : BoundingBox,
+  target_local : BoundingBox,
   image_resolver : ((String) -> Image?)?,
   origin_x : Int32,
   origin_y : Int32,
@@ -1065,7 +1066,11 @@ fn evaluate_filter_graph(
   if graph.primitives.is_empty() {
     return Image::new(source.width, source.height)
   }
-  let device_region = graph.get_filter_bounds(target_bounds, transform)
+  let rect = graph.local_filter_bounds(target_local)
+  if rect.width() <= 0.0 || rect.height() <= 0.0 {
+    return Image::new(source.width, source.height)
+  }
+  let device_region = transform.apply_bbox(rect)
   let target_bounds = {
     min_x: target_bounds.min_x - origin_x.to_double(),
     min_y: target_bounds.min_y - origin_y.to_double(),
@@ -1426,10 +1431,8 @@ fn evaluate_filter_graph(
       named_regions.set(result_name, region)
     }
   }
-  if graph.units is UserSpaceOnUse &&
-    (transform.b != 0.0 || transform.c != 0.0) &&
+  if (transform.b != 0.0 || transform.c != 0.0) &&
     (transform.a != 0.0 || transform.d != 0.0) {
-    let rect = graph.user_space_bounds()
     let raster_transform = Transform::translate(
       -origin_x.to_double(),
       -origin_y.to_double(),

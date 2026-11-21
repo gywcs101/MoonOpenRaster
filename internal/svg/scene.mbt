@@ -617,6 +617,7 @@ fn render_isolated_node(
             graph,
             layer.to_image(),
             compute_bounds(node, parent_transform),
+            compute_bounds_without_self_transform(node, Transform::identity()),
             ctx.image_resolver,
             layer.origin_x,
             layer.origin_y,
@@ -696,9 +697,15 @@ fn isolated_node_region(
       match resources.filter_graphs.get(id) {
         Some(graph) =>
           bounds = bounds.union(
-            graph.get_filter_bounds(
-              bounds,
-              parent_transform.multiply(node.transform),
+            parent_transform
+            .multiply(node.transform)
+            .apply_bbox(
+              graph.local_filter_bounds(
+                compute_bounds_without_self_transform(
+                  node,
+                  Transform::identity(),
+                ),
+              ),
             ),
           )
         None => ()
