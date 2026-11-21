@@ -168,6 +168,7 @@ pub(all) enum FilterGraphPrimitive {
     target_y~ : Int32,
     edge_mode~ : FilterEdgeMode,
     preserve_alpha~ : Bool,
+    kernel_unit_length~ : (Double, Double)?,
   )
   GraphDisplacementMap(
     input~ : String,

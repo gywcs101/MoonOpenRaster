@@ -511,15 +511,20 @@ fn svg_text_numbers(
 }
 
 ///|
-fn svg_unpositioned_spans(element : @dom.Element) -> Bool {
+fn svg_unpositioned_spans(
+  element : @dom.Element,
+  allow_positions~ : Bool = false,
+) -> Bool {
   element
   .child_elements()
   .all(child => {
     ["tspan", "tref", "a"].contains(@dom.local_of(child.name)) &&
-    !["x", "y", "dx", "dy", "rotate", "transform"].any(key => {
-      child.has_attr(key)
-    }) &&
-    svg_unpositioned_spans(child)
+    !child.has_attr("transform") &&
+    (
+      allow_positions ||
+      !["x", "y", "dx", "dy", "rotate"].any(key => child.has_attr(key))
+    ) &&
+    svg_unpositioned_spans(child, allow_positions~)
   })
 }
 
@@ -670,6 +675,7 @@ fn svg_glyph_run(
   load : (String) -> Bytes?,
   path~ : SvgTextPath? = None,
   positioning~ : Array[Array[Double]]? = None,
+  visual_advance~ : Bool = false,
   length_adjust~ : (Double, Bool)? = None,
 ) -> (Array[@dom.Node], Double, Double) raise {
   if text.length() > 4096 {
@@ -952,7 +958,11 @@ fn svg_glyph_run(
   if vertical {
     (children, x, y - anchor + adjusted)
   } else {
-    let flow_end = if rtl && positioning is Some(_) { 0.0 } else { adjusted }
+    let flow_end = if rtl && positioning is Some(_) && !visual_advance {
+      0.0
+    } else {
+      adjusted
+    }
     (children, x - anchor + flow_end + shift_x, y + shift_y)
   }
 }
@@ -978,6 +988,24 @@ fn svg_position_slice(
     }
   })
   (positions, count)
+}
+
+///|
+fn svg_merge_position_lists(
+  own : Array[Array[Double]],
+  inherited : Array[Array[Double]],
+) -> Array[Array[Double]] {
+  Array::makei(own.length(), axis => {
+    let values = own[axis]
+    let parent = inherited[axis]
+    if axis == 4 && !values.is_empty() {
+      values
+    } else {
+      Array::makei(values.length().max(parent.length()), index => {
+        values.get(index).unwrap_or_else(() => parent[index])
+      })
+    }
+  })
 }
 
 ///|
@@ -1014,21 +1042,7 @@ fn svg_glyph_group(
   let rotations = svg_text_numbers(element, "rotate", font_size, width)
   let own_lists = [xs, ys, dx, dy, rotations]
   let lists = match inherited_positions {
-    Some(parent) =>
-      Array::makei(own_lists.length(), i => {
-        let own = own_lists[i]
-        if i == 4 && !own.is_empty() {
-          own
-        } else {
-          let inherited = parent[i]
-          Array::makei(own.length().max(inherited.length()), index => {
-            match own.get(index) {
-              Some(value) => value
-              None => inherited[index]
-            }
-          })
-        }
-      })
+    Some(parent) => svg_merge_position_lists(own_lists, parent)
     None => own_lists
   }
   let explicit = inherited_positions is Some(_) ||
@@ -1121,9 +1135,12 @@ fn svg_glyph_group(
         (rtl || @bidi.requires_bidi(element.text()))
       )
     ) {
-    if !explicit && path is None && svg_unpositioned_spans(element) {
+    if path is None && svg_unpositioned_spans(element, allow_positions=true) {
+      let x = lists[0].get(0).unwrap_or(previous_x)
+      let y = lists[1].get(0).unwrap_or(previous_y)
       let children = svg_bidi_glyphs(
         element, style, selector, sheets, x, y, faces, fonts, outline_size, load,
+        lists, viewport,
       )
       return svg_wrap_glyph_group(element, selector, sheets, children)
     }

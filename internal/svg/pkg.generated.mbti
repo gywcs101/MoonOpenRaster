@@ -230,7 +230,7 @@ pub(all) enum FilterGraphPrimitive {
   GraphMerge(result~ : String, inputs~ : Array[String])
   GraphComponentTransfer(input~ : String, result~ : String, red~ : ComponentTransferFunction, green~ : ComponentTransferFunction, blue~ : ComponentTransferFunction, alpha~ : ComponentTransferFunction)
   GraphMorphology(input~ : String, result~ : String, radius_x~ : Double, radius_y~ : Double, operator~ : MorphologyOperator)
-  GraphConvolveMatrix(input~ : String, result~ : String, order_x~ : Int32, order_y~ : Int32, kernel~ : Array[Double], divisor~ : Double, bias~ : Double, target_x~ : Int32, target_y~ : Int32, edge_mode~ : FilterEdgeMode, preserve_alpha~ : Bool)
+  GraphConvolveMatrix(input~ : String, result~ : String, order_x~ : Int32, order_y~ : Int32, kernel~ : Array[Double], divisor~ : Double, bias~ : Double, target_x~ : Int32, target_y~ : Int32, edge_mode~ : FilterEdgeMode, preserve_alpha~ : Bool, kernel_unit_length~ : (Double, Double)?)
   GraphDisplacementMap(input~ : String, input2~ : String, result~ : String, scale~ : Double, x_channel~ : FilterChannel, y_channel~ : FilterChannel)
   GraphTurbulence(result~ : String, base_x~ : Double, base_y~ : Double, octaves~ : Int32, seed~ : Double, stitch~ : Bool, fractal_noise~ : Bool)
   GraphTile(input~ : String, result~ : String)

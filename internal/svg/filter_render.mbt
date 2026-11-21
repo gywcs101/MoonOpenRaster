@@ -515,11 +515,25 @@ fn convolve_filter_image(
   edge_mode : FilterEdgeMode,
   preserve_alpha : Bool,
   linear_rgb : Bool,
+  step : Transform,
 ) -> Image {
   if order_x <= 0 || order_y <= 0 || kernel.length() != order_x * order_y {
     return source
   }
   let safe_divisor = if divisor.abs() <= 0.000001 { 1.0 } else { divisor }
+  let taps = []
+  for row in 0..<order_y {
+    for column in 0..<order_x {
+      let weight = kernel[(order_y - 1 - row) * order_x + order_x - 1 - column]
+      if weight != 0.0 {
+        let (x, y) = step.apply(
+          (column - target_x).to_double(),
+          (row - target_y).to_double(),
+        )
+        taps.push((x, y, weight))
+      }
+    }
+  }
   let result = Image::new(source.width, source.height)
   for y in 0..<source.height {
     for x in 0..<source.width {
@@ -527,29 +541,32 @@ fn convolve_filter_image(
       let mut green = 0.0
       let mut blue = 0.0
       let mut alpha = 0.0
-      for kernel_y in 0..<order_y {
-        for kernel_x in 0..<order_x {
-          let sample = convolve_sample(
+      for (offset_x, offset_y, weight) in taps {
+        let ix = offset_x.round()
+        let iy = offset_y.round()
+        let sample = if (ix - offset_x).abs() < 1.0e-9 &&
+          (iy - offset_y).abs() < 1.0e-9 {
+          convolve_sample(source, x + ix.to_int(), y + iy.to_int(), edge_mode)
+        } else {
+          sample_raster_color(
             source,
-            x + kernel_x - target_x,
-            y + kernel_y - target_y,
-            edge_mode,
+            x.to_double() + offset_x + 0.5,
+            y.to_double() + offset_y + 0.5,
+            Bilinear,
+            edge_mode is EdgeWrap,
+            transparent_edge=edge_mode is EdgeNone,
           )
-          let weight = kernel[(order_y - 1 - kernel_y) * order_x +
-            order_x -
-            1 -
-            kernel_x]
-          let sample_alpha = sample.a.to_double() / 255.0
-          let color_weight = if preserve_alpha {
-            weight
-          } else {
-            weight * sample_alpha
-          }
-          red += filter_input_channel(sample.r, linear_rgb) * color_weight
-          green += filter_input_channel(sample.g, linear_rgb) * color_weight
-          blue += filter_input_channel(sample.b, linear_rgb) * color_weight
-          alpha += sample_alpha * weight
         }
+        let sample_alpha = sample.a.to_double() / 255.0
+        let color_weight = if preserve_alpha {
+          weight
+        } else {
+          weight * sample_alpha
+        }
+        red += filter_input_channel(sample.r, linear_rgb) * color_weight
+        green += filter_input_channel(sample.g, linear_rgb) * color_weight
+        blue += filter_input_channel(sample.b, linear_rgb) * color_weight
+        alpha += sample_alpha * weight
       }
       let opacity = if preserve_alpha {
         source.get_pixel(x, y).a.to_double() / 255.0
@@ -642,6 +659,42 @@ fn tile_filter_image(source : Image, bounds : BoundingBox) -> Image {
     }
   }
   result
+}
+
+///|
+fn tile_filter_image_in_basis(
+  source : Image,
+  bounds : BoundingBox,
+  basis : Transform,
+) -> Image {
+  let image = Image::new(source.width, source.height)
+  let width = bounds.width()
+  let height = bounds.height()
+  guard width > 0.0 && height > 0.0 && basis.is_invertible() else {
+    return image
+  }
+  let inverse = basis.inverse()
+  for y in 0..<image.height {
+    for x in 0..<image.width {
+      let (u, v) = inverse.apply(x.to_double() + 0.5, y.to_double() + 0.5)
+      let u = u - ((u - bounds.min_x) / width).floor() * width
+      let v = v - ((v - bounds.min_y) / height).floor() * height
+      let (sx, sy) = basis.apply(u, v)
+      image.set_pixel(
+        x,
+        y,
+        sample_raster_color(
+          source,
+          sx,
+          sy,
+          Bilinear,
+          false,
+          transparent_edge=true,
+        ),
+      )
+    }
+  }
+  image
 }
 
 ///|
@@ -1416,23 +1469,54 @@ fn evaluate_filter_graph(
         target_y~,
         edge_mode~,
         preserve_alpha~,
-      ) =>
+        kernel_unit_length~,
+      ) => {
+        let input = input_surface(input)
+        let (x, y) = match kernel_unit_length {
+          Some((x, y)) if !x.is_finite() ||
+            !y.is_finite() ||
+            x <= 0.0 ||
+            y <= 0.0 => {
+            diagnostics.push({
+              kind: ParseFailed,
+              stage: Effects,
+              resource: graph.id,
+              node_id: "",
+            })
+            (0.0, 0.0)
+          }
+          Some((x, y)) =>
+            (
+              filter_primitive_x(graph, x, target_local),
+              filter_primitive_y(graph, y, target_local),
+            )
+          None =>
+            (
+              if scale_x > 0.0 {
+                1.0 / scale_x
+              } else {
+                0.0
+              },
+              if scale_y > 0.0 {
+                1.0 / scale_y
+              } else {
+                0.0
+              },
+            )
+        }
+        let step = {
+          ..transform.multiply(Transform::scale(x, y)),
+          e: 0.0,
+          f: 0.0,
+        }
         (
           convolve_filter_image(
-            input_surface(input),
-            order_x,
-            order_y,
-            kernel,
-            divisor,
-            bias,
-            target_x,
-            target_y,
-            edge_mode,
-            preserve_alpha,
-            linear_rgb,
+            input, order_x, order_y, kernel, divisor, bias, target_x, target_y, edge_mode,
+            preserve_alpha, linear_rgb, step,
           ),
           result,
         )
+      }
       GraphDisplacementMap(
         input~,
         input2~,
@@ -1505,14 +1589,16 @@ fn evaluate_filter_graph(
           result,
         )
       }
-      GraphTile(input~, result~) =>
-        (
-          tile_filter_image(
-            input_surface(input),
-            raster_transform.apply_bbox(referenced_local(input)),
-          ),
-          result,
-        )
+      GraphTile(input~, result~) => {
+        let tile = input_surface(input)
+        let bounds = referenced_local(input)
+        let output = if affine_clip {
+          tile_filter_image_in_basis(tile, bounds, raster_transform)
+        } else {
+          tile_filter_image(tile, raster_transform.apply_bbox(bounds))
+        }
+        (output, result)
+      }
       GraphImage(result~, href~, aspect~) => {
         let image = if href.has_prefix("#") {
           local_image(href[1:].to_owned())

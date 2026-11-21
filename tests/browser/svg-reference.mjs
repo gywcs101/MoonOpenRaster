@@ -167,6 +167,15 @@ const cases = {
     '<defs>' + filter('<feFlood flood-color="red" result="map"/>' +
       '<feDisplacementMap in="SourceGraphic" in2="map" scale="4" xChannelSelector="R" yChannelSelector="R"/>') + '</defs>' +
     '<rect x="5" y="5" width="1" height="1" transform="matrix(0 1 -1 0 12 0)" fill="blue" filter="url(#f)"/>'),
+  'sheared repeating filter tile': wrap(
+    '<defs>' + filter('<feFlood x="0" y="0" width="8" height="2" flood-color="blue" result="back"/>' +
+      '<feFlood x="0" y="0" width="4" height="2" flood-color="red" result="left"/>' +
+      '<feComposite in="left" in2="back" operator="over" result="tile"/><feTile in="tile"/>') +
+    '</defs><rect width="12" height="10" transform="matrix(1 0 2 1 0 0)" fill="black" filter="url(#f)"/>'),
+  'rotated convolution with explicit kernel spacing': wrap(
+    '<defs>' + filter('<feOffset dx="1" result="shifted"/>' +
+      '<feConvolveMatrix in="shifted" order="3 1" kernelMatrix="0 0 1" kernelUnitLength="2 1" edgeMode="none"/>') +
+    '</defs><rect x="3" y="5" width="1" height="1" transform="matrix(0 1 -1 0 12 0)" fill="blue" filter="url(#f)"/>'),
   'oblique anisotropic blur': wrap(
     '<defs><filter id="f" filterUnits="userSpaceOnUse" x="-25" y="-25" width="50" height="50">' +
     '<feGaussianBlur stdDeviation="2.5 0" color-interpolation-filters="sRGB"/></filter></defs>' +
@@ -267,6 +276,17 @@ try {
         }
       }
     }
+    if (name === 'sheared repeating filter tile') {
+      for (const [x, y, expected] of [
+        [7, 2, [255, 0, 0, 255]], [11, 2, [0, 0, 255, 255]],
+        [9, 3, [255, 0, 0, 255]], [13, 3, [0, 0, 255, 255]],
+      ]) {
+        const position = (y * width + x) * 4;
+        assert.deepEqual(actual.slice(position, position + 4), expected, `inner tile pixel ${x},${y}`);
+      }
+      console.log(`PASS: ${name}, exact interior tile samples, Chromium differs by up to ${delta}`);
+      continue;
+    }
     if (name.startsWith('sheared ')) {
       // Exact coverage from intersecting the transformed quadrilateral
       // (4.5,3.5) (8.5,5.5) (10,8.5) (6,6.5) with each pixel square.
@@ -288,6 +308,14 @@ try {
         }
       }
       console.log(`PASS: ${name}, exact geometric coverage, Chromium differs by up to ${delta}`);
+      continue;
+    }
+    if (name === 'rotated convolution with explicit kernel spacing') {
+      // Local shifts of one and two units along X rotate onto device Y.
+      const blue = (6 * width + 6) * 4;
+      assert.deepEqual(actual.slice(blue, blue + 4), [0, 0, 255, 255]);
+      assert.equal(actual.filter((value, i) => i % 4 === 3 && value !== 0).length, 1);
+      console.log(`PASS: ${name}, exact tap geometry, Chromium differs by up to ${delta}`);
       continue;
     }
     if (name === 'rotated displacement map') {

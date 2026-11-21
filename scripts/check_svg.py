@@ -84,9 +84,11 @@ def check_font_layer(cli, variant="font"):
     fallback = variant == "font-glyph-fallback" or fallback_all
     bidi_override = variant == "font-bidi-override"
     bidi_embed = variant == "font-rtl-embed"
-    bidi_spans = variant == "font-rtl-spans" or bidi_embed
+    bidi_positioned_spans = variant == "font-rtl-positioned-spans"
+    bidi_spans = variant == "font-rtl-spans" or bidi_embed or bidi_positioned_spans
     bidi_spaced_spans = variant == "font-rtl-styled-chunks"
-    bidi_chunks = variant == "font-rtl-chunks" or bidi_spaced_spans
+    bidi_nested_absolute = variant == "font-rtl-nested-absolute"
+    bidi_chunks = variant == "font-rtl-chunks" or bidi_spaced_spans or bidi_nested_absolute
     bidi_offsets = variant == "font-rtl-offsets"
     right_to_left = variant == "font-rtl" or bidi_spans or bidi_chunks or bidi_offsets
     vertical_substitution = variant == "font-vertical-substitution"
@@ -207,6 +209,12 @@ def check_font_layer(cli, variant="font"):
             font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
             span_direction = ' direction="ltr" unicode-bidi="embed"' if bidi_embed else ""
             text = f'אב<tspan font-family="Latin" fill="blue"{span_direction}>A</tspan>'
+    if bidi_positioned_spans:
+        position_attrs += ' dx="0 1 0"'
+        text = text.replace('<tspan ', '<tspan dx="1" dy="-1" ')
+    if bidi_nested_absolute:
+        text = 'א<tspan class="ink"><tspan>ב</tspan></tspan>'
+        inline_style = inline_style.replace("</style>", ".ink { fill: blue; }</style>")
     if bidi_spaced_spans:
         position_attrs = 'direction="rtl" xml:lang="he"'
         text = '<tspan x="16" y="8">א</tspan><tspan x="7" y="7" class="ink">ב</tspan>'
@@ -257,6 +265,8 @@ def check_font_layer(cli, variant="font"):
             return 3 <= x < 5 and y % 4 >= 2
         if fallback_all:
             return x < 6 and y >= 2
+        if bidi_positioned_spans:
+            return (10 <= x < 13 and 4 <= y < 7) or (14 <= x < 16 and 5 <= y < 7)
         if bidi_spans:
             return (8 <= x < 11 and y >= 5) or (12 <= x < 14 and y >= 6)
         if fallback:
@@ -280,7 +290,11 @@ def check_font_layer(cli, variant="font"):
         return (x < 4 and y >= 4) or (8 <= x < 14 and y >= 2)
 
     def ink(x, y, background):
-        if (bidi_spans and 4 <= x < 6 and y >= 6) or (bidi_spaced_spans and x < 5 and 1 <= y < 7):
+        if bidi_positioned_spans:
+            if 5 <= x < 7 and 5 <= y < 7:
+                return (0, 0, 65535, 65535)
+            return red if glyph_ink(x, y) else background
+        if (bidi_spans and 4 <= x < 6 and y >= 6) or ((bidi_spaced_spans or bidi_nested_absolute) and x < 5 and 1 <= y < 7):
             return (0, 0, 65535, 65535)
         return red if glyph_ink(x, y) else background
 
@@ -556,6 +570,39 @@ def check_nested_svg_image(cli, *, views=False, transform=False, nested_view=Fal
 
 
 
+def check_convolution_layer(cli):
+    source = OUT / "filter-convolution-input.ora"
+    edited = OUT / "filter-convolution-vector-edited.ora"
+    svg = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="10">'
+        b'<defs><filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="12" height="10">'
+        b'<feOffset dx="1" result="shifted"/><feConvolveMatrix in="shifted" order="3 1" '
+        b'kernelMatrix="0 0 1" kernelUnitLength="2 1" edgeMode="none"/>'
+        b'</filter></defs><rect x="3" y="5" width="1" height="1" '
+        b'transform="matrix(0 1 -1 0 12 0)" fill="blue" filter="url(#f)"/></svg>'
+    )
+    raster = png(12, 10, 16, lambda x, y: BASE)
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("mimetype", "image/openraster")
+        archive.writestr("stack.xml", '<image version="0.0.6" w="12" h="10"><stack><layer name="Vector" src="data/filtered.svg"/><layer name="Raster" src="data/base.png"/></stack></image>')
+        archive.writestr("data/filtered.svg", svg)
+        archive.writestr("data/base.png", raster)
+        archive.writestr("mergedimage.png", raster)
+        archive.writestr("Thumbnails/thumbnail.png", png(1, 1, 8, lambda x, y: (0, 0, 0, 255)))
+    edited.unlink(missing_ok=True)
+    subprocess.run(["node", str(cli), "edit", str(source), str(edited), str(OUT / "view-vector-edits.json")], check=True)
+    with zipfile.ZipFile(edited) as archive:
+        stack = ET.fromstring(archive.read("stack.xml")).find("stack")
+        assert stack[0].get("x") == "1" and float(stack[0].get("opacity")) == 0.5
+        assert archive.read(stack[0].get("src")) == svg
+        assert decode_rgba(archive.read(stack[1].get("src"))) == decode_rgba(raster)
+        expected = [BASE] * 120
+        expected[6 * 12 + 7] = tuple((back + front + 1) // 2 for back, front in zip(BASE, (0, 0, 65535, 65535)))
+        assert decode_rgba(archive.read("mergedimage.png")) == (12, 10, 16, expected)
+        assert archive.read("Thumbnails/thumbnail.png")[24:29] == bytes((8, 6, 0, 0, 0))
+    print("PASS: named rotated offset and convolution survive a 16-bit ORA layer edit")
+
+
 def probe_krita(executable):
     from PIL import Image
 
@@ -642,7 +689,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-rtl-chunks", "font-rtl-offsets", "font-rtl-styled-chunks", "font-bidi-override", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
+        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-rtl-positioned-spans", "font-rtl-nested-absolute", "font-rtl-chunks", "font-rtl-offsets", "font-rtl-styled-chunks", "font-bidi-override", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
     ):
         check_font_layer(cli, variant)
     check_position_cluster(cli)
@@ -652,6 +699,7 @@ def main():
     check_nested_svg_image(cli, views=True)
     check_nested_svg_image(cli, views=True, transform=True)
     check_nested_svg_image(cli, views=True, nested_view=True)
+    check_convolution_layer(cli)
     if args.krita:
         probe_krita(args.krita)
     check_atlas(ATLAS / "atlas-goal.ora")

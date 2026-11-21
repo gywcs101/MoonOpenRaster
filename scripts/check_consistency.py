@@ -11,17 +11,25 @@ parser = argparse.ArgumentParser()
 mode = parser.add_mutually_exclusive_group()
 mode.add_argument("--rgba16", action="store_true")
 mode.add_argument("--svg-viewport", action="store_true")
+mode.add_argument("--svg-filter", action="store_true")
 args = parser.parse_args()
-wide = args.rgba16 or args.svg_viewport
-fixture = ROOT / "fixtures" / ("gradient16.ora" if wide else "krita-5.3.4.ora")
-out = ROOT / "_build" / ("consistency-svg" if args.svg_viewport else "consistency16" if wide else "consistency")
+svg_variant = None
 if args.svg_viewport:
-    fixture = ROOT / "_build/svg-roundtrip/nested-image-viewport-input.ora"
+    svg_variant = "nested-image-viewport"
+elif args.svg_filter:
+    svg_variant = "filter-convolution"
+wide = args.rgba16 or svg_variant is not None
+if svg_variant:
+    fixture = ROOT / "_build/svg-roundtrip" / f"{svg_variant}-input.ora"
+    out = ROOT / "_build" / f"consistency-{svg_variant}"
+else:
+    fixture = ROOT / "fixtures" / ("gradient16.ora" if wide else "krita-5.3.4.ora")
+    out = ROOT / "_build" / ("consistency16" if wide else "consistency")
 out.mkdir(parents=True, exist_ok=True)
 edit = {"path":[0,0],"name":"接口一致性 · 中文","x":-3,"y":7,"opacity":0.5,"visible":True,"composite_op":"svg:multiply"}
 if wide:
     edit = {"path": [0, 0], "name": "Light", "x": 9, "y": 6, "opacity": 0.5, "visible": True, "composite_op": "svg:src-over"}
-if args.svg_viewport:
+if svg_variant:
     edit = {"path": [0], "name": "Vector", "x": 1, "y": 0, "opacity": 0.5, "visible": True, "composite_op": "svg:src-over"}
 (out / "edits.json").write_text(json.dumps([edit], ensure_ascii=False), encoding="utf-8")
 # Workspaces are separate from the main checkout; only public APIs are used.
@@ -63,13 +71,13 @@ for name in ["library", "cli", "bridge"]:
         verify_saved(archive)
     with zipfile.ZipFile(archive) as z:
         png = z.read("mergedimage.png")
-        pixels.append(decode_rgba(png) if args.svg_viewport else Image.open(BytesIO(png)).convert("RGBA").tobytes())
+        pixels.append(decode_rgba(png) if svg_variant else Image.open(BytesIO(png)).convert("RGBA").tobytes())
         trees.append(ET.tostring(ET.fromstring(z.read("stack.xml"))))
         if name == "library": (out / "edited.png").write_bytes(png)
 assert pixels[0] == pixels[1] == pixels[2]
 assert trees[0] == trees[1] == trees[2]
-if args.svg_viewport:
-    expected = fixture.with_name("nested-image-viewport-vector-edited.ora").read_bytes()
+if svg_variant:
+    expected = fixture.with_name(f"{svg_variant}-vector-edited.ora").read_bytes()
     for name in ["library", "cli", "bridge"]:
         assert (out / (name + ".ora")).read_bytes() == expected
 print("PASS: external library, CLI and web bridge produce identical edited tree and pixels; browser reference ready")

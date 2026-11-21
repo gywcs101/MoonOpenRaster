@@ -389,6 +389,13 @@ fn parse_filter_primitive(
       let kernel = get_attr(attrs, "kernelMatrix")
         .map(parse_number_list)
         .unwrap_or([])
+      let kernel_unit_length = get_attr(attrs, "kernelUnitLength").map(value => {
+        match parse_number_list(value) {
+          [x] => (x, x)
+          [x, y] => (x, y)
+          _ => (0.0, 0.0)
+        }
+      })
       let kernel_sum = kernel.fold(init=0.0, (sum, value) => sum + value)
       let default_divisor = if kernel_sum.abs() <= 0.000001 {
         1.0
@@ -402,6 +409,7 @@ fn parse_filter_primitive(
           order_x~,
           order_y~,
           kernel~,
+          kernel_unit_length~,
           divisor=get_attr(attrs, "divisor")
             .map(parse_number)
             .unwrap_or(default_divisor),
