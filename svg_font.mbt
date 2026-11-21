@@ -311,7 +311,7 @@ fn svg_text_properties(
   for
     name in [
       "font-family", "font-size", "font-weight", "font-style", "text-anchor", "letter-spacing",
-      "word-spacing", "direction", "writing-mode",
+      "word-spacing", "direction", "writing-mode", "glyph-orientation-vertical",
     ] {
     let candidate = match computed.get(name) {
       Some(declaration) =>
@@ -543,6 +543,7 @@ fn svg_shape_font_sources(
   ligatures : Bool,
   direction : @font.TextDirection,
   language : String,
+  vertical : Bool,
 ) -> SvgTextRun raise {
   if sources.length() > 8 {
     raise Unsupported("SVG font has too many alternate sources: " + family)
@@ -555,8 +556,8 @@ fn svg_shape_font_sources(
         load(uri[:at].to_owned()) is Some(bytes) {
         let (_, root) = svg_parse_source(bytes)
         if svg_inline_font_by_id(root, id) is Some(font) {
-          guard direction != Rtl else {
-            raise Unsupported("Right-to-left layout requires an OpenType font")
+          guard direction != Rtl && !vertical else {
+            raise Unsupported("This SVG layout requires an OpenType font")
           }
           return svg_shape_inline_font(font, text, size, ligatures)
         }
@@ -594,6 +595,35 @@ fn svg_shape_font_sources(
   let axes : Map[String, Double] = Map([])
   if font.var_axes.any(axis => axis.tag == "wght") {
     axes["wght"] = desired_weight.to_double()
+  }
+  if vertical {
+    let scale = size / font.units_per_em.to_double()
+    let glyphs : Array[SvgRunGlyph] = []
+    let mut end = 0
+    let mut advance = 0.0
+    for glyph in font.layout_text_vertical(text, size) {
+      if glyph.glyph_id == 0 {
+        raise Unsupported("SVG font is missing characters: " + uri)
+      }
+      let start = end
+      end += if glyph.codepoint > 0xffff { 2 } else { 1 }
+      let metrics = font.glyph_metrics_at(glyph.glyph_id, axes)
+      glyphs.push({
+        codepoint: glyph.codepoint,
+        text_start: start,
+        text_end: end,
+        x: -metrics.advance_width.to_double() * scale / 2.0,
+        y: glyph.y_offset + glyph.x_offset,
+        advance_width: glyph.x_advance,
+        outline: () => {
+          @font.path_commands_to_svg_d(
+            font.glyph_outline_at(glyph.glyph_id, axes),
+          )
+        },
+      })
+      advance += glyph.x_advance
+    }
+    return { glyphs, advance, scale, left_to_right: true, }
   }
   let shaped = font.shape_text(
     text,
@@ -661,12 +691,33 @@ fn svg_glyph_run(
   )
   let desired_style = style.get("font-style").unwrap_or("normal")
   let mode = style.get("writing-mode").unwrap_or("horizontal-tb")
-  guard ["horizontal-tb", "lr", "lr-tb", "rl", "rl-tb"].contains(mode) else {
-    raise Unsupported("Vertical SVG text layout is unsupported")
+  let vertical = ["tb", "tb-rl", "vertical-rl", "vertical-lr"].contains(mode)
+  guard vertical ||
+    ["horizontal-tb", "lr", "lr-tb", "rl", "rl-tb"].contains(mode) else {
+    raise Unsupported("Unsupported SVG writing mode: " + mode)
   }
   let rtl = style.get("direction").unwrap_or("ltr") == "rtl" ||
     mode == "rl" ||
     mode == "rl-tb"
+  if vertical {
+    guard !rtl && path is None && positioning is None && length_adjust is None else {
+      raise Unsupported(
+        "This combination of SVG vertical text and positioning is unsupported",
+      )
+    }
+    let orientation = style.get("glyph-orientation-vertical").unwrap_or("auto")
+    let upright = ["0", "0deg"].contains(orientation)
+    guard (upright || orientation == "auto") &&
+      text.all(character => {
+        let code = character.to_int()
+        code == 32 ||
+        (code >= 0x3400 && code <= 0x4dbf) ||
+        (code >= 0x4e00 && code <= 0x9fff) ||
+        (upright && code >= 33 && code <= 126)
+      }) else {
+      raise Unsupported("Unsupported glyph orientation in SVG vertical text")
+    }
+  }
   let mut sources : Array[String] = []
   let mut embedded : SvgInlineFont? = None
   for choice in family.split(",") {
@@ -701,8 +752,8 @@ fn svg_glyph_run(
   let ligatures = positioning is None && letter_spacing == 0.0
   let shaped = match embedded {
     Some(font) => {
-      guard !rtl else {
-        raise Unsupported("Right-to-left layout requires an OpenType font")
+      guard !rtl && !vertical else {
+        raise Unsupported("This SVG layout requires an OpenType font")
       }
       svg_shape_inline_font(font, text, size, ligatures)
     }
@@ -722,6 +773,7 @@ fn svg_glyph_run(
           Ltr
         },
         style.get("language").unwrap_or("und"),
+        vertical,
       )
   }
   let glyphs = shaped.glyphs
@@ -802,12 +854,18 @@ fn svg_glyph_run(
       )
     }
     if !d.is_empty() {
-      let gx = x -
-        anchor +
-        (glyph.x + spacing_offsets[index]) * width_scale +
-        cluster_indices[index].to_double() * letter_gap +
-        shift_x
-      let gy = y + glyph.y + shift_y
+      let (gx, gy) = if vertical {
+        (x + glyph.x, y + glyph.y - anchor + spacing_offsets[index])
+      } else {
+        (
+          x -
+          anchor +
+          (glyph.x + spacing_offsets[index]) * width_scale +
+          cluster_indices[index].to_double() * letter_gap +
+          shift_x,
+          y + glyph.y + shift_y,
+        )
+      }
       let transform = match path {
         Some(path) =>
           match path.glyph_transform(gx, gy, glyph.advance_width, scale) {
@@ -845,7 +903,11 @@ fn svg_glyph_run(
       )
     }
   }
-  (children, x - anchor + adjusted + shift_x, y + shift_y)
+  if vertical {
+    (children, x, y - anchor + adjusted)
+  } else {
+    (children, x - anchor + adjusted + shift_x, y + shift_y)
+  }
 }
 
 ///|
@@ -863,6 +925,12 @@ fn svg_glyph_group(
   viewport : (Double, Double),
   path~ : SvgTextPath? = None,
 ) -> @dom.Element raise {
+  if !element.child_elements().is_empty() &&
+    ["tb", "tb-rl", "vertical-rl", "vertical-lr"].contains(
+      style.get("writing-mode").unwrap_or("horizontal-tb"),
+    ) {
+    raise Unsupported("Nested SVG vertical text layout is unsupported")
+  }
   if !element.child_elements().is_empty() &&
     (
       style.get("direction") == Some("rtl") ||

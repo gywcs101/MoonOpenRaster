@@ -213,6 +213,7 @@ try {
     'font-centered-spans', 'font-length-spacing', 'font-length-glyphs', 'font-letter-spacing',
     'font-weight', 'font-style', 'font-alternate-sources', 'font-relative-size', 'font-percentage-position', 'font-svg-outline',
     'font-svg-outline-resource', 'font-rtl', 'font-tref', 'font-tref-resource',
+    'font-vertical', 'font-vertical-centered',
     'sans-serif-generic', 'serif-generic', 'nested-image',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');

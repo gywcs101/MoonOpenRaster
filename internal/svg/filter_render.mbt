@@ -325,34 +325,37 @@ fn morphology_filter_image(
   radius_x : Double,
   radius_y : Double,
   operator : MorphologyOperator,
+  linear_rgb : Bool,
 ) -> Image {
   let rx = ceil_to_int(if radius_x < 0.0 { 0.0 } else { radius_x })
   let ry = ceil_to_int(if radius_y < 0.0 { 0.0 } else { radius_y })
   let result = Image::new(source.width, source.height)
+  let working = if linear_rgb { LinearRGB } else { SRGB }
+  let (initial, order) : (Int32, (Int32, Int32) -> Int32) = if operator ==
+    MorphologyDilate {
+    (0, (a, b) => a.max(b))
+  } else {
+    (65535, (a, b) => a.min(b))
+  }
   for y in 0..<source.height {
     for x in 0..<source.width {
-      let initial = if operator == MorphologyDilate { 0 } else { 255 }
       let mut r = initial
       let mut g = initial
       let mut b = initial
       let mut a = initial
       for offset_y in -ry..<=ry {
         for offset_x in -rx..<=rx {
-          let color = source.get_pixel(x + offset_x, y + offset_y)
-          if operator == MorphologyDilate {
-            r = if r > color.r { r } else { color.r }
-            g = if g > color.g { g } else { color.g }
-            b = if b > color.b { b } else { color.b }
-            a = if a > color.a { a } else { color.a }
-          } else {
-            r = if r < color.r { r } else { color.r }
-            g = if g < color.g { g } else { color.g }
-            b = if b < color.b { b } else { color.b }
-            a = if a < color.a { a } else { color.a }
-          }
+          let color = PremulColor16::from_color(
+            source.get_pixel(x + offset_x, y + offset_y),
+          ).convert_space(SRGB, working)
+          r = order(r, color.r)
+          g = order(g, color.g)
+          b = order(b, color.b)
+          a = order(a, color.a)
         }
       }
-      result.set_pixel(x, y, Color::rgba(r, g, b, a))
+      let pixel : PremulColor16 = { r, g, b, a, }
+      result.set_pixel(x, y, pixel.convert_space(working, SRGB).to_color())
     }
   }
   result
@@ -1225,6 +1228,7 @@ fn evaluate_filter_graph(
             scaled_x(radius_x),
             scaled_y(radius_y),
             operator,
+            linear_rgb,
           ),
           result,
         )

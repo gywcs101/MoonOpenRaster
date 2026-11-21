@@ -56,6 +56,8 @@ def check_font_layer(cli, variant="font"):
     external_outline_font = variant == "font-svg-outline-resource"
     outline_font = variant == "font-svg-outline" or external_outline_font
     right_to_left = variant == "font-rtl"
+    vertical = variant in ("font-vertical", "font-vertical-centered")
+    centered_vertical = variant == "font-vertical-centered"
     external_tref = variant == "font-tref-resource"
     text_reference = variant == "font-tref" or external_tref
     external = variant == "font-svg-resource"
@@ -133,6 +135,10 @@ def check_font_layer(cli, variant="font"):
     if right_to_left:
         position_attrs = 'x="16" y="8" direction="rtl" xml:lang="he"'
         text = "אב"
+    if vertical:
+        position_attrs = 'x="5" y="4" writing-mode="tb-rl" text-anchor="middle"' if centered_vertical else 'x="5" y="0" writing-mode="tb" glyph-orientation-vertical="0"'
+        font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
+        text = "中中"
     if text_reference:
         definition = '<defs><text id="fragment" font-family="OraTest">中</text></defs>'
         referenced_text = f'<svg xmlns="http://www.w3.org/2000/svg">{definition}</svg>'.encode()
@@ -169,6 +175,8 @@ def check_font_layer(cli, variant="font"):
             return (x < 4 and y >= 4) or (7 <= x < 13 and y >= 2)
         if right_to_left:
             return (x < 6 and y >= 2) or (8 <= x < 12 and y >= 4)
+        if vertical:
+            return 3 <= x < 6 and y % 4 != 0
         return (x < 4 and y >= 4) or (8 <= x < 14 and y >= 2)
 
     with zipfile.ZipFile(source, "w") as archive:
@@ -420,6 +428,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
+        "font-vertical", "font-vertical-centered",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)

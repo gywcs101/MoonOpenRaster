@@ -34,6 +34,10 @@ const cases = {
   'filter morphology': wrap(
     '<defs>' + filter('<feMorphology operator="dilate" radius="1"/>') + '</defs>' +
     '<rect x="3" y="3" width="6" height="4" fill="red" filter="url(#f)"/>'),
+  'filter morphology with unequal alpha': wrap(
+    '<defs>' + filter('<feMorphology operator="dilate" radius="1 0"/>') + '</defs>' +
+    '<g filter="url(#f)"><rect x="3" y="3" width="3" height="4" fill="red" fill-opacity=".25"/>' +
+    '<rect x="6" y="3" width="3" height="4" fill="lime"/></g>'),
   'transparent blur': wrap(
     '<defs>' + filter('<feGaussianBlur stdDeviation="1"/>') + '</defs>' +
     '<rect x="5" y="4" width="6" height="4" fill="red" filter="url(#f)"/>'),
