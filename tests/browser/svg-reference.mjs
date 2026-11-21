@@ -129,6 +129,10 @@ const cases = {
   'scaled user-space filter offset': wrap(
     '<defs>' + filter('<feOffset dx="2" dy="1"/>') + '</defs>' +
     '<rect x="1" y="1" width="2" height="2" transform="scale(2)" fill="red" filter="url(#f)"/>'),
+  'rotated object-relative filter offset': wrap(
+    '<defs><filter id="f" filterUnits="userSpaceOnUse" primitiveUnits="objectBoundingBox" x="0" y="0" width="16" height="12">' +
+    '<feOffset dx=".5" dy="0"/></filter></defs>' +
+    '<rect x="1" y="1" width="4" height="2" transform="matrix(0 1 -1 0 10 1)" fill="red" filter="url(#f)"/>'),
   'scaled and translated user-space filter region': wrap(
     '<defs><filter id="f" filterUnits="userSpaceOnUse" x="1" y="1" width="4" height="3">' +
     '<feFlood flood-color="red"/></filter></defs>' +

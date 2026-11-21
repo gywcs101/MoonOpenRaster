@@ -1180,14 +1180,19 @@ fn evaluate_filter_graph(
       GraphOffset(input~, result~, dx~, dy~) => {
         let (dx, dy) = match graph.primitive_units {
           ObjectBoundingBox =>
-            (dx * target_bounds.width(), dy * target_bounds.height())
-          UserSpaceOnUse => {
-            let (from_x, from_y) = transform.apply(0.0, 0.0)
-            let (to_x, to_y) = transform.apply(dx, dy)
-            (to_x - from_x, to_y - from_y)
-          }
+            (dx * target_local.width(), dy * target_local.height())
+          UserSpaceOnUse => (dx, dy)
         }
-        (offset_filter_image(input_surface(input), dx, dy), result)
+        let (from_x, from_y) = transform.apply(0.0, 0.0)
+        let (to_x, to_y) = transform.apply(dx, dy)
+        (
+          offset_filter_image(
+            input_surface(input),
+            to_x - from_x,
+            to_y - from_y,
+          ),
+          result,
+        )
       }
       GraphBlend(input~, input2~, result~, mode~) =>
         (
