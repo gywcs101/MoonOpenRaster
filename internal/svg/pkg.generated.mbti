@@ -16,7 +16,7 @@ pub fn path_bbox(Array[PathCommand]) -> BoundingBox
 
 pub fn render_path_commands_to_image(Array[PathCommand], Int32, Int32, Color, transform? : Array[Double]) -> Image
 
-pub fn render_svg(String, Int32, Int32, RenderOptions) -> RenderResult
+pub fn render_svg(String, Int32, Int32, RenderOptions, view_transform? : Transform?) -> RenderResult
 
 pub fn render_svg_document(SVGDocument, Int32, Int32, RenderOptions) -> RenderResult
 

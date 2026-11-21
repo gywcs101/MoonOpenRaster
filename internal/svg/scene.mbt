@@ -120,7 +120,11 @@ priv struct RenderResources {
 
 ///|
 /// Render a parsed SVG document with registered resources
-fn SVGDocument::render(self : SVGDocument, ctx : RenderState) -> Unit {
+fn SVGDocument::render(
+  self : SVGDocument,
+  ctx : RenderState,
+  view_transform~ : Transform? = None,
+) -> Unit {
   let resources = {
     root: self.root,
     definitions: self.definitions,
@@ -135,32 +139,20 @@ fn SVGDocument::render(self : SVGDocument, ctx : RenderState) -> Unit {
     pattern_tiles: Map([]),
     surface_pool: RenderSurfacePool::new(),
   }
-  match self.root.view_box {
-    Some(vb) => {
-      let viewbox_transform = vb.get_transform(
+  let viewport = match self.root.view_box {
+    Some(vb) =>
+      vb.get_transform(
         ctx.width.to_double(),
         ctx.height.to_double(),
         self.root.preserve_aspect_ratio,
       )
-      render_node(
-        self.root,
-        viewbox_transform,
-        ctx,
-        resources,
-        true,
-        Color::black(),
-      )
-    }
-    None =>
-      render_node(
-        self.root,
-        Transform::identity(),
-        ctx,
-        resources,
-        true,
-        Color::black(),
-      )
+    None => Transform::identity()
   }
+  let transform = match view_transform {
+    Some(value) => viewport.multiply(value)
+    None => viewport
+  }
+  render_node(self.root, transform, ctx, resources, true, Color::black())
 }
 
 ///|

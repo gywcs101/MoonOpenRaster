@@ -209,12 +209,12 @@ try {
   }
   for (const variant of [
     'font', 'font-spans', 'font-stylesheet', 'font-stylesheet-pi',
-    'font-css-cascade', 'font-svg-resource', 'font-path', 'font-path-resource', 'font-position-list',
+    'font-css-cascade', 'font-svg-resource', 'font-path', 'font-path-resource', 'font-position-list', 'font-position-spans', 'font-position-cluster',
     'font-centered-spans', 'font-length-spacing', 'font-length-glyphs', 'font-letter-spacing',
     'font-weight', 'font-style', 'font-alternate-sources', 'font-relative-size', 'font-percentage-position', 'font-svg-outline',
     'font-svg-outline-resource', 'font-rtl', 'font-tref', 'font-tref-resource',
-    'font-vertical', 'font-vertical-centered', 'font-vertical-mixed', 'font-vertical-spans', 'font-vertical-substitution', 'font-rtl-spans', 'font-rtl-embed', 'font-glyph-fallback', 'font-glyph-fallback-all', 'font-unavailable-primary',
-    'sans-serif-generic', 'serif-generic', 'nested-image', 'nested-image-views',
+    'font-vertical', 'font-vertical-centered', 'font-vertical-mixed', 'font-vertical-spans', 'font-vertical-substitution', 'font-rtl-spans', 'font-rtl-embed', 'font-bidi-override', 'font-glyph-fallback', 'font-glyph-fallback-all', 'font-unavailable-primary',
+    'sans-serif-generic', 'serif-generic', 'nested-image', 'nested-image-views', 'nested-image-transform',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');
     const layerName = variant.startsWith('nested-image') ? 'Vector' : 'Text';
@@ -232,6 +232,43 @@ try {
     await page.locator('#file').setInputFiles(fontOutput); await idle();
     assert.equal(await page.locator('#name').inputValue(), layerName);
   }
+  // Open the SVG resource as its own document so Chromium independently loads
+  // its stylesheet, font and PNG, which image embeds restrict.
+  const reference = await browser.newPage({ viewport: { width: 30, height: 15 } });
+  const referenceArchive = path.join(root, '_build/svg-roundtrip/nested-image-transform-edited.ora');
+  const mimeTypes = { svg: 'image/svg+xml', css: 'text/css', png: 'image/png', ttf: 'font/ttf' };
+  const requested = new Set();
+  await reference.route('http://ora-reference.test/**', async route => {
+    const name = new URL(route.request().url()).pathname.slice(1);
+    const contentType = mimeTypes[name.split('.').at(-1)];
+    if (!contentType || !name.startsWith('data/')) return route.abort();
+    const body = execFileSync(process.env.PYTHON || 'python', [
+      '-c', 'import sys, zipfile; sys.stdout.buffer.write(zipfile.ZipFile(sys.argv[1]).read(sys.argv[2]))',
+      referenceArchive, name,
+    ]);
+    requested.add(name);
+    await route.fulfill({ contentType, body });
+  });
+  for (const [fragment, rgb, opaque] of [
+    ['left', [255, 0, 0], false],
+    ['svgView(viewBox(1,0,1,1))', [0, 255, 0], true],
+    ['svgView(viewBox(0,0,1,1);transform(translate(-1,0)))', [0, 255, 0], true],
+  ]) {
+    await reference.goto('http://ora-reference.test/data/icons/sub.svg#' + fragment, { waitUntil: 'networkidle' });
+    const screenshot = await reference.screenshot({ clip: { x: 0, y: 0, width: 1, height: 1 }, omitBackground: true });
+    const actual = JSON.parse(execFileSync(process.env.PYTHON || 'python', [
+      '-c', 'from PIL import Image; import io, sys, json; print(json.dumps(Image.open(io.BytesIO(sys.stdin.buffer.read())).convert("RGBA").getpixel((0, 0))))',
+    ], { input: screenshot, encoding: 'utf8' }));
+    assert.deepEqual(actual.slice(0, 3), rgb, fragment);
+    // Chromium hints the tiny font to a pixel grid. Check significant coverage
+    // for the glyph and exact opacity for the full-size PNG pixel.
+    if (opaque) assert.equal(actual[3], 255, fragment);
+    else assert.ok(actual[3] >= 128, fragment);
+  }
+  for (const name of ['data/icons/styles/paint.css', 'data/font/press.ttf', 'data/icons/pixel.png']) {
+    assert.ok(requested.has(name), name);
+  }
+  await reference.close();
   const nestedViews = path.join(root, '_build/svg-roundtrip');
   await page.locator('#file').setInputFiles(path.join(nestedViews, 'nested-image-views-input.ora'));
   await idle();

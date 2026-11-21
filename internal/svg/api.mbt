@@ -9,6 +9,7 @@ pub fn render_svg(
   width : Int32,
   height : Int32,
   options : RenderOptions,
+  view_transform~ : Transform? = None,
 ) -> RenderResult {
   let diagnostics : Array[RenderDiagnostic] = []
   match
@@ -21,7 +22,12 @@ pub fn render_svg(
     ) {
     Some(document) =>
       render_svg_document_with_diagnostics(
-        document, width, height, options, diagnostics,
+        document,
+        width,
+        height,
+        options,
+        diagnostics,
+        view_transform~,
       )
     None => {
       diagnostics.push({
@@ -53,6 +59,7 @@ fn render_svg_document_with_diagnostics(
   height : Int32,
   options : RenderOptions,
   diagnostics : Array[RenderDiagnostic],
+  view_transform~ : Transform? = None,
 ) -> RenderResult {
   let image = Image::new(width, height)
   let setter = make_image_compositing_setter(image)
@@ -62,7 +69,7 @@ fn render_svg_document_with_diagnostics(
     target_image: Some(image),
     diagnostics,
   }
-  document.render(ctx)
+  document.render(ctx, view_transform~)
   { image, diagnostics, }
 }
 

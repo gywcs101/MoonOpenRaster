@@ -82,6 +82,7 @@ def check_font_layer(cli, variant="font"):
     unavailable_primary = variant == "font-unavailable-primary"
     fallback_all = variant == "font-glyph-fallback-all"
     fallback = variant == "font-glyph-fallback" or fallback_all
+    bidi_override = variant == "font-bidi-override"
     bidi_embed = variant == "font-rtl-embed"
     bidi_spans = variant == "font-rtl-spans" or bidi_embed
     right_to_left = variant == "font-rtl" or bidi_spans
@@ -95,7 +96,8 @@ def check_font_layer(cli, variant="font"):
     external = variant == "font-svg-resource"
     path_external = variant == "font-path-resource"
     path_text = variant == "font-path" or path_external
-    positions = variant == "font-position-list"
+    positioned_spans = variant == "font-position-spans"
+    positions = variant == "font-position-list" or positioned_spans
     stem = variant
     source = OUT / f"{stem}-input.ora"
     edited = OUT / f"{stem}-edited.ora"
@@ -148,6 +150,8 @@ def check_font_layer(cli, variant="font"):
     if cascade:
         styles += " svg .label { font-family: Absent, OraTest; font-size: 8px; } text { fill: red; } path { fill: blue; }"
     text = 'A<tspan x="7" dx="1" y="7" dy="1"><tspan>中</tspan></tspan>' if spans else "A中"
+    if positioned_spans:
+        text = "A<tspan>中</tspan>"
     if path_text:
         definition = '<defs><path id="baseline" transform="translate(0 2)" d="M0 6 c2 0 5 0 8 0 s5 0 8 0"/></defs>'
         path_resource = f'<svg xmlns="http://www.w3.org/2000/svg">{definition}</svg>'
@@ -196,6 +200,8 @@ def check_font_layer(cli, variant="font"):
             font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
             span_direction = ' direction="ltr" unicode-bidi="embed"' if bidi_embed else ""
             text = f'אב<tspan font-family="Latin" fill="blue"{span_direction}>A</tspan>'
+    if bidi_override:
+        text = '<tspan style="direction: rtl; unicode-bidi: bidi-override">A中</tspan>'
     if vertical:
         position_attrs = 'x="5" y="4" writing-mode="tb-rl" text-anchor="middle"' if centered_vertical else 'x="5" y="0" writing-mode="tb" glyph-orientation-vertical="0"'
         font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
@@ -234,6 +240,8 @@ def check_font_layer(cli, variant="font"):
     red = (65535, 0, 0, 65535)
 
     def glyph_ink(x, y):
+        if bidi_override:
+            return (x < 6 and y >= 2) or (8 <= x < 12 and y >= 4)
         if vertical_substitution:
             return 3 <= x < 5 and y % 4 >= 2
         if fallback_all:
@@ -400,8 +408,49 @@ def check_svg_jpeg(cli):
     print("PASS: embedded and archived SVG JPEG match Pillow")
 
 
-def check_nested_svg_image(cli, *, views=False):
-    variant = "nested-image-views" if views else "nested-image"
+def check_position_cluster(cli):
+    font = (ROOT / "web/assets/inter.woff2").read_bytes()
+    reference = None
+    for variant, text, delta in (
+        ("font-position-composed", "ÁA", "0 4"),
+        ("font-position-cluster", "A&#x301;A", "0 0 4"),
+    ):
+        source = OUT / f"{variant}-input.ora"
+        edited = OUT / f"{variant}-edited.ora"
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="70" height="35">'
+            '<style>@font-face { font-family: Demo; src: url("face.woff2"); }</style>'
+            '<text font-family="Demo" font-size="22" fill="red" x="2" y="26" '
+            f'dx="{delta}" rotate="0">{text}</text></svg>'
+        ).encode()
+        raster = png(70, 35, 16, lambda x, y: BASE)
+        with zipfile.ZipFile(source, "w") as archive:
+            archive.writestr("mimetype", "image/openraster")
+            archive.writestr("stack.xml", '<image version="0.0.6" w="70" h="35"><stack><layer name="Text" src="data/label.svg"/><layer name="Raster" src="data/base.png"/></stack></image>')
+            archive.writestr("data/label.svg", svg)
+            archive.writestr("data/face.woff2", font)
+            archive.writestr("data/base.png", raster)
+            archive.writestr("mergedimage.png", raster)
+            archive.writestr("Thumbnails/thumbnail.png", png(1, 1, 8, lambda x, y: (0, 0, 0, 255)))
+        edited.unlink(missing_ok=True)
+        subprocess.run(["node", str(cli), "edit", str(source), str(edited), str(OUT / "font-edits.json")], check=True)
+        with zipfile.ZipFile(edited) as archive:
+            stack = ET.fromstring(archive.read("stack.xml")).find("stack")
+            assert stack[1].get("x") == "1"
+            assert archive.read(stack[0].get("src")) == svg
+            assert archive.read("data/face.woff2") == font
+            assert decode_rgba(archive.read(stack[1].get("src"))) == decode_rgba(raster)
+            merged = decode_rgba(archive.read("mergedimage.png"))
+            if reference is None:
+                assert (65535, 0, 0, 65535) in merged[3]
+                reference = merged
+            else:
+                assert merged == reference
+    print("PASS: decomposed accent and precomposed glyph keep following-character placement")
+
+
+def check_nested_svg_image(cli, *, views=False, transform=False):
+    variant = "nested-image-transform" if transform else "nested-image-views" if views else "nested-image"
     source = OUT / f"{variant}-input.ora"
     edited = OUT / f"{variant}-edited.ora"
     edited.unlink(missing_ok=True)
@@ -427,6 +476,10 @@ def check_nested_svg_image(cli, *, views=False):
             b'filter { color: #ff0000; } filter > feFlood { flood-color: currentColor; }'
         )
         resources["data/font/press.ttf"] = (ROOT / "fixtures/ora-test.ttf").read_bytes()
+    if transform:
+        resources["data/main.svg"] = resources["data/main.svg"].replace(
+            b"viewBox(1,0,1,1)", b"viewBox(0,0,1,1);transform(translate(-1,0))"
+        )
     with zipfile.ZipFile(source, "w") as archive:
         archive.writestr("mimetype", "image/openraster")
         archive.writestr("stack.xml", '<image version="0.0.6" w="3" h="1"><stack><layer name="Vector" src="data/main.svg"/><layer name="Raster" src="data/base.png"/></stack></image>')
@@ -545,17 +598,19 @@ def main():
     for variant in (
         "font", "embedded-font", "font-spans", "font-stylesheet", "font-stylesheet-pi",
         "font-css-cascade", "font-centered-spans", "font-length-spacing", "font-length-glyphs",
-        "font-svg-resource", "font-path", "font-path-resource", "font-position-list",
+        "font-svg-resource", "font-path", "font-path-resource", "font-position-list", "font-position-spans",
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
+        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-bidi-override", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
     ):
         check_font_layer(cli, variant)
+    check_position_cluster(cli)
     check_default_font(cli)
     check_svg_jpeg(cli)
     check_nested_svg_image(cli)
     check_nested_svg_image(cli, views=True)
+    check_nested_svg_image(cli, views=True, transform=True)
     if args.krita:
         probe_krita(args.krita)
     check_atlas(ATLAS / "atlas-goal.ora")

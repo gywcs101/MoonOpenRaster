@@ -462,10 +462,14 @@ fn svg_resource_options(
 }
 
 ///|
-fn svg_apply_image_view(root : @dom.Element, fragment : String) -> Unit raise {
+fn svg_apply_image_view(
+  root : @dom.Element,
+  fragment : String,
+) -> @vector.Transform? raise {
   guard svg_unescape(fragment, path=false) is Some(view) else {
     raise Unsupported("Invalid SVG image view fragment")
   }
+  let mut transform = None
   if view.has_prefix("svgView(") && view.has_suffix(")") {
     let applied : Map[String, Bool] = Map([])
     for spec in view[8:view.length() - 1].split(";") {
@@ -473,11 +477,16 @@ fn svg_apply_image_view(root : @dom.Element, fragment : String) -> Unit raise {
         raise Unsupported("Invalid SVG image view parameter")
       }
       let name = spec[:open].to_owned()
-      guard !applied.contains(name) &&
-        ["viewBox", "preserveAspectRatio"].contains(name) else {
-        raise Unsupported("Unsupported SVG image view parameter: " + name)
+      guard !applied.contains(name) else {
+        raise Unsupported("Duplicate SVG image view parameter: " + name)
       }
-      root.set_attr(name, spec[open + 1:spec.length() - 1].to_owned())
+      let value = spec[open + 1:spec.length() - 1].to_owned()
+      match name {
+        "viewBox" | "preserveAspectRatio" => root.set_attr(name, value)
+        "transform" => transform = Some(@vector.parse_transform(value))
+        "zoomAndPan" if value == "disable" || value == "magnify" => ()
+        _ => raise Unsupported("Unsupported SVG image view parameter: " + name)
+      }
       applied[name] = true
     }
   } else {
@@ -505,6 +514,7 @@ fn svg_apply_image_view(root : @dom.Element, fragment : String) -> Unit raise {
     }
   }
   ignore(svg_viewbox_size(root))
+  transform
 }
 
 ///|
@@ -517,12 +527,12 @@ fn svg_nested_image(
   fragment : String?,
 ) -> @vector.Image? raise {
   let (source, root) = svg_parse_source(data)
-  let source = match fragment {
+  let (source, view_transform) = match fragment {
     Some(fragment) => {
-      svg_apply_image_view(root, fragment)
-      @dom.dumps(ElementNode(root))
+      let transform = svg_apply_image_view(root, fragment)
+      (@dom.dumps(ElementNode(root)), transform)
     }
-    None => source
+    None => (source, None)
   }
   let (width, height) = svg_dimensions(root, None)
   guard images.reserve(width, height) else { return None }
@@ -534,7 +544,13 @@ fn svg_nested_image(
     size=Some((width, height)),
   )
   let options = svg_resource_options(name, entries, retained, images~)
-  let rendered = @vector.render_svg(prepared, width, height, options)
+  let rendered = @vector.render_svg(
+    prepared,
+    width,
+    height,
+    options,
+    view_transform~,
+  )
   guard rendered.diagnostics.is_empty() else { return None }
   Some(rendered.image)
 }

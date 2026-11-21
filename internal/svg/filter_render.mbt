@@ -977,9 +977,6 @@ fn filter_primitive_region(
   graph : FilterGraph,
   target : BoundingBox,
   defaults : BoundingBox,
-  origin_x : Int32,
-  origin_y : Int32,
-  transform : Transform,
 ) -> BoundingBox {
   if graph.primitive_units is ObjectBoundingBox {
     fn dimension(
@@ -1004,14 +1001,6 @@ fn filter_primitive_region(
     )
     return BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0))
   }
-  let device = Transform::translate(
-    -origin_x.to_double(),
-    -origin_y.to_double(),
-  ).multiply(transform)
-  if !device.is_invertible() {
-    return defaults
-  }
-  let local_defaults = device.inverse().apply_bbox(defaults)
   let (w, h) = graph.viewport
   fn length(
     spec : (Double, Bool)?,
@@ -1023,13 +1012,11 @@ fn filter_primitive_region(
       None => fallback
     }
   }
-  let x = length(region.x, w, local_defaults.min_x)
-  let y = length(region.y, h, local_defaults.min_y)
-  let width = length(region.width, w, local_defaults.width())
-  let height = length(region.height, h, local_defaults.height())
-  device.apply_bbox(
-    BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0)),
-  )
+  let x = length(region.x, w, defaults.min_x)
+  let y = length(region.y, h, defaults.min_y)
+  let width = length(region.width, w, defaults.width())
+  let height = length(region.height, h, defaults.height())
+  BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0))
 }
 
 ///|
@@ -1054,6 +1041,40 @@ fn FilterGraphPrimitive::region_inputs(
 }
 
 ///|
+fn clip_affine_filter(
+  source : Image,
+  rect : BoundingBox,
+  transform : Transform,
+) -> Image {
+  let contours = clip_shape_contours(
+    Rect(
+      x=rect.min_x,
+      y=rect.min_y,
+      width=rect.width(),
+      height=rect.height(),
+      rx=0.0,
+      ry=0.0,
+    ),
+    transform,
+  )
+  let mask = build_coverage_mask(contours, NonZero, source.width, source.height)
+  let clipped = Image::new(source.width, source.height)
+  for y in mask.origin_y..<(mask.origin_y + mask.height) {
+    for x in mask.origin_x..<(mask.origin_x + mask.width) {
+      let coverage = mask.get_device(x, y)
+      if coverage > 0 {
+        clipped.set_pixel(
+          x,
+          y,
+          apply_coverage(source.get_pixel(x, y), coverage),
+        )
+      }
+    }
+  }
+  clipped
+}
+
+///|
 fn evaluate_filter_graph(
   graph : FilterGraph,
   source : Image,
@@ -1074,25 +1095,24 @@ fn evaluate_filter_graph(
   if rect.width() <= 0.0 || rect.height() <= 0.0 {
     return Image::new(source.width, source.height)
   }
-  let device_region = transform.apply_bbox(rect)
+  let raster_transform = Transform::translate(
+    -origin_x.to_double(),
+    -origin_y.to_double(),
+  ).multiply(transform)
+  let affine_clip = (transform.b != 0.0 || transform.c != 0.0) &&
+    (transform.a != 0.0 || transform.d != 0.0)
   let target_bounds = {
     min_x: target_bounds.min_x - origin_x.to_double(),
     min_y: target_bounds.min_y - origin_y.to_double(),
     max_x: target_bounds.max_x - origin_x.to_double(),
     max_y: target_bounds.max_y - origin_y.to_double(),
   }
-  let filter_bounds : BoundingBox = {
-    min_x: device_region.min_x - origin_x.to_double(),
-    min_y: device_region.min_y - origin_y.to_double(),
-    max_x: device_region.max_x - origin_x.to_double(),
-    max_y: device_region.max_y - origin_y.to_double(),
-  }
   let source_alpha = filter_source_alpha(source)
   let named : Map[String, Image] = Map([])
   let paints : Map[String, Image] = Map([])
   let named_regions : Map[String, BoundingBox] = Map([])
   let mut previous = source
-  let mut previous_region = filter_bounds
+  let mut previous_region = rect
   let (scale_x, scale_y) = transform.get_scale()
   fn scaled_x(value : Double) -> Double {
     match graph.primitive_units {
@@ -1130,16 +1150,21 @@ fn evaluate_filter_graph(
   }
   for i, primitive in graph.primitives {
     let linear_rgb = graph.linear_color.get(i).unwrap_or(true)
-    fn referenced_region(name : String) -> BoundingBox {
-      if name == "" {
-        previous_region
-      } else {
-        named_regions.get(name).unwrap_or(filter_bounds)
+    fn referenced_local(name : String) -> BoundingBox {
+      match name {
+        "" => previous_region
+        "SourceGraphic"
+        | "SourceAlpha"
+        | "FillPaint"
+        | "StrokePaint"
+        | "BackgroundImage"
+        | "BackgroundAlpha" => rect
+        _ => named_regions.get(name).unwrap_or(rect)
       }
     }
     let mut input_region : BoundingBox? = None
     for name in primitive.region_inputs() {
-      let bounds = referenced_region(name)
+      let bounds = referenced_local(name)
       input_region = Some(
         match input_region {
           Some(combined) => combined.union(bounds)
@@ -1147,20 +1172,19 @@ fn evaluate_filter_graph(
         },
       )
     }
-    let defaults = input_region.unwrap_or(filter_bounds)
-    let requested = match graph.primitive_regions.get(i) {
+    let defaults = input_region.unwrap_or(rect)
+    let requested_local = match graph.primitive_regions.get(i) {
       Some(Some(region)) =>
-        filter_primitive_region(
-          region, graph, target_bounds, defaults, origin_x, origin_y, transform,
-        )
+        filter_primitive_region(region, graph, target_local, defaults)
       _ => defaults
     }
-    let region : BoundingBox = {
-      min_x: requested.min_x.max(filter_bounds.min_x),
-      min_y: requested.min_y.max(filter_bounds.min_y),
-      max_x: requested.max_x.min(filter_bounds.max_x),
-      max_y: requested.max_y.min(filter_bounds.max_y),
+    let local_region : BoundingBox = {
+      min_x: requested_local.min_x.max(rect.min_x),
+      min_y: requested_local.min_y.max(rect.min_y),
+      max_x: requested_local.max_x.min(rect.max_x),
+      max_y: requested_local.max_y.min(rect.max_y),
     }
+    let region = raster_transform.apply_bbox(local_region)
     let (output, result_name) = match primitive {
       GraphColorMatrix(input~, result~, matrix~) =>
         (
@@ -1350,7 +1374,10 @@ fn evaluate_filter_graph(
       }
       GraphTile(input~, result~) =>
         (
-          tile_filter_image(input_surface(input), referenced_region(input)),
+          tile_filter_image(
+            input_surface(input),
+            raster_transform.apply_bbox(referenced_local(input)),
+          ),
           result,
         )
       GraphImage(result~, href~, aspect~) => {
@@ -1361,7 +1388,7 @@ fn evaluate_filter_graph(
             source.width,
             source.height,
             href,
-            requested,
+            raster_transform.apply_bbox(requested_local),
             aspect,
             image_resolver,
           )
@@ -1427,7 +1454,35 @@ fn evaluate_filter_graph(
           result,
         )
     }
-    let clipped = if region.min_x > 0.0 ||
+    // A pass-through or alpha-preserving color adjustment keeps the input's
+    // clipped edges. Multiplying by the same coverage again darkens them.
+    let preserves_coverage = match primitive {
+      GraphOffset(input~, dx=0.0, dy=0.0, ..)
+      | GraphGaussianBlur(input~, radius_x=0.0, radius_y=0.0, ..)
+      | GraphComponentTransfer(input~, alpha=TransferIdentity, ..) =>
+        Some(input)
+      GraphColorMatrix(input~, matrix~, ..) if matrix[15] == 0.0 &&
+        matrix[16] == 0.0 &&
+        matrix[17] == 0.0 &&
+        matrix[18] == 1.0 &&
+        matrix[19] == 0.0 => Some(input)
+      _ => None
+    }
+    let reuses_clip = match preserves_coverage {
+      Some(input) if (input == "" && i > 0) || named_regions.contains(input) => {
+        let bounds = referenced_local(input)
+        local_region.min_x <= bounds.min_x &&
+        local_region.min_y <= bounds.min_y &&
+        local_region.max_x >= bounds.max_x &&
+        local_region.max_y >= bounds.max_y
+      }
+      _ => false
+    }
+    let clipped = if local_region.width() <= 0.0 || local_region.height() <= 0.0 {
+      Image::new(output.width, output.height)
+    } else if affine_clip && !reuses_clip {
+      clip_affine_filter(output, local_region, raster_transform)
+    } else if region.min_x > 0.0 ||
       region.min_y > 0.0 ||
       region.max_x < output.width.to_double() ||
       region.max_y < output.height.to_double() {
@@ -1436,51 +1491,20 @@ fn evaluate_filter_graph(
       output
     }
     previous = clipped
-    previous_region = region
-    if result_name.length() > 0 {
-      named.set(result_name, clipped)
-      named_regions.set(result_name, region)
-    }
-  }
-  if (transform.b != 0.0 || transform.c != 0.0) &&
-    (transform.a != 0.0 || transform.d != 0.0) {
-    let raster_transform = Transform::translate(
-      -origin_x.to_double(),
-      -origin_y.to_double(),
-    ).multiply(transform)
-    let contours = clip_shape_contours(
-      Rect(
-        x=rect.min_x,
-        y=rect.min_y,
-        width=rect.width(),
-        height=rect.height(),
-        rx=0.0,
-        ry=0.0,
-      ),
-      raster_transform,
-    )
-    let mask = build_coverage_mask(
-      contours,
-      NonZero,
-      previous.width,
-      previous.height,
-    )
-    let clipped = Image::new(previous.width, previous.height)
-    for y in mask.origin_y..<(mask.origin_y + mask.height) {
-      for x in mask.origin_x..<(mask.origin_x + mask.width) {
-        let coverage = mask.get_device(x, y)
-        if coverage > 0 {
-          clipped.set_pixel(
-            x,
-            y,
-            apply_coverage(previous.get_pixel(x, y), coverage),
-          )
-        }
+    previous_region = local_region
+    match result_name {
+      ""
+      | "SourceGraphic"
+      | "SourceAlpha"
+      | "FillPaint"
+      | "StrokePaint"
+      | "BackgroundImage"
+      | "BackgroundAlpha" => ()
+      _ => {
+        named.set(result_name, clipped)
+        named_regions.set(result_name, local_region)
       }
     }
-    return clipped
   }
   previous
 }
-
-///|

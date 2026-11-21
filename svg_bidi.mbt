@@ -2,6 +2,45 @@
 priv struct SvgBidiPiece {
   style : Map[String, String]
   glyphs : Array[@dom.Node]
+  override_direction : Bool
+}
+
+///|
+fn svg_bidi_mode(
+  element : @dom.Element,
+  computed : @css.CascadedValues,
+) -> String {
+  computed
+  .get_value("unicode-bidi")
+  .unwrap_or(element.attr("unicode-bidi").unwrap_or("normal"))
+}
+
+///|
+fn svg_has_bidi_mode(
+  element : @dom.Element,
+  selector : @css.Element,
+  sheets : Array[@css.Stylesheet],
+) -> Bool {
+  if svg_bidi_mode(element, svg_text_cascade(element, selector, sheets)) !=
+    "normal" {
+    return true
+  }
+  element
+  .child_elements()
+  .any(child => {
+    let child_selector = svg_text_selector(child, Some(selector))
+    svg_has_bidi_mode(child, child_selector, sheets)
+  })
+}
+
+///|
+fn svg_bidi_control(rtl : Bool, override_direction : Bool) -> Char {
+  match (rtl, override_direction) {
+    (true, true) => '\u{202e}'
+    (false, true) => '\u{202d}'
+    (true, false) => '\u{202b}'
+    (false, false) => '\u{202a}'
+  }
 }
 
 ///|
@@ -25,24 +64,28 @@ fn svg_bidi_glyphs(
     computed : @css.CascadedValues,
     style : Map[String, String],
     selector : @css.Element,
+    parent_override : Bool,
   ) -> (() -> Array[@dom.Node]) raise {
-    let bidi_mode = computed
-      .get_value("unicode-bidi")
-      .unwrap_or(element.attr("unicode-bidi").unwrap_or("normal"))
-    let embedded = bidi_mode == "embed"
-    guard (bidi_mode == "normal" || embedded) && !element.has_attr("textLength") else {
+    let bidi_mode = svg_bidi_mode(element, computed)
+    let override_direction = match bidi_mode {
+      "normal" => parent_override
+      "embed" => false
+      "bidi-override" => true
+      _ => raise Unsupported("Unsupported SVG unicode-bidi value: " + bidi_mode)
+    }
+    guard !element.has_attr("textLength") else {
       raise Unsupported(
-        "Unsupported bidi override or explicit length in SVG text spans",
+        "Explicit length in SVG bidirectional text spans is unsupported",
       )
     }
+    let embedded = bidi_mode != "normal"
     if embedded {
       owners.push(-1)
       text.write_char(
-        if style.get("direction") == Some("rtl") {
-          '\u{202b}'
-        } else {
-          '\u{202a}'
-        },
+        svg_bidi_control(
+          style.get("direction") == Some("rtl"),
+          override_direction,
+        ),
       )
     }
     let children : Array[() -> Array[@dom.Node]] = []
@@ -55,7 +98,7 @@ fn svg_bidi_glyphs(
             owners.push(pieces.length())
             text.write_char(character)
           }
-          pieces.push({ style, glyphs, })
+          pieces.push({ style, glyphs, override_direction, })
           children.push(() => glyphs)
         }
         ElementNode(span) => {
@@ -69,7 +112,9 @@ fn svg_bidi_glyphs(
               "Vertical SVG spans within horizontal text are unsupported",
             )
           }
-          let nested = collect(span, computed, style, selector)
+          let nested = collect(
+            span, computed, style, selector, override_direction,
+          )
           children.push(() => {
             [
               ElementNode(
@@ -100,6 +145,7 @@ fn svg_bidi_glyphs(
     svg_text_cascade(element, selector, sheets),
     style,
     selector,
+    false,
   )
   guard owners.length() <= 4096 else {
     raise Unsupported("SVG text exceeds the shaping budget")
@@ -142,7 +188,12 @@ fn svg_bidi_glyphs(
     if painted[run] is Some(_) {
       continue
     }
-    let (piece, rtl, text) = runs[run]
+    let (piece, rtl, raw_text) = runs[run]
+    let text = if pieces[piece].override_direction {
+      svg_bidi_control(rtl, true).to_string() + raw_text + "\u{202c}"
+    } else {
+      raw_text
+    }
     let style = pieces[piece].style.copy()
     style["direction"] = if rtl { "rtl" } else { "ltr" }
     style["writing-mode"] = "horizontal-tb"

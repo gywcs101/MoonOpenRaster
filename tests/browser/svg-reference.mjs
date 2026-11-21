@@ -145,6 +145,16 @@ const cases = {
     '<defs><filter id="f" x="0" y="0" width="1" height="1">' +
     '<feFlood flood-color="red"/></filter></defs>' +
     '<rect x="1" y="1" width="4" height="3" transform="matrix(1 .5 .5 1 3 2)" fill="blue" filter="url(#f)"/>'),
+  'sheared primitive subregion carried through a named stage': wrap(
+    '<defs>' + filter('<feFlood x="1" y="1" width="4" height="3" flood-color="red" result="ink"/>' +
+      '<feOffset in="ink" dx="0"/>' +
+      '<feColorMatrix type="saturate" values="1"/>' +
+      '<feComponentTransfer><feFuncA type="identity"/></feComponentTransfer>') + '</defs>' +
+    '<rect width="12" height="10" transform="matrix(1 .5 .5 1 3 2)" fill="blue" filter="url(#f)"/>'),
+  'sheared object-relative primitive subregion': wrap(
+    '<defs><filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="16" height="12" primitiveUnits="objectBoundingBox">' +
+    '<feFlood x="0" y="0" width="1" height="1" flood-color="red"/></filter></defs>' +
+    '<rect x="1" y="1" width="4" height="3" transform="matrix(1 .5 .5 1 3 2)" fill="blue" filter="url(#f)"/>'),
   'scaled user-space filter primitive region': wrap(
     '<defs>' + filter('<feFlood x="1" y="1" width="4" height="3" flood-color="red"/>') + '</defs>' +
     '<rect width="12" height="10" transform="translate(3 2) scale(2)" fill="blue" filter="url(#f)"/>'),
