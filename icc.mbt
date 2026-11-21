@@ -142,6 +142,7 @@ fn icc_interpolate_grid(
   input : Array[Double],
   grid : Array[Int32],
   sample : (Int32) -> Double,
+  outputs~ : Int32 = 3,
 ) -> Array[Double] {
   let fractions : Array[(Double, Int32)] = []
   let mut cell = 0
@@ -155,13 +156,13 @@ fn icc_interpolate_grid(
     stride *= grid[channel]
   }
   fractions.sort_by((a, b) => b.0.compare(a.0))
-  Array::makei(3, channel => {
+  Array::makei(outputs, channel => {
     let mut point = cell
-    let mut previous = sample(point * 3 + channel)
+    let mut previous = sample(point * outputs + channel)
     let mut value = previous
     for (fraction, step) in fractions {
       point += step
-      let next = sample(point * 3 + channel)
+      let next = sample(point * outputs + channel)
       value += (next - previous) * fraction
       previous = next
     }
@@ -437,10 +438,23 @@ fn icc_rgb_transform(
     }
     tags[tag] = data[offset.to_int():(offset + size).to_int()]
   }
-  if [b"D2B0", b"D2B1", b"D2B2", b"D2B3"].any(tag => tags.contains(tag)) {
-    raise Unsupported(
-      "ICC multi-process element color conversion is unsupported",
-    )
+  // The pipeline always uses the media-relative colorimetric intent.
+  if tags.get(b"D2B1") is Some(mpe) {
+    let has_matrix_fallback = if gray {
+      tags.contains(b"kTRC")
+    } else {
+      [b"rTRC", b"gTRC", b"bTRC", b"rXYZ", b"gXYZ", b"bXYZ"].all(tag => {
+        tags.contains(tag)
+      })
+    }
+    try icc_mpe_transform(mpe, gray, lab) catch {
+      Unsupported(_) if tags.contains(b"A2B1") ||
+        tags.contains(b"A2B0") ||
+        (!lab && has_matrix_fallback) => ()
+      error => raise error
+    } noraise {
+      transform => return transform
+    }
   }
   let lookup = match tags.get(b"A2B1") {
     Some(lut) => Some(lut)
@@ -452,7 +466,7 @@ fn icc_rgb_transform(
     }
     return icc_lut_transform(lut, gray, lab)
   }
-  if lab || tags.contains(b"A2B2") {
+  if lab {
     raise Unsupported("Unsupported ICC color conversion tags")
   }
   fn tag(key : Bytes) -> BytesView raise OraError {

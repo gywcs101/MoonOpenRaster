@@ -118,6 +118,9 @@ fn normalize_raster(
         result.sample(i + 1).to_double() / maximum,
         result.sample(i + 2).to_double() / maximum,
       )
+      guard r >= 0.0 && r <= 1.0 && g >= 0.0 && g <= 1.0 && b >= 0.0 && b <= 1.0 else {
+        raise InvalidDocument("PNG color transform produced an invalid sample")
+      }
       result.put_sample(i, (r * maximum + 0.5).to_int())
       result.put_sample(i + 1, (g * maximum + 0.5).to_int())
       result.put_sample(i + 2, (b * maximum + 0.5).to_int())

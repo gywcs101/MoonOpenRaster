@@ -232,7 +232,7 @@ try {
     await page.locator('#file').setInputFiles(fontOutput); await idle();
     assert.equal(await page.locator('#name').inputValue(), layerName);
   }
-  for (const variant of ['icc-parametric', 'mab-xyz', 'cicp-p3', 'chrm-p3']) {
+  for (const variant of ['icc-parametric', 'mab-xyz', 'mpet-curves', 'mpet-fallback', 'mpet-rgba16', 'cicp-p3', 'chrm-p3']) {
     const fixtures = path.join(root, '_build/rgba16');
     await page.locator('#file').setInputFiles(path.join(fixtures, variant + '.ora')); await idle();
     assert.equal(await page.locator('#name').inputValue(), 'Profiled');

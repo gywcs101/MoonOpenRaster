@@ -100,7 +100,7 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 ## 兼容性与限制
 
 - 交付目标为 **OpenRaster 0.0.6 Full baseline**，当前已验证的栅格编辑流程包括 8 位与 16 位每通道的 sRGB 图层、混合位深、嵌套组、负偏移及 20 种基线合成操作。各图层按原精度保存，含 16 位层时重新生成 16 位合成，归档缩略图为 8 位。
-- 未标记色彩的 PNG 按 sRGB 处理。仓库版本还可将矩阵型与受支持的查找表 ICC、PNG gamma 和色度，以及常见全范围 SDR cICP 转为 sRGB。保存 ORA 时保留转换过的原图层 PNG。其他色彩配置与 SVG 限制见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
+- 未标记色彩的 PNG 按 sRGB 处理。仓库版本还可将受支持的矩阵型、查找表型和多阶段浮点 ICC、PNG gamma 和色度，以及常见全范围 SDR cICP 转为 sRGB。保存 ORA 时保留转换过的原图层 PNG。其他色彩配置与 SVG 限制见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
 - `svg:plus` 遵循 W3C 规则，和 Krita Addition 可能有像素差异。Krita 5.3.4 可重开本项目的案例，但实测其 ORA 重存会将图层变回 8 位。
 - 单图和画布最多 16,777,216 像素、单边 16,384，解码图层总预算为 128 MiB。16 位 RGBA 每像素占 8 字节，文件还受归档和渲染缓冲区限制。详见 [兼容矩阵](docs/COMPATIBILITY.zh-CN.md)。
 

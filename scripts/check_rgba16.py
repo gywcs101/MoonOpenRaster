@@ -173,6 +173,35 @@ def check_input_variants(cli):
             assert decode_rgba(output.read_bytes()) == (1, 1, bits, [expected])
     print("PASS: palette transparency, canonical sRGB markers, linear gamma and untrusted ICC")
 
+def check_float_icc_rgba16(cli, profile):
+    colors = [(25103, 31309, 46011, 52031), (50003, 34019, 14011, 63029), (10001, 18003, 26005, 65535)]
+    # LittleCMS 2.16: TYPE_RGBA_16, standard sRGB destination, media-relative
+    # colorimetric intent, original alpha. Keep the value prior to conversion
+    # as a separate byte check so an 8-bit round trip cannot pass.
+    reference = [(41723, 47686, 56877, 52031), (60020, 48854, 30091, 63029), (25604, 37465, 44103, 65535)]
+    layer = png(3, 1, 16, lambda x, y: colors[x], chunk(b"iCCP", b"Float ICC\0\0" + zlib.compress(profile)))
+    source = OUT / "mpet-rgba16.ora"
+    output = OUT / "mpet-rgba16-edited.ora"
+    output.unlink(missing_ok=True)
+    pixels = [*reference, (0, 0, 0, 0)]
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("mimetype", "image/openraster")
+        archive.writestr("stack.xml", '<image version="0.0.6" w="4" h="1"><stack><layer name="Profiled" src="data/input.png"/></stack></image>')
+        archive.writestr("data/input.png", layer)
+        archive.writestr("mergedimage.png", png(4, 1, 16, lambda x, y: pixels[x]))
+        archive.writestr("Thumbnails/thumbnail.png", png(4, 1, 8, lambda x, y: tuple((c + 128) // 257 for c in pixels[x])))
+    subprocess.run(["node", str(cli), "edit", str(source), str(output), str(OUT / "icc-edit.json")], check=True)
+    with zipfile.ZipFile(output) as archive:
+        resource = ET.fromstring(archive.read("stack.xml")).find("./stack/layer")
+        assert resource.get("x") == "1" and archive.read(resource.get("src")) == layer
+        width, height, bits, rendered = decode_rgba(archive.read("mergedimage.png"))
+        assert (width, height, bits) == (4, 1, 16)
+        assert rendered[0] == (0, 0, 0, 0)
+        maximum = max(abs(a - b) for actual, expected in zip(rendered[1:], reference) for a, b in zip(actual, expected))
+        assert maximum <= 8 and [value[3] for value in rendered[1:]] == [value[3] for value in colors], maximum
+    print(f"PASS: original RGBA16 ICC layer retained; maximum channel difference against LittleCMS 2.16: {maximum}")
+
+
 def check_icc_profiles(cli):
     from io import BytesIO
     from PIL import Image, ImageCms
@@ -276,9 +305,47 @@ def check_icc_profiles(cli):
     lookup_tags[b"A2B0"] = payload
     lookup_tags[b"A2B1"] = payload
     cases.append(("mab-xyz", build_profile(lookup_tags), b""))
+    # A floating-point affine RGB-to-XYZ transform with a nonzero offset.
+    matrix = [wide_rgb[tag][axis] for axis in range(3) for tag in wide_rgb]
+    stage = b"matf" + bytes(4) + struct.pack(">HH12f", 3, 3, *matrix, .003, .005, 0)
+    mpe = b"mpet" + bytes(4) + struct.pack(">HHIII", 3, 3, 1, 24, len(stage)) + stage
+    matrix_profile = build_profile({**tags, b"D2B1": mpe})
+    cases.append(("mpet-xyz", matrix_profile, b""))
+    future = mpe[:24] + b"test" + stage[4:]
+    cases.append(("mpet-fallback", build_profile({**tags, b"D2B1": future}), b""))
+    cases.append(("mpet-other-intent", build_profile({**tags, b"D2B2": mpe}), b""))
+    points = [
+        sum(v * wide_rgb[tag][axis] for v, tag in zip((r, g, b), wide_rgb))
+        for r in (0, 1) for g in (0, .5, 1) for b in (0, 1) for axis in range(3)
+    ]
+    clut = b"clut" + bytes(4) + struct.pack(">HH", 3, 3) + bytes((2, 3, 2)) + bytes(13)
+    clut += struct.pack(f">{len(points)}f", *points)
+    adjust = b"matf" + bytes(4) + struct.pack(">HH12f", 3, 3, 1, 0, 0, 0, 1, 0, 0, 0, 1, .003, .005, 0)
+    mpe_clut = b"mpet" + bytes(4) + struct.pack(">HHIIIII", 3, 3, 2, 32, len(clut), 32 + len(clut), len(adjust))
+    cases.append(("mpet-clut", build_profile({**tags, b"D2B1": mpe_clut + clut + adjust}), b""))
+    def formula(kind, *params):
+        return b"parf" + bytes(4) + struct.pack(">HH", kind, 0) + struct.pack(f">{len(params)}f", *params)
+
+    identity = formula(0, 1, 1, 0, 0)
+    sampled = b"samf" + bytes(4) + struct.pack(">I2f", 2, .3, 1)
+    curve_header = b"curf" + bytes(4)
+    segmented = curve_header + struct.pack(">HH2f", 3, 0, 0, 1) + identity + sampled + identity
+    logarithmic = curve_header + struct.pack(">HH", 1, 0) + formula(1, 1, .8, 1, 1, 0)
+    exponential = curve_header + struct.pack(">HH", 1, 0) + formula(2, 1, 2, .8, 0, -1)
+    curves = (segmented, logarithmic, exponential)
+    positions = [(36 + sum(map(len, curves[:i])), len(curve)) for i, curve in enumerate(curves)]
+    cvst = b"cvst" + bytes(4) + struct.pack(">HH", 3, 3)
+    cvst += b"".join(struct.pack(">II", *pair) for pair in positions) + b"".join(curves)
+    mpe_curves = b"mpet" + bytes(4) + struct.pack(">HHIIIII", 3, 3, 2, 32, len(cvst), 32 + len(cvst), len(stage))
+    cases.append(("mpet-curves", build_profile({**tags, b"D2B1": mpe_curves + cvst + stage}), b""))
+    compared = {}
     for variant, profile, extra in cases:
-        source_profile = ImageCms.ImageCmsProfile(BytesIO(profile))
+        # For an unknown element, compare the ICC.1 fallback against LittleCMS
+        # using the same matrix/TRCs without the unknown stage.
+        reference_profile = build_profile(tags) if variant == "mpet-fallback" else profile
+        source_profile = ImageCms.ImageCmsProfile(BytesIO(reference_profile))
         ref = ImageCms.profileToProfile(image, source_profile, srgb, renderingIntent=1, outputMode="RGBA")
+        compared[variant] = ref.tobytes()
         metadata = extra or chunk(b"iCCP", b"Test RGB\0\0" + zlib.compress(profile))
         layer = png(len(values), 1, 8, lambda x, y: values[x], metadata)
         source = OUT / f"{variant}.ora"
@@ -304,7 +371,12 @@ def check_icc_profiles(cli):
             for actual, reference in zip(rendered[3][1:], ref.getdata()):
                 assert max(abs(a - b) for a, b in zip(actual, reference)) <= 1, (variant, actual, reference)
                 assert actual[3] == reference[3]
-    print("PASS: matrix and LUT ICC, P3 cICP and cHRM match LittleCMS and retain original PNG bytes")
+    assert compared["mpet-xyz"] == compared["mpet-clut"]
+    assert compared["mpet-xyz"] != compared["mpet-other-intent"]
+    assert compared["mpet-fallback"] == compared["mpet-other-intent"]
+    print("PASS: ICC matrix, LUT and floating-point transforms match LittleCMS and retain original PNG bytes")
+    print("PASS: P3 cICP and cHRM conversions match LittleCMS")
+    check_float_icc_rgba16(cli, matrix_profile)
 
 
 def main():
