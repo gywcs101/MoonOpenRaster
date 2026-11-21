@@ -220,7 +220,7 @@ try {
     'font-centered-spans', 'font-length-spacing', 'font-length-glyphs', 'font-letter-spacing',
     'font-weight', 'font-style', 'font-alternate-sources', 'font-relative-size', 'font-percentage-position', 'font-svg-outline',
     'font-svg-outline-resource', 'font-rtl', 'font-tref', 'font-tref-resource',
-    'font-vertical', 'font-vertical-centered', 'font-vertical-mixed', 'font-vertical-spans', 'font-vertical-substitution', 'font-rtl-spans', 'font-rtl-embed', 'font-rtl-chunks', 'font-rtl-offsets', 'font-bidi-override', 'font-glyph-fallback', 'font-glyph-fallback-all', 'font-unavailable-primary',
+    'font-vertical', 'font-vertical-centered', 'font-vertical-mixed', 'font-vertical-spans', 'font-vertical-substitution', 'font-rtl-spans', 'font-rtl-embed', 'font-rtl-chunks', 'font-rtl-offsets', 'font-rtl-styled-chunks', 'font-bidi-override', 'font-glyph-fallback', 'font-glyph-fallback-all', 'font-unavailable-primary',
     'sans-serif-generic', 'serif-generic', 'nested-image', 'nested-image-views', 'nested-image-transform', 'nested-image-viewport',
   ]) {
     const fixtureDir = path.join(root, '_build/svg-roundtrip');

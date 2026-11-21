@@ -85,7 +85,8 @@ def check_font_layer(cli, variant="font"):
     bidi_override = variant == "font-bidi-override"
     bidi_embed = variant == "font-rtl-embed"
     bidi_spans = variant == "font-rtl-spans" or bidi_embed
-    bidi_chunks = variant == "font-rtl-chunks"
+    bidi_spaced_spans = variant == "font-rtl-styled-chunks"
+    bidi_chunks = variant == "font-rtl-chunks" or bidi_spaced_spans
     bidi_offsets = variant == "font-rtl-offsets"
     right_to_left = variant == "font-rtl" or bidi_spans or bidi_chunks or bidi_offsets
     vertical_substitution = variant == "font-vertical-substitution"
@@ -206,6 +207,10 @@ def check_font_layer(cli, variant="font"):
             font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
             span_direction = ' direction="ltr" unicode-bidi="embed"' if bidi_embed else ""
             text = f'אב<tspan font-family="Latin" fill="blue"{span_direction}>A</tspan>'
+    if bidi_spaced_spans:
+        position_attrs = 'direction="rtl" xml:lang="he"'
+        text = '<tspan x="16" y="8">א</tspan><tspan x="7" y="7" class="ink">ב</tspan>'
+        inline_style = inline_style.replace("</style>", ".ink { fill: blue; }</style>")
     if bidi_override:
         text = '<tspan style="direction: rtl; unicode-bidi: bidi-override">A中</tspan>'
     if vertical:
@@ -275,7 +280,7 @@ def check_font_layer(cli, variant="font"):
         return (x < 4 and y >= 4) or (8 <= x < 14 and y >= 2)
 
     def ink(x, y, background):
-        if bidi_spans and 4 <= x < 6 and y >= 6:
+        if (bidi_spans and 4 <= x < 6 and y >= 6) or (bidi_spaced_spans and x < 5 and 1 <= y < 7):
             return (0, 0, 65535, 65535)
         return red if glyph_ink(x, y) else background
 
@@ -637,7 +642,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-rtl-chunks", "font-rtl-offsets", "font-bidi-override", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
+        "font-vertical", "font-vertical-centered", "font-vertical-mixed", "font-vertical-spans", "font-vertical-substitution", "font-rtl-spans", "font-rtl-embed", "font-rtl-chunks", "font-rtl-offsets", "font-rtl-styled-chunks", "font-bidi-override", "font-glyph-fallback", "font-glyph-fallback-all", "font-unavailable-primary",
     ):
         check_font_layer(cli, variant)
     check_position_cluster(cli)

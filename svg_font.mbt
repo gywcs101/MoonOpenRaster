@@ -1091,10 +1091,35 @@ fn svg_glyph_group(
   let mut children : Array[@dom.Node] = []
   let anchor = style.get("text-anchor").unwrap_or("start")
   let has_bidi_mode = !vertical && svg_has_bidi_mode(element, selector, sheets)
-  if has_bidi_mode ||
+  let child_elements = element.child_elements()
+  let text_node : @dom.Node = ElementNode(element)
+  // Fully positioned sibling runs each start with their own anchor and bidi
+  // ordering. Recursing also keeps their authored selectors and paint styles.
+  let independent_spans = !explicit &&
+    !vertical &&
+    path is None &&
+    !child_elements.is_empty() &&
+    svg_bidi_mode(element, svg_text_cascade(element, selector, sheets)) ==
+    "normal" &&
+    text_node
+    .children()
+    .all(child => {
+      match child {
+        ElementNode(span) =>
+          ["tspan", "tref", "a"].contains(@dom.local_of(span.name)) &&
+          span.has_attr("x") &&
+          span.has_attr("y")
+        TextNode(value) | CDataNode(value) => value[:].trim().is_empty()
+        _ => true
+      }
+    })
+  if !independent_spans &&
     (
-      !element.child_elements().is_empty() &&
-      (rtl || @bidi.requires_bidi(element.text()))
+      has_bidi_mode ||
+      (
+        !child_elements.is_empty() &&
+        (rtl || @bidi.requires_bidi(element.text()))
+      )
     ) {
     if !explicit && path is None && svg_unpositioned_spans(element) {
       let children = svg_bidi_glyphs(
@@ -1176,7 +1201,7 @@ fn svg_glyph_group(
     }
     cursor.val = (next_x, next_y)
   } else {
-    let anchored = anchor != "start"
+    let anchored = anchor != "start" && !independent_spans
     if anchored && (path is Some(_) || !svg_unpositioned_spans(element)) {
       raise Unsupported(
         "Anchored SVG text spans define multiple positioning contexts",
@@ -1189,9 +1214,8 @@ fn svg_glyph_group(
     } else {
       style
     }
-    let parent : @dom.Node = ElementNode(element)
     let mut offset = 0
-    for node in parent.children() {
+    for node in text_node.children() {
       match node {
         ElementNode(span) if ["tspan", "tref", "a"].contains(
             @dom.local_of(span.name),
