@@ -1417,6 +1417,46 @@ fn evaluate_filter_graph(
       named_regions.set(result_name, region)
     }
   }
+  if graph.units is UserSpaceOnUse &&
+    (transform.b != 0.0 || transform.c != 0.0) &&
+    (transform.a != 0.0 || transform.d != 0.0) {
+    let rect = graph.user_space_bounds()
+    let raster_transform = Transform::translate(
+      -origin_x.to_double(),
+      -origin_y.to_double(),
+    ).multiply(transform)
+    let contours = clip_shape_contours(
+      Rect(
+        x=rect.min_x,
+        y=rect.min_y,
+        width=rect.width(),
+        height=rect.height(),
+        rx=0.0,
+        ry=0.0,
+      ),
+      raster_transform,
+    )
+    let mask = build_coverage_mask(
+      contours,
+      NonZero,
+      previous.width,
+      previous.height,
+    )
+    let clipped = Image::new(previous.width, previous.height)
+    for y in mask.origin_y..<(mask.origin_y + mask.height) {
+      for x in mask.origin_x..<(mask.origin_x + mask.width) {
+        let coverage = mask.get_device(x, y)
+        if coverage > 0 {
+          clipped.set_pixel(
+            x,
+            y,
+            apply_coverage(previous.get_pixel(x, y), coverage),
+          )
+        }
+      }
+    }
+    return clipped
+  }
   previous
 }
 

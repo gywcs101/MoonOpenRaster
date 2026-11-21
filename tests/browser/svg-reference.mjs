@@ -64,6 +64,14 @@ const cases = {
   'per-primitive linear RGB override': wrap(
     '<defs>' + filter('<feComponentTransfer style="color-interpolation-filters: linearRGB"><feFuncR type="linear" slope=".5"/></feComponentTransfer>') + '</defs>' +
     '<rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
+  'filter color space inherited from a stylesheet': wrap(
+    '<style>defs { color-interpolation-filters: sRGB }</style><defs>' +
+    filter('<feComponentTransfer><feFuncR type="linear" slope=".5"/></feComponentTransfer>', '') +
+    '</defs><rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
+  'filter primitive CSS overrides inherited presentation color space': wrap(
+    '<style>defs > filter > .transfer { color-interpolation-filters: sRGB }</style><defs>' +
+    filter('<feComponentTransfer class="transfer"><feFuncR type="linear" slope=".5"/></feComponentTransfer>', 'linearRGB') +
+    '</defs><rect x="2" y="2" width="10" height="8" fill="red" filter="url(#f)"/>'),
   'seeded fractal noise': wrap(
     '<defs>' + filter('<feTurbulence type="fractalNoise" baseFrequency=".125 .25" numOctaves="2" seed="17"/>') + '</defs>' +
     '<rect width="16" height="12" filter="url(#f)"/>'),
@@ -107,6 +115,10 @@ const cases = {
     '<defs><filter id="f" filterUnits="userSpaceOnUse" x="1" y="1" width="4" height="3">' +
     '<feFlood flood-color="red"/></filter></defs>' +
     '<rect width="12" height="10" transform="translate(3 2) scale(2)" fill="blue" filter="url(#f)"/>'),
+  'sheared user-space filter region': wrap(
+    '<defs><filter id="f" filterUnits="userSpaceOnUse" x="1" y="1" width="4" height="3">' +
+    '<feFlood flood-color="red"/></filter></defs>' +
+    '<rect width="12" height="10" transform="matrix(1 .5 .5 1 3 2)" fill="blue" filter="url(#f)"/>'),
   'scaled user-space filter primitive region': wrap(
     '<defs>' + filter('<feFlood x="1" y="1" width="4" height="3" flood-color="red"/>') + '</defs>' +
     '<rect width="12" height="10" transform="translate(3 2) scale(2)" fill="blue" filter="url(#f)"/>'),
@@ -163,6 +175,29 @@ try {
             `centered Gaussian opacity at ${x},${y}`);
         }
       }
+    }
+    if (name === 'sheared user-space filter region') {
+      // Exact coverage from intersecting the transformed quadrilateral
+      // (4.5,3.5) (8.5,5.5) (10,8.5) (6,6.5) with each pixel square.
+      const rows = [
+        [32, 16],
+        [16, 223, 128, 16],
+        [0, 128, 255, 239, 96],
+        [0, 16, 191, 255, 239, 16],
+        [0, 0, 0, 64, 191, 128],
+        [0, 0, 0, 0, 0, 48],
+      ];
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const offset = (y * width + x) * 4;
+          const expected = rows[y - 3]?.[x - 4] ?? 0;
+          assert.ok(Math.abs(actual[offset + 3] - expected) <= 1,
+            `sheared flood opacity at ${x},${y}: ${actual[offset + 3]} vs ${expected}`);
+          if (expected) assert.deepEqual(actual.slice(offset, offset + 3), [255, 0, 0]);
+        }
+      }
+      console.log(`PASS: ${name}, exact geometric coverage, Chromium differs by up to ${delta}`);
+      continue;
     }
     const tolerance = name === 'transparent blur' ? 13 : name.endsWith('fractal noise') ? 2 : 1;
     assert.ok(delta <= tolerance, `${name}: channel ${worst} differs by ${delta}, ${actual[worst]} vs ${reference[worst]}`);

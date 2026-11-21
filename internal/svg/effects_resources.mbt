@@ -313,25 +313,26 @@ fn FilterGraph::get_filter_bounds(
         max_y: target.min_y + (self.y + self.height) * height,
       }
     }
-    UserSpaceOnUse => {
-      let (viewport_width, viewport_height) = self.viewport
-      let x = resolve_mask_size(self.x, self.x_is_percent, viewport_width)
-      let y = resolve_mask_size(self.y, self.y_is_percent, viewport_height)
-      let width = resolve_mask_size(
-        self.width,
-        self.width_is_percent,
-        viewport_width,
-      )
-      let height = resolve_mask_size(
-        self.height,
-        self.height_is_percent,
-        viewport_height,
-      )
-      transform.apply_bbox(
-        BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0)),
-      )
-    }
+    UserSpaceOnUse => transform.apply_bbox(self.user_space_bounds())
   }
+}
+
+///|
+fn FilterGraph::user_space_bounds(self : FilterGraph) -> BoundingBox {
+  let (viewport_width, viewport_height) = self.viewport
+  let x = resolve_mask_size(self.x, self.x_is_percent, viewport_width)
+  let y = resolve_mask_size(self.y, self.y_is_percent, viewport_height)
+  let width = resolve_mask_size(
+    self.width,
+    self.width_is_percent,
+    viewport_width,
+  )
+  let height = resolve_mask_size(
+    self.height,
+    self.height_is_percent,
+    viewport_height,
+  )
+  BoundingBox::from_rect(x, y, width.max(0.0), height.max(0.0))
 }
 
 ///|

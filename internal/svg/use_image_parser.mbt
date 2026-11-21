@@ -131,6 +131,7 @@ fn parse_use(
             ctx.current_style().custom_properties,
             ctx.current_style().stop_color,
             ctx.current_style().stop_opacity,
+            ctx.current_style().filter_linear_rgb,
             ctx.current_style().root_font_size,
           )
           let _ = resolve_element_computed_style(
@@ -175,6 +176,7 @@ fn parse_use(
             ctx.current_style().custom_properties,
             ctx.current_style().stop_color,
             ctx.current_style().stop_opacity,
+            ctx.current_style().filter_linear_rgb,
             ctx.current_style().root_font_size,
           )
           let _ = resolve_element_computed_style(
@@ -198,6 +200,7 @@ fn parse_use(
                 ctx.current_style().custom_properties,
                 ctx.current_style().stop_color,
                 ctx.current_style().stop_opacity,
+                ctx.current_style().filter_linear_rgb,
                 ctx.current_style().root_font_size,
               )
               let _ = resolve_element_computed_style(

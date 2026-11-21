@@ -354,6 +354,16 @@ fn resolve_computed_style(
     StyleInherited => ()
     StyleSpecified(value) => stop_opacity = clamp_svg_opacity(value)
   }
+  let filter_linear_rgb = match
+    resolve_style_choice(
+      declarations,
+      custom_properties,
+      StyleFilterColorInterpolation,
+    ) {
+    StyleInitial => true
+    StyleInherited => parent.filter_linear_rgb
+    StyleSpecified(value) => value != "sRGB"
+  }
   match
     resolve_style_choice(declarations, custom_properties, StyleStrokeDasharray) {
     StyleInitial => node.stroke = { ..node.stroke, dasharray: None, }
@@ -425,6 +435,7 @@ fn resolve_computed_style(
   node.marker_mid_is_set = true
   node.marker_end_is_set = true
   inherited_style_from_node(
-    node, css_style, custom_property_map, stop_color, stop_opacity, root_font_size,
+    node, css_style, custom_property_map, stop_color, stop_opacity, filter_linear_rgb,
+    root_font_size,
   )
 }

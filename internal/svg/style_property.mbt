@@ -22,6 +22,7 @@ priv enum ComputedStyleProperty {
   StyleMarkerEnd
   StyleStopColor
   StyleStopOpacity
+  StyleFilterColorInterpolation
   StyleFontSize
 }
 
@@ -50,6 +51,7 @@ fn computed_style_property(name : String) -> ComputedStyleProperty? {
     "marker-end" => Some(StyleMarkerEnd)
     "stop-color" => Some(StyleStopColor)
     "stop-opacity" => Some(StyleStopOpacity)
+    "color-interpolation-filters" => Some(StyleFilterColorInterpolation)
     "font-size" => Some(StyleFontSize)
     _ => None
   }
@@ -80,6 +82,7 @@ fn ComputedStyleProperty::name(self : ComputedStyleProperty) -> String {
     StyleMarkerEnd => "marker-end"
     StyleStopColor => "stop-color"
     StyleStopOpacity => "stop-opacity"
+    StyleFilterColorInterpolation => "color-interpolation-filters"
     StyleFontSize => "font-size"
   }
 }
@@ -257,6 +260,8 @@ fn svg_property_value_is_valid(property : String, value : String) -> Bool {
   match property {
     "fill" | "stroke" => valid_svg_paint(trimmed)
     "color" | "stop-color" => !(@css_computed.parse_color(trimmed) is Invalid)
+    "color-interpolation-filters" =>
+      ["auto", "linearRGB", "sRGB"].contains(trimmed)
     "fill-rule" | "clip-rule" => trimmed == "nonzero" || trimmed == "evenodd"
     "fill-opacity" | "stroke-opacity" | "stop-opacity" | "opacity" =>
       valid_svg_number(trimmed, false)

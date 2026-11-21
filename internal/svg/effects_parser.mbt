@@ -541,26 +541,6 @@ fn parse_filter_primitive_children(
 }
 
 ///|
-fn filter_uses_linear_rgb(
-  attrs : Array[(String, String)],
-  inherited : Bool,
-) -> Bool {
-  let mut value = get_attr(attrs, "color-interpolation-filters")
-  if get_attr(attrs, "style") is Some(style) {
-    for declaration in parse_inline_style_declarations(style) {
-      if declaration.name == "color-interpolation-filters" {
-        value = Some(declaration.value)
-      }
-    }
-  }
-  match value {
-    Some("sRGB") => false
-    Some("linearRGB") => true
-    _ => inherited
-  }
-}
-
-///|
 fn parse_filter_graph(
   parser : SVGParser,
   attrs : Array[(String, String)],
@@ -570,7 +550,20 @@ fn parse_filter_graph(
   let primitives : Array[FilterGraphPrimitive] = []
   let regions : Array[FilterPrimitiveRegion?] = []
   let color : Array[Bool] = []
-  let filter_linear = filter_uses_linear_rgb(attrs, true)
+  let filter_style = resolve_element_computed_style(
+    SVGNode::new(Group),
+    tag_name,
+    attrs,
+    ctx,
+    ctx.current_style(),
+    false,
+  )
+  let selector = ctx.record_selector_element(tag_name, attrs)
+  ctx.element_stack.push(selector)
+  ctx.sibling_index_stack.push(0)
+  ctx.sibling_count_stack.push(count_direct_child_elements(parser, tag_name))
+  ctx.previous_sibling_stack.push(None)
+  let stack_index = ctx.sibling_index_stack.length() - 1
   let units = match get_attr(attrs, "primitiveUnits") {
     Some(value) => parse_mask_units(value)
     None => UserSpaceOnUse
@@ -579,6 +572,16 @@ fn parse_filter_graph(
     element : SVGXmlElement,
     children : Array[FilterPrimitiveChild],
   ) -> Unit {
+    ctx.sibling_index_stack[stack_index] += 1
+    let primitive_style = resolve_element_computed_style(
+      SVGNode::new(Group),
+      element.name,
+      element.attributes,
+      ctx,
+      filter_style,
+      false,
+    )
+    ctx.previous_sibling_stack[stack_index] = ctx.selector_element_slots[ctx.element_stack.length()]
     if parse_filter_primitive(element.name, element.attributes, children)
       is Some(primitive) {
       fn length(key : String) -> (Double, Bool)? {
@@ -593,7 +596,7 @@ fn parse_filter_graph(
         length("height"),
       )
       primitives.push(primitive)
-      color.push(filter_uses_linear_rgb(element.attributes, filter_linear))
+      color.push(primitive_style.filter_linear_rgb)
       regions.push(
         if x is Some(_) || y is Some(_) || width is Some(_) || height is Some(_) {
           Some({ x, y, width, height, })
@@ -618,6 +621,10 @@ fn parse_filter_graph(
       _ => ()
     }
   }
+  let _ = ctx.previous_sibling_stack.pop()
+  let _ = ctx.sibling_count_stack.pop()
+  let _ = ctx.sibling_index_stack.pop()
+  let _ = ctx.element_stack.pop()
   register_filter_graph(attrs, ctx, primitives, regions~, color~)
 }
 
