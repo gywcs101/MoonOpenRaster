@@ -20,7 +20,7 @@ The resolved graph is recorded in [manifest.json](manifest.json). The browser bu
 | [moonbitstack/moonxml](https://github.com/moonbitstack/moonxml) | 0.2.0 | [Apache-2.0](moonbitstack-moonxml-LICENSE) | No upstream NOTICE in the installed module |
 | [moonbitstack/moonzip](https://github.com/moonbitstack/moonzip) | 0.4.0 | [Apache-2.0](moonbitstack-moonzip-LICENSE) | No upstream NOTICE in the installed module |
 | [moonbitlang/x](https://github.com/moonbitlang/x) | 0.5.7 | [Apache-2.0](moonbitlang-x-LICENSE) | [moonbitlang-x-NOTICE](moonbitlang-x-NOTICE) |
-| [moonbitlang/core](https://github.com/moonbitlang/core) | compiler-bundled (validated with moonc 0.10.20) | [Apache-2.0](moonbitlang-core-LICENSE) | [moonbitlang-core-NOTICE](moonbitlang-core-NOTICE) |
+| [moonbitlang/core](https://github.com/moonbitlang/core) | compiler-bundled (validated with moonc 0.10.22) | [Apache-2.0](moonbitlang-core-LICENSE) | [moonbitlang-core-NOTICE](moonbitlang-core-NOTICE) |
 | [mizchi/font](https://github.com/mizchi/font) | 0.8.0 | [Apache-2.0](moonbitlang-x-LICENSE) | No bundled upstream NOTICE |
 | [mizchi/svg](https://github.com/mizchi/svg) | 0.2.3 | [Apache-2.0](moonbitlang-x-LICENSE) | No bundled upstream NOTICE |
 | [mizchi/brotli](https://github.com/mizchi/brotli) | 0.2.2 | [Apache-2.0](moonbitlang-x-LICENSE) | No bundled upstream NOTICE |

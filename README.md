@@ -1,8 +1,8 @@
 # MoonOpenRaster
 
-MoonOpenRaster 是用 MoonBit 编写的 **OpenRaster（`.ora`）16 位与 8 位分层栅格图像读写、编辑与合成库**，配有命令行和本地网页工作台。
+MoonOpenRaster 是用 MoonBit 编写的 **OpenRaster（`.ora`）分层图像读写、编辑与合成库**，可处理 8 位和 16 位栅格图层及受支持的静态 SVG 图层，提供命令行和本地网页工作台。
 
-普通 PNG 只保留最终画面；ORA 还保存独立图层、分组、位置、透明度和混合方式。本项目可以读取这些图层，修改后重新计算画面，再保存为仍可编辑的 ORA。例如：批量隐藏草稿层并导出预览、替换海报中的独立图片层，或为绘图程序添加 ORA 导入与导出功能。
+普通 PNG 只保留最终画面，ORA 还保存独立图层、分组、位置、透明度和混合方式。本项目可以读取这些图层，修改后重新计算画面，再保存为仍可编辑的 ORA。例如批量隐藏草稿层并导出预览、替换海报中的独立图片层，或为绘图程序添加 ORA 导入与导出功能。
 
 [Mooncakes 包与接口文档](https://mooncakes.io/docs/gywcs101/MoonOpenRaster) · [网页使用说明](docs/WORKBENCH.zh-CN.md) · [库 API 说明](docs/API.zh-CN.md)
 
@@ -16,7 +16,7 @@ MoonOpenRaster 是用 MoonBit 编写的 **OpenRaster（`.ora`）16 位与 8 位�
 
 ## 体验网页
 
-需要 **MoonBit 0.10.20、Node.js 和 Python 3**，以下步骤在完整 GitHub 仓库中运行：
+启动工作台需要 MoonBit、Node.js 和 Python 3。当前仓库版本使用 MoonBit 0.10.22 完成验证。
 
 ```sh
 git clone https://github.com/gywcs101/MoonOpenRaster.git
@@ -95,7 +95,7 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 ## SVG 矢量图层
 
-工作台可以直接导入支持的静态 SVG，也可以打开含 SVG 图层的 ORA。仓库版本支持内部 CSS、图形复用，以及归档内 CSS、PNG、JPEG 和嵌套 SVG 资源。SVG 使用随稿字体，或用内置字体显示通用无衬线、衬线文字。图层支持移动、显隐、透明度、混合、复制和排序。保存 ORA 会保留 SVG 源文件，导出 PNG 会重新合成当前画面。在「样例与练习 → 地形测绘图」中，可以将 SVG 等高线与 16 位 TIFF 地形放在同一文档。
+工作台可以直接导入支持的静态 SVG，也可以打开含 SVG 图层的 ORA。仓库版本支持内部 CSS、图形复用，以及归档内 CSS、PNG、JPEG 和嵌套 SVG 资源。SVG 可使用随稿字体显示普通双向混排和简单汉字竖排，也可以用内置字体显示通用无衬线和衬线文字。图层支持移动、显隐、透明度、混合、复制和排序。保存 ORA 会保留 SVG 源文件，导出 PNG 会重新合成当前画面。在「样例与练习 → 地形测绘图」中，可以将 SVG 等高线与 16 位 TIFF 地形放在同一文档。
 
 ## 兼容性与限制
 
@@ -108,6 +108,6 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 - [网页使用说明](docs/WORKBENCH.zh-CN.md)：工作台操作、图层含义与练习。
 - [库 API 说明](docs/API.zh-CN.md)：文档模型、编辑接口、导出与错误处理。
-- [开发与贡献](CONTRIBUTING.md)：构建、回归测试、浏览器验证和分发检查。
+- [贡献指南](CONTRIBUTING.md)
 
 项目代码使用 [MIT 许可证](LICENSE)。网页中的作品、字体与第三方组件各自遵循其许可，完整文本、来源及修改说明见 [LICENSES](LICENSES/README.md) 和 [THIRD_PARTY.md](THIRD_PARTY.md)。ZIP、XML 与图片编解码复用 MoonBit 生态组件，OpenRaster 文档语义、编辑与合成在本项目实现。

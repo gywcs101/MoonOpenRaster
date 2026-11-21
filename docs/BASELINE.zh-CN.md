@@ -30,6 +30,8 @@ Chromium 的 Canvas 使用同一字体独立绘制字形，并用 50% 覆盖阈�
 
 使用官方 MyPaint 2.0.1 Windows 便携版和 Python Pillow。运行 `python scripts/check_mypaint.py PATH_TO_EXTRACTED_MYPAINT`。脚本分别编辑 MyPaint 导出的路径 SVG 分层稿和包含同一 SVG 与原生 16 位 PNG 的混合稿，再调用 MyPaint 重开、合成并保存。另有图形复用、剪裁和偏移滤镜一起参与合成的样例。三份输出都保留原 SVG 和新坐标。按 ORA 画布范围裁剪 MyPaint 的瓦片输出后，8 位通道差均为 0。独立 PNG 解码确认 MoonOpenRaster 写出的 16 位栅格样本精确保留。MyPaint 自己重存的栅格资源会变为 8 位。
 
+另外实测 MyPaint 打开本项目生成的混排字体稿和带 SVG 视图引用的混合稿。它留下 SVG 根源文件，但重存未包含随稿字体以及相对引用的 CSS、SVG 和 PNG，两例预期的彩色区域也未正确呈现。因此这两例的独立应用往返仍未通过。
+
 `python scripts/check_svg.py` 另生成 `font-path-input.ora` 和 `font-position-list-input.ora`，并验证移动相邻栅格层后逐像素重算、矢量源保留及重开。沿路径排字覆盖线段、二次和三次曲线、椭圆弧的路径几何、本地路径变换、相对起点、pathLength 校准和嵌套文字片段。逐字坐标覆盖从左到右的一字一字形布局。
 
 字体样例还用手算像素核对了内嵌和归档引用的 SVG 路径字形、水平字偶间距、通过 `tref` 引用文字，以及一行使用随稿 OpenType 字体的从右向左排列。保存保留字体、引用文件和 SVG 原文。XML 内部实体在受限预算内展开，找不到的外部实体会报告名称。[SVG 1.1 字体规范](https://www.w3.org/TR/SVG11/fonts.html) · [SVG 1.1 文字规范](https://www.w3.org/TR/SVG11/text.html)
