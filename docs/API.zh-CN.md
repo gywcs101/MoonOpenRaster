@@ -4,7 +4,7 @@
 
 ## 引入与可运行示例
 
-模块名为 `gywcs101/MoonOpenRaster`。Mooncakes 发布的 `0.2.0` 提供 8 位及 16 位栅格和自包含静态 SVG 编辑。本文也说明 GitHub 评审分支中的归档内 SVG 引用和随稿字体支持。在自己的模块中运行 `moon add gywcs101/MoonOpenRaster@0.2.0`，再在包中添加 `import { "gywcs101/MoonOpenRaster" @ora }`。
+模块名为 `gywcs101/MoonOpenRaster`。Mooncakes 0.3.0 提供 8 位及 16 位栅格和受支持的静态 SVG 编辑，包含归档内 SVG 引用和随稿字体支持。在自己的模块中运行 `moon add gywcs101/MoonOpenRaster@0.3.0`，再在包中添加 `import { "gywcs101/MoonOpenRaster" @ora }`。
 
 以下 `examples/` 与 `web/` 路径的命令在克隆的 GitHub 仓库根目录运行；通过 Mooncakes 安装核心库不包含网页样例。
 
@@ -21,7 +21,7 @@ moon run examples/roundtrip --target js -- web/assets/capitole.ora edited.ora
 
 ## 导入单张图片
 
-用 `decode_image(bytes)` 按文件内容识别独立图片，得到可传给 `Node::Layer` 或 `replace_image` 的图像。支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO 和受支持的静态 SVG。JPEG 和 TIFF 应用方向标记，GIF 取第一帧，TIFF 取第一页，ICO 取最大图标。文件上限 32 MiB；支持的 16 位样本保持精度。直接读取 ORA 中的栅格资源时使用 `decode_png`。已支持的色彩配置转换为 sRGB 像素供合成和单层 PNG 导出使用，保存 ORA 时保留转换过的原始 PNG。仓库版本通过 `read` 解析 SVG 引用的归档内 CSS、PNG、JPEG 和 SVG 片段，相对路径以 SVG 在归档中的位置为基准。独立导入请使用自包含 SVG。SVG 可用 `@font-face` 指定随稿字体，通用无衬线和衬线用内置字体。缺少字体或字形时，错误信息会指出原因。
+用 `decode_image(bytes)` 按文件内容识别独立图片，得到可传给 `Node::Layer` 或 `replace_image` 的图像。支持 PNG、JPEG、静态 WebP、GIF、BMP、TIFF、ICO 和受支持的静态 SVG。JPEG 和 TIFF 应用方向标记，GIF 取第一帧，TIFF 取第一页，ICO 取最大图标。文件上限 32 MiB；支持的 16 位样本保持精度。直接读取 ORA 中的栅格资源时使用 `decode_png`。已支持的色彩配置转换为 sRGB 像素供合成和单层 PNG 导出使用，保存 ORA 时保留转换过的原始 PNG。通过 `read` 解析 SVG 引用的归档内 CSS、PNG、JPEG 和 SVG 片段，相对路径以 SVG 在归档中的位置为基准。独立导入请使用自包含 SVG。SVG 可用 `@font-face` 指定随稿字体，通用无衬线和衬线用内置字体。缺少字体或字形时，错误信息会指出原因。
 
 ## 矢量图层
 

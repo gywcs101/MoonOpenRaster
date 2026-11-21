@@ -19,7 +19,7 @@ MoonOpenRaster 是用 MoonBit 编写的 **OpenRaster（`.ora`）分层图像读�
 启动工作台需要 MoonBit、Node.js 和 Python 3。当前仓库版本使用 MoonBit 0.10.22 完成验证。
 
 ```sh
-git clone --branch validation/baseline-20261120 https://github.com/gywcs101/MoonOpenRaster.git
+git clone https://github.com/gywcs101/MoonOpenRaster.git
 cd MoonOpenRaster
 moon update
 python scripts/serve_web.py
@@ -35,10 +35,10 @@ python scripts/serve_web.py
 
 ## 在 MoonBit 项目中使用
 
-Mooncakes 已发布的 0.2.0 支持 8 位和 16 位图层编辑、自包含静态 SVG 图层及图片格式导入。混合稿案例所用的归档内 SVG 引用和随稿字体，在上面的 GitHub 评审分支中提供。网页工作台和示例素材随仓库提供。
+Mooncakes 0.3.0 提供 8 位和 16 位图层编辑、受支持的静态 SVG 图层、归档内 SVG 引用、随稿字体及图片格式导入。网页工作台和示例文件随 GitHub 仓库提供。
 
 ```sh
-moon add gywcs101/MoonOpenRaster@0.2.0
+moon add gywcs101/MoonOpenRaster@0.3.0
 ```
 
 在使用它的包的 `moon.pkg` 中添加导入：
@@ -91,7 +91,7 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 ## 16 位 ORA 往返
 
-在网页打开 16 位渐变样例，选中 Light 图层，把 X 改为 9、Y 改为 6，并将不透明度设为 50%。保存并重新打开 ORA，仍可继续编辑图层。新合并图保留 16 位精度。[下载样例](fixtures/gradient16.ora) · [案例与复现说明](docs/ROUNDTRIP16.zh-CN.md)
+在网页打开 16 位渐变样例，选中 Light 图层，把 X 改为 9、Y 改为 6，并将不透明度设为 50%。保存并重新打开 ORA，仍可继续编辑图层。新合并图保留 16 位精度。[下载样例](https://github.com/gywcs101/MoonOpenRaster/blob/main/fixtures/gradient16.ora) · [案例与复现说明](docs/ROUNDTRIP16.zh-CN.md)
 
 ## SVG 矢量图层
 
@@ -99,7 +99,7 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 ## 混合稿编辑案例
 
-下载 [原稿](fixtures/baseline-mixed.ora) 和 [对照成品](fixtures/baseline-mixed-edited.ora)。原稿包含引用随稿字体、样式表和图片的 SVG 图层，以及一层 16 位 PNG。用网页打开原稿，选中 `Vector`，把 X 设为 1，不透明度设为 50%，应用修改并保存。重开后可继续修改两层。成品包含重新计算的 16 位合并图和 8 位缩略图。[命令行复现与验证](docs/BASELINE.zh-CN.md#svg-与-16-位混合案例)
+下载 [原稿](https://github.com/gywcs101/MoonOpenRaster/blob/main/fixtures/baseline-mixed.ora) 和 [对照成品](https://github.com/gywcs101/MoonOpenRaster/blob/main/fixtures/baseline-mixed-edited.ora)。原稿包含引用随稿字体、样式表和图片的 SVG 图层，以及一层 16 位 PNG。用网页打开原稿，选中 `Vector`，把 X 设为 1，不透明度设为 50%，应用修改并保存。重开后可继续修改两层。成品包含重新计算的 16 位合并图和 8 位缩略图。[命令行复现与验证](docs/BASELINE.zh-CN.md#svg-与-16-位混合案例)
 
 ## 兼容性与限制
 
