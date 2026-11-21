@@ -167,6 +167,14 @@ const cases = {
     '<defs>' + filter('<feFlood flood-color="red" result="map"/>' +
       '<feDisplacementMap in="SourceGraphic" in2="map" scale="4" xChannelSelector="R" yChannelSelector="R"/>') + '</defs>' +
     '<rect x="5" y="5" width="1" height="1" transform="matrix(0 1 -1 0 12 0)" fill="blue" filter="url(#f)"/>'),
+  'oblique anisotropic blur': wrap(
+    '<defs><filter id="f" filterUnits="userSpaceOnUse" x="-25" y="-25" width="50" height="50">' +
+    '<feGaussianBlur stdDeviation="2.5 0" color-interpolation-filters="sRGB"/></filter></defs>' +
+    '<circle r="2.3" transform="translate(8.5 6.5) rotate(45)" fill="red" filter="url(#f)"/>'),
+  'oblique anisotropic morphology': wrap(
+    '<defs><filter id="f" filterUnits="userSpaceOnUse" x="-25" y="-25" width="50" height="50">' +
+    '<feMorphology operator="dilate" radius="3 0" color-interpolation-filters="sRGB"/></filter></defs>' +
+    '<circle r="2.1" transform="translate(8.5 6.5) rotate(45)" fill="red" filter="url(#f)"/>'),
   'quarter-turn anisotropic blur': wrap(
     '<defs>' + filter('<feGaussianBlur stdDeviation="1 0" color-interpolation-filters="sRGB"/>') + '</defs>' +
     '<rect x="3" y="4" width="6" height="3" transform="matrix(0 1 -1 0 12 0)" fill="red" filter="url(#f)"/>'),
@@ -230,6 +238,20 @@ try {
         }
       }
     }
+    if (name === 'oblique anisotropic blur') {
+      // Equidistant samples along and across the rotated axis. The Gaussian
+      // spreads along the first direction while the crossing point stays clear.
+      for (const pixels of [actual, reference]) {
+        const a = (x, y) => pixels[(y * width + x) * 4 + 3];
+        assert.ok(a(11, 9) > 15 && a(11, 3) <= 4, `45-degree blur coverage ${a(11, 9)}, ${a(11, 3)}`);
+      }
+    }
+    if (name === 'oblique anisotropic morphology') {
+      for (const pixels of [actual, reference]) {
+        const a = (x, y) => pixels[(y * width + x) * 4 + 3];
+        assert.ok(a(11, 9) >= 160 && a(11, 3) <= 4, `45-degree morphology coverage ${a(11, 9)}, ${a(11, 3)}`);
+      }
+    }
     if (name === 'quarter-turn anisotropic blur') {
       const weights = [-3, -2, -1, 0, 1, 2, 3].map(i => Math.exp(-i * i / 2));
       const total = weights.reduce((sum, weight) => sum + weight, 0);
@@ -277,7 +299,7 @@ try {
       console.log(`PASS: ${name}, exact geometric displacement, Chromium differs by up to ${delta}`);
       continue;
     }
-    const tolerance = name.endsWith(' blur') ? 13 : name.endsWith('fractal noise') ? 2 : 1;
+    const tolerance = name === 'oblique anisotropic morphology' ? 40 : name === 'oblique anisotropic blur' ? 30 : name.endsWith(' blur') ? 13 : name.endsWith('fractal noise') ? 2 : 1;
     assert.ok(delta <= tolerance, `${name}: channel ${worst} differs by ${delta}, ${actual[worst]} vs ${reference[worst]}`);
     console.log(`PASS: ${name}, Chromium reference, maximum channel difference ${delta}`);
   }

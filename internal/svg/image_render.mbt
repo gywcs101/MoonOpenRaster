@@ -472,21 +472,6 @@ fn sample_index(index : Int32, length : Int32, wrap : Bool) -> Int32 {
 }
 
 ///|
-fn sampled_premul_pixel(
-  image : Image,
-  x : Int32,
-  y : Int32,
-  wrap : Bool,
-) -> PremulColor16 {
-  PremulColor16::from_color(
-    image.get_pixel(
-      sample_index(x, image.width, wrap),
-      sample_index(y, image.height, wrap),
-    ),
-  )
-}
-
-///|
 fn sampled_premul_color(
   red : Double,
   green : Double,
@@ -521,13 +506,20 @@ fn sample_raster_color(
   source_y : Double,
   sampling : ImageSampling,
   wrap : Bool,
+  transparent_edge~ : Bool = false,
 ) -> Color {
-  match sampling {
-    Nearest =>
+  fn pixel(x : Int32, y : Int32) -> Color {
+    if transparent_edge {
+      image.get_pixel(x, y)
+    } else {
       image.get_pixel(
-        sample_index(source_x.floor().to_int(), image.width, wrap),
-        sample_index(source_y.floor().to_int(), image.height, wrap),
+        sample_index(x, image.width, wrap),
+        sample_index(y, image.height, wrap),
       )
+    }
+  }
+  match sampling {
+    Nearest => pixel(source_x.floor().to_int(), source_y.floor().to_int())
     Bilinear => {
       let x = source_x - 0.5
       let y = source_y - 0.5
@@ -535,10 +527,10 @@ fn sample_raster_color(
       let y0 = y.floor().to_int()
       let tx = x - x0.to_double()
       let ty = y - y0.to_double()
-      let p00 = sampled_premul_pixel(image, x0, y0, wrap)
-      let p10 = sampled_premul_pixel(image, x0 + 1, y0, wrap)
-      let p01 = sampled_premul_pixel(image, x0, y0 + 1, wrap)
-      let p11 = sampled_premul_pixel(image, x0 + 1, y0 + 1, wrap)
+      let p00 = PremulColor16::from_color(pixel(x0, y0))
+      let p10 = PremulColor16::from_color(pixel(x0 + 1, y0))
+      let p01 = PremulColor16::from_color(pixel(x0, y0 + 1))
+      let p11 = PremulColor16::from_color(pixel(x0 + 1, y0 + 1))
       let w00 = (1.0 - tx) * (1.0 - ty)
       let w10 = tx * (1.0 - ty)
       let w01 = (1.0 - tx) * ty
@@ -576,16 +568,13 @@ fn sample_raster_color(
         for offset_x in -1..<=2 {
           let wx = cubic_sample_weight(x - (base_x + offset_x).to_double())
           let weight = wx * wy
-          let pixel = sampled_premul_pixel(
-            image,
-            base_x + offset_x,
-            base_y + offset_y,
-            wrap,
+          let sample = PremulColor16::from_color(
+            pixel(base_x + offset_x, base_y + offset_y),
           )
-          red = red + pixel.r.to_double() * weight
-          green = green + pixel.g.to_double() * weight
-          blue = blue + pixel.b.to_double() * weight
-          alpha = alpha + pixel.a.to_double() * weight
+          red = red + sample.r.to_double() * weight
+          green = green + sample.g.to_double() * weight
+          blue = blue + sample.b.to_double() * weight
+          alpha = alpha + sample.a.to_double() * weight
         }
       }
       sampled_premul_color(red, green, blue, alpha)

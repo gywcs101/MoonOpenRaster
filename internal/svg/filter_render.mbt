@@ -230,6 +230,104 @@ fn blur_filter_image_xy(
 }
 
 ///|
+fn resample_filter_surface(
+  source : Image,
+  width : Int32,
+  height : Int32,
+  sample_from : Transform,
+) -> Image {
+  let result = Image::new(width, height)
+  for y in 0..<height {
+    for x in 0..<width {
+      let (sx, sy) = sample_from.apply(x.to_double() + 0.5, y.to_double() + 0.5)
+      let color = sample_raster_color(
+        source,
+        sx,
+        sy,
+        Bilinear,
+        false,
+        transparent_edge=true,
+      )
+      result.set_pixel(x, y, color)
+    }
+  }
+  result
+}
+
+///|
+fn gaussian_blur_in_basis(
+  source : Image,
+  x_axis : (Double, Double),
+  y_axis : (Double, Double),
+  linear_rgb : Bool,
+) -> Image? {
+  let (ax, bx) = x_axis
+  let (cy, dy) = y_axis
+  let xx = ax * ax + cy * cy
+  let yy = bx * bx + dy * dy
+  let cross = ax * bx + cy * dy
+  guard xx.is_finite() && yy.is_finite() else { return None }
+  if cross.abs() <= 1.0e-12 * xx.max(yy) {
+    return Some(blur_filter_image_xy(source, xx.sqrt(), yy.sqrt(), linear_rgb))
+  }
+  // Rotate the working surface into the covariance's principal axes, where
+  // the same separable Gaussian can run even for sheared or oblique input.
+  let difference = xx - yy
+  let angle = 0.5 * @math.atan2(2.0 * cross, difference)
+  let max_sigma = (0.5 *
+  (xx + yy + (difference * difference + 4.0 * cross * cross).sqrt())).sqrt()
+  let min_sigma = (ax * dy - bx * cy).abs() / max_sigma
+  guard max_sigma.is_finite() && min_sigma.is_finite() else { return None }
+  filter_in_basis(source, Transform::rotate(angle), aligned => {
+    blur_filter_image_xy(aligned, max_sigma, min_sigma, linear_rgb)
+  })
+}
+
+///|
+fn filter_in_basis(
+  source : Image,
+  basis : Transform,
+  apply : (Image) -> Image,
+) -> Image? {
+  guard basis.is_invertible() else { return None }
+  let bounds = basis
+    .inverse()
+    .apply_bbox(
+      BoundingBox::from_rect(
+        0.0,
+        0.0,
+        source.width.to_double(),
+        source.height.to_double(),
+      ),
+    )
+  let left = bounds.min_x.floor() - 1.0
+  let top = bounds.min_y.floor() - 1.0
+  let right = bounds.max_x.ceil() + 1.0
+  let bottom = bounds.max_y.ceil() + 1.0
+  let width = right - left
+  let height = bottom - top
+  guard width > 0.0 && height > 0.0 && width * height <= 4194304.0 else {
+    return None
+  }
+  let to_source = basis.multiply(Transform::translate(left, top))
+  let aligned = resample_filter_surface(
+    source,
+    width.to_int(),
+    height.to_int(),
+    to_source,
+  )
+  let filtered = apply(aligned)
+  Some(
+    resample_filter_surface(
+      filtered,
+      source.width,
+      source.height,
+      to_source.inverse(),
+    ),
+  )
+}
+
+///|
 fn transfer_filter_value(
   function : ComponentTransferFunction,
   value : Double,
@@ -1120,16 +1218,18 @@ fn evaluate_filter_graph(
   let mut previous = source
   let mut previous_region = rect
   let (scale_x, scale_y) = transform.get_scale()
-  fn scaled_x(value : Double) -> Double {
-    match graph.primitive_units {
-      UserSpaceOnUse => value * scale_x
-      ObjectBoundingBox => value * target_bounds.width()
-    }
-  }
-  fn scaled_y(value : Double) -> Double {
-    match graph.primitive_units {
-      UserSpaceOnUse => value * scale_y
-      ObjectBoundingBox => value * target_bounds.height()
+  fn checked_surface(image : Image?, input : Image) -> Image {
+    match image {
+      Some(image) => image
+      None => {
+        diagnostics.push({
+          kind: ResourceLimitExceeded,
+          stage: Effects,
+          resource: graph.id,
+          node_id: "",
+        })
+        Image::new(input.width, input.height)
+      }
     }
   }
   fn input_surface(name : String) -> Image {
@@ -1200,29 +1300,14 @@ fn evaluate_filter_graph(
       GraphGaussianBlur(input~, result~, radius_x~, radius_y~) => {
         let x = filter_primitive_x(graph, radius_x, target_local)
         let y = filter_primitive_y(graph, radius_y, target_local)
-        // A Gaussian with zero device-space cross covariance is still
-        // separable on the raster axes, even when its source axes are rotated.
-        let ax = transform.a * x
-        let bx = transform.b * x
-        let cy = transform.c * y
-        let dy = transform.d * y
-        let xx = ax * ax + cy * cy
-        let yy = bx * bx + dy * dy
-        let cross = ax * bx + cy * dy
-        let (radius_x, radius_y) = if cross.abs() <= 1.0e-12 * xx.max(yy) {
-          (xx.sqrt(), yy.sqrt())
-        } else {
-          (scaled_x(radius_x), scaled_y(radius_y))
-        }
-        (
-          blur_filter_image_xy(
-            input_surface(input),
-            radius_x,
-            radius_y,
-            linear_rgb,
-          ),
-          result,
+        let input = input_surface(input)
+        let blurred = gaussian_blur_in_basis(
+          input,
+          (transform.a * x, transform.b * x),
+          (transform.c * y, transform.d * y),
+          linear_rgb,
         )
+        (checked_surface(blurred, input), result)
       }
       GraphOffset(input~, result~, dx~, dy~) => {
         let (dx, dy) = match graph.primitive_units {
@@ -1292,28 +1377,32 @@ fn evaluate_filter_graph(
           result,
         )
       GraphMorphology(input~, result~, radius_x~, radius_y~, operator~) => {
-        let axes_swapped = transform.a.abs() <= 1.0e-12 * scale_x &&
+        let input = input_surface(input)
+        let x = filter_primitive_x(graph, radius_x, target_local) * scale_x
+        let y = filter_primitive_y(graph, radius_y, target_local) * scale_y
+        let direct = transform.b.abs() <= 1.0e-12 * scale_x &&
+          transform.c.abs() <= 1.0e-12 * scale_y
+        let swapped = transform.a.abs() <= 1.0e-12 * scale_x &&
           transform.d.abs() <= 1.0e-12 * scale_y
-        let (radius_x, radius_y) = if axes_swapped {
-          (
-            filter_primitive_y(graph, radius_y, target_local) *
-            transform.c.abs(),
-            filter_primitive_x(graph, radius_x, target_local) *
-            transform.b.abs(),
-          )
+        let filtered = if direct || swapped {
+          let (x, y) = if swapped { (y, x) } else { (x, y) }
+          Some(morphology_filter_image(input, x, y, operator, linear_rgb))
+        } else if x <= 0.0 && y <= 0.0 {
+          Some(input)
         } else {
-          (scaled_x(radius_x), scaled_y(radius_y))
+          let basis = Transform::matrix(
+            transform.a / scale_x,
+            transform.b / scale_x,
+            transform.c / scale_y,
+            transform.d / scale_y,
+            0.0,
+            0.0,
+          )
+          filter_in_basis(input, basis, aligned => {
+            morphology_filter_image(aligned, x, y, operator, linear_rgb)
+          })
         }
-        (
-          morphology_filter_image(
-            input_surface(input),
-            radius_x,
-            radius_y,
-            operator,
-            linear_rgb,
-          ),
-          result,
-        )
+        (checked_surface(filtered, input), result)
       }
       GraphConvolveMatrix(
         input~,
