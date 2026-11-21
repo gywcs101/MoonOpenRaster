@@ -737,9 +737,13 @@ fn svg_parse_source(data : Bytes) -> (String, @dom.Element) raise {
     raise Unsupported("Expected an SVG root element")
   }
   let styles = svg_project_stylesheets(parsed, root)
-  let changed = svg_select_branches(root, 0, Ref(0)) ||
-    styles ||
-    contains_doctype
+  let selected = if svg_branch_matches(root) {
+    svg_select_branches(root, 0, Ref(0))
+  } else {
+    root.set_children([])
+    true
+  }
+  let changed = selected || styles || contains_doctype
   let ids : Map[String, Bool] = Map([])
   let refs : Array[String] = []
   check_svg_node(root, 0, Ref(0), ids, refs)

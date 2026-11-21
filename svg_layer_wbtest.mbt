@@ -298,6 +298,14 @@ test "SVG text uses bundled fonts without filesystem resources" {
 }
 
 ///|
+test "SVG root condition participates in rendering" {
+  let unavailable = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1' systemLanguage='fr'><rect width='1' height='1' fill='red'/></svg>"
+  let available = b"<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1' systemLanguage='fr,en'><rect width='1' height='1' fill='red'/></svg>"
+  assert_eq(decode_svg(unavailable).pixels(), [0, 0, 0, 0])
+  assert_eq(decode_svg(available).pixels(), [255, 0, 0, 255])
+}
+
+///|
 test "an SVG image can resolve another SVG and its own archived CSS and PNG" {
   let drawing = b"<svg xmlns='http://www.w3.org/2000/svg' width='4' height='2'><image href='../icons/tile.svg' width='2' height='2'/></svg>"
   let tile = b"<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2'><style>@import './paint/theme.css';</style><rect class='mark' width='1' height='2'/><image href='./raster/pixel.png' x='1' width='1' height='2' preserveAspectRatio='none'/></svg>"
