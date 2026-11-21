@@ -699,6 +699,9 @@ def main():
     check_nested_svg_image(cli, views=True)
     check_nested_svg_image(cli, views=True, transform=True)
     check_nested_svg_image(cli, views=True, nested_view=True)
+    assert (ROOT / "fixtures/baseline-mixed-edited.ora").read_bytes() == (
+        OUT / "nested-image-viewport-vector-edited.ora"
+    ).read_bytes()
     check_convolution_layer(cli)
     if args.krita:
         probe_krita(args.krita)

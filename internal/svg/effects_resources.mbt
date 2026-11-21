@@ -281,6 +281,7 @@ pub(all) struct FilterPrimitiveRegion {
 ///|
 pub(all) struct FilterGraph {
   id : String
+  filter_res : String?
   primitives : Array[FilterGraphPrimitive]
   primitive_regions : Array[FilterPrimitiveRegion?]
   linear_color : Array[Bool]

@@ -1232,6 +1232,23 @@ fn clip_affine_filter(
 }
 
 ///|
+fn parse_filter_resolution(value : String) -> (Double, Double)? {
+  let fields = split_tokens(value.replace_all(old=",", new=" "))
+  try {
+    match fields {
+      [x] => {
+        let x = @string.parse_double(x)
+        Some((x, x))
+      }
+      [x, y] => Some((@string.parse_double(x), @string.parse_double(y)))
+      _ => None
+    }
+  } catch {
+    _ => None
+  }
+}
+
+///|
 fn evaluate_filter_graph(
   graph : FilterGraph,
   source : Image,
@@ -1245,6 +1262,32 @@ fn evaluate_filter_graph(
   paint_input : (String) -> Image?,
   diagnostics : Array[RenderDiagnostic],
 ) -> Image {
+  if graph.filter_res is Some(resolution) {
+    match parse_filter_resolution(resolution) {
+      Some((x, y)) if x.is_finite() && y.is_finite() && x >= 0.0 && y >= 0.0 =>
+        if x >= 1.0 && y >= 1.0 {
+          diagnostics.push({
+            kind: FeatureUnsupported,
+            stage: Effects,
+            resource: "#" +
+            graph.id +
+            " (explicit filterRes=" +
+            resolution +
+            ")",
+            node_id: "",
+          })
+        }
+      _ =>
+        diagnostics.push({
+          kind: ParseFailed,
+          stage: Effects,
+          resource: "#" + graph.id + " (invalid filterRes=" + resolution + ")",
+          node_id: "",
+        })
+    }
+    // SVG 1.1 truncates the dimensions. A zero dimension disables the element.
+    return Image::new(source.width, source.height)
+  }
   if graph.primitives.is_empty() {
     return Image::new(source.width, source.height)
   }

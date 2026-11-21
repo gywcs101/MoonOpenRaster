@@ -328,12 +328,14 @@
         "fixtures/krita-5.3.4.ora",
         "fixtures/krita-5.3.4.png",
         "fixtures/gradient16.ora",
+        "fixtures/baseline-mixed.ora",
+        "fixtures/baseline-mixed-edited.ora",
         "web/assets/import-samples/*",
         "fixtures/ora-test.ttf"
       ],
       "license": "MIT",
       "license_file": "LICENSE",
-      "source": "Project-generated Light study and 16-bit gradient fixtures and format exercises; see fixtures/README.md The test font has original geometric outlines."
+      "source": "Project-generated Light study and 16-bit gradient fixtures, SVG/16-bit mixed review examples, and format exercises; see fixtures/README.md The test font has original geometric outlines."
     }
   ],
   "development_dependencies_note": "Playwright and Pillow are installed separately for validation; their implementation code is not redistributed in the repository or the two bundles. node_modules and .mooncakes must be excluded.",

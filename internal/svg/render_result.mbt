@@ -5,6 +5,7 @@ pub(all) enum RenderDiagnosticKind {
   ResourceUnresolved
   ResourceCycle
   ResourceLimitExceeded
+  FeatureUnsupported
 }
 
 ///|

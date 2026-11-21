@@ -678,6 +678,7 @@ fn register_filter_graph(
     id,
     primitives,
     primitive_regions: regions,
+    filter_res: get_attr(attrs, "filterRes"),
     linear_color: color,
     viewport: ctx.current_length_viewport().unwrap_or((300.0, 150.0)),
     units,

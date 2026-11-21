@@ -278,7 +278,13 @@ try {
   await reference.close();
   const nestedViews = path.join(root, '_build/svg-roundtrip');
   for (const variant of ['nested-image-views', 'nested-image-viewport', 'filter-convolution']) {
-    await page.locator('#file').setInputFiles(path.join(nestedViews, variant + '-input.ora'));
+    const source = variant === 'nested-image-viewport'
+      ? path.join(root, 'fixtures/baseline-mixed.ora')
+      : path.join(nestedViews, variant + '-input.ora');
+    const expected = variant === 'nested-image-viewport'
+      ? path.join(root, 'fixtures/baseline-mixed-edited.ora')
+      : path.join(nestedViews, variant + '-vector-edited.ora');
+    await page.locator('#file').setInputFiles(source);
     await idle();
     assert.equal(await page.locator('#name').inputValue(), 'Vector');
     await page.locator('#x').fill('1');
@@ -292,7 +298,7 @@ try {
     await page.locator('#save').click();
     const viewOutput = path.join(temp, variant + '-vector.ora');
     await (await viewDownload).saveAs(viewOutput);
-    assert.deepEqual(fs.readFileSync(viewOutput), fs.readFileSync(path.join(nestedViews, variant + '-vector-edited.ora')));
+    assert.deepEqual(fs.readFileSync(viewOutput), fs.readFileSync(expected));
     await page.locator('#file').setInputFiles(viewOutput);
     await idle();
     assert.equal(await page.locator('#name').inputValue(), 'Vector');

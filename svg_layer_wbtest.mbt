@@ -552,3 +552,27 @@ test "SVG reports unresolved external XML entities before rendering" {
     _ => fail("Expected an unresolved SVG entity diagnostic")
   }
 }
+
+///|
+test "SVG filterRes disables zero dimensions and reports unsupported grids" {
+  for resolution in ["0", "2 0", "0.8 2"] {
+    let svg = "<svg width='2' height='2'><defs><filter id='ink' filterRes='" +
+      resolution +
+      "'><feFlood flood-color='red'/></filter></defs><rect width='2' height='2' filter='url(#ink)'/></svg>"
+    assert_eq(
+      decode_svg(@utf8.encode(svg)).pixels(),
+      Array::make(16, (0 : Byte)),
+    )
+  }
+  for resolution in ["4 2", "-1 0", "bad"] {
+    let svg = "<svg width='2' height='2'><defs><filter id='ink' filterRes='" +
+      resolution +
+      "'><feFlood flood-color='red'/></filter></defs><rect width='2' height='2' filter='url(#ink)'/></svg>"
+    let result = Ok(decode_svg(@utf8.encode(svg))) catch { e => Err(e) }
+    match result {
+      Err(Unsupported(message)) =>
+        assert_true(message.contains("filterRes=" + resolution))
+      _ => fail("Expected an explicit filterRes diagnostic")
+    }
+  }
+}

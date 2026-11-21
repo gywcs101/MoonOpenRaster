@@ -20,7 +20,10 @@ elif args.svg_filter:
     svg_variant = "filter-convolution"
 wide = args.rgba16 or svg_variant is not None
 if svg_variant:
-    fixture = ROOT / "_build/svg-roundtrip" / f"{svg_variant}-input.ora"
+    fixture = (
+        ROOT / "fixtures/baseline-mixed.ora" if args.svg_viewport
+        else ROOT / "_build/svg-roundtrip" / f"{svg_variant}-input.ora"
+    )
     out = ROOT / "_build" / f"consistency-{svg_variant}"
 else:
     fixture = ROOT / "fixtures" / ("gradient16.ora" if wide else "krita-5.3.4.ora")
@@ -77,7 +80,10 @@ for name in ["library", "cli", "bridge"]:
 assert pixels[0] == pixels[1] == pixels[2]
 assert trees[0] == trees[1] == trees[2]
 if svg_variant:
-    expected = fixture.with_name(f"{svg_variant}-vector-edited.ora").read_bytes()
+    expected = (
+        fixture.with_name("baseline-mixed-edited.ora") if args.svg_viewport
+        else fixture.with_name(f"{svg_variant}-vector-edited.ora")
+    ).read_bytes()
     for name in ["library", "cli", "bridge"]:
         assert (out / (name + ".ora")).read_bytes() == expected
 print("PASS: external library, CLI and web bridge produce identical edited tree and pixels; browser reference ready")

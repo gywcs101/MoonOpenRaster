@@ -97,6 +97,10 @@ moon run cmd/main --target js -- edit drawing.ora changed.ora edits.json
 
 工作台可以直接导入支持的静态 SVG，也可以打开含 SVG 图层的 ORA。仓库版本支持内部 CSS、图形复用，以及归档内 CSS、PNG、JPEG 和嵌套 SVG 资源。SVG 可使用随稿字体显示普通双向混排和常用汉字、拉丁字母竖排，也可以用内置字体显示通用无衬线和衬线文字。图层支持移动、显隐、透明度、混合、复制和排序。保存 ORA 会保留 SVG 源文件，导出 PNG 会重新合成当前画面。在「样例与练习 → 地形测绘图」中，可以将 SVG 等高线与 16 位 TIFF 地形放在同一文档。
 
+## 混合稿编辑案例
+
+下载 [原稿](fixtures/baseline-mixed.ora) 和 [对照成品](fixtures/baseline-mixed-edited.ora)。原稿包含引用随稿字体、样式表和图片的 SVG 图层，以及一层 16 位 PNG。用网页打开原稿，选中 `Vector`，把 X 设为 1，不透明度设为 50%，应用修改并保存。重开后可继续修改两层。成品包含重新计算的 16 位合并图和 8 位缩略图。[命令行复现与验证](docs/BASELINE.zh-CN.md#svg-与-16-位混合案例)
+
 ## 兼容性与限制
 
 - 交付目标为 **OpenRaster 0.0.6 Full baseline**，当前已验证的栅格编辑流程包括 8 位与 16 位每通道的 sRGB 图层、混合位深、嵌套组、负偏移及 20 种基线合成操作。各图层按原精度保存，含 16 位层时重新生成 16 位合成，归档缩略图为 8 位。
