@@ -55,7 +55,8 @@ def check_font_layer(cli, variant="font"):
     percentage_position = variant == "font-percentage-position"
     external_outline_font = variant == "font-svg-outline-resource"
     outline_font = variant == "font-svg-outline" or external_outline_font
-    right_to_left = variant == "font-rtl"
+    bidi_spans = variant == "font-rtl-spans"
+    right_to_left = variant == "font-rtl" or bidi_spans
     vertical = variant in ("font-vertical", "font-vertical-centered")
     centered_vertical = variant == "font-vertical-centered"
     external_tref = variant == "font-tref-resource"
@@ -69,6 +70,7 @@ def check_font_layer(cli, variant="font"):
     edited = OUT / f"{stem}-edited.ora"
     edited.unlink(missing_ok=True)
     font = (ROOT / "fixtures/ora-test.ttf").read_bytes()
+    latin_font = font
     if right_to_left:
         # Keep the authored outlines and advances. Map them to two Hebrew letters.
         modified = bytearray(font)
@@ -90,6 +92,8 @@ def check_font_layer(cli, variant="font"):
     face = f'@font-face {{ font-family: OraTest; src: url("{uri}"); }}'
     if multiple_sources:
         face = f'@font-face {{ font-family: OraTest; src: local("Uninstalled"), URL("../font/unsupported.woff"), url("{uri}") format("truetype"); }}'
+    if bidi_spans:
+        face += '@font-face { font-family: Latin; src: url("../font/latin.ttf"); }'
     styles = "@import '../styles/level/index.css';" if imported else face
     if weighted or slanted:
         descriptor = "font-weight: 700" if weighted else "font-style: italic"
@@ -135,6 +139,9 @@ def check_font_layer(cli, variant="font"):
     if right_to_left:
         position_attrs = 'x="16" y="8" direction="rtl" xml:lang="he"'
         text = "אב"
+        if bidi_spans:
+            font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
+            text = 'אב<tspan font-family="Latin" fill="blue">A</tspan>'
     if vertical:
         position_attrs = 'x="5" y="4" writing-mode="tb-rl" text-anchor="middle"' if centered_vertical else 'x="5" y="0" writing-mode="tb" glyph-orientation-vertical="0"'
         font_attributes = 'font-family="OraTest" font-size="4" fill="red"'
@@ -167,6 +174,8 @@ def check_font_layer(cli, variant="font"):
     red = (65535, 0, 0, 65535)
 
     def glyph_ink(x, y):
+        if bidi_spans:
+            return (8 <= x < 11 and y >= 5) or (12 <= x < 14 and y >= 6)
         if stretched:
             return (x < 6 and y >= 4) or (x >= 12 and y >= 2)
         if spacing or letter_spacing or weighted or slanted:
@@ -178,6 +187,11 @@ def check_font_layer(cli, variant="font"):
         if vertical:
             return 3 <= x < 6 and y % 4 != 0
         return (x < 4 and y >= 4) or (8 <= x < 14 and y >= 2)
+
+    def ink(x, y, background):
+        if bidi_spans and 4 <= x < 6 and y >= 6:
+            return (0, 0, 65535, 65535)
+        return red if glyph_ink(x, y) else background
 
     with zipfile.ZipFile(source, "w") as archive:
         archive.writestr("mimetype", "image/openraster")
@@ -193,6 +207,8 @@ def check_font_layer(cli, variant="font"):
             archive.writestr("data/word/label.svg", referenced_text)
         if not embedded and not outline_font:
             archive.writestr("data/font/测试.ttf", font)
+        if bidi_spans:
+            archive.writestr("data/font/latin.ttf", latin_font)
         if multiple_sources:
             archive.writestr("data/font/unsupported.woff", b"invalid font")
         if weighted or slanted:
@@ -208,7 +224,7 @@ def check_font_layer(cli, variant="font"):
             archive.writestr("data/styles/level/index.css", "@import 'font.css';")
             archive.writestr("data/styles/level/font.css", face.replace("../font/", "../../font/"))
         archive.writestr("data/base.png", png(16, 8, 16, lambda x, y: BASE))
-        archive.writestr("mergedimage.png", png(16, 8, 16, lambda x, y: red if glyph_ink(x, y) else BASE))
+        archive.writestr("mergedimage.png", png(16, 8, 16, lambda x, y: ink(x, y, BASE)))
         archive.writestr("Thumbnails/thumbnail.png", png(16, 8, 8, lambda x, y: (255, 0, 0, 255) if glyph_ink(x, y) else (39, 78, 117, 255)))
 
     changes = OUT / "font-edits.json"
@@ -227,13 +243,15 @@ def check_font_layer(cli, variant="font"):
         if not embedded and not outline_font:
             assert archive.read("data/font/测试.ttf") == font
             assert archive.getinfo("data/font/测试.ttf").flag_bits & 0x800
+        if bidi_spans:
+            assert archive.read("data/font/latin.ttf") == latin_font
         if imported:
             assert archive.read("data/styles/level/index.css") == b"@import 'font.css';"
             assert archive.read("data/styles/level/font.css").decode() == face.replace("../font/", "../../font/")
         root = ET.fromstring(archive.read("stack.xml"))
         assert (root.get("xres"), root.get("yres")) == ("96", "72")
         assert root.find("./stack/layer[@name='Raster']").get("x") == "1"
-        expected = [red if glyph_ink(x, y) else BASE if x else (0, 0, 0, 0)
+        expected = [ink(x, y, BASE if x else (0, 0, 0, 0))
                     for y in range(8) for x in range(16)]
         width, height, depth, actual = decode_rgba(archive.read("mergedimage.png"))
         assert (width, height, depth) == (16, 8, 16)
@@ -444,7 +462,7 @@ def main():
         "font-letter-spacing", "font-weight", "font-style", "font-alternate-sources",
         "font-relative-size", "font-percentage-position", "font-svg-outline", "font-svg-outline-resource", "font-rtl",
         "font-tref", "font-tref-resource",
-        "font-vertical", "font-vertical-centered",
+        "font-vertical", "font-vertical-centered", "font-rtl-spans",
     ):
         check_font_layer(cli, variant)
     check_default_font(cli)

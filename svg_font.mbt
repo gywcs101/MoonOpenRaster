@@ -931,14 +931,6 @@ fn svg_glyph_group(
     ) {
     raise Unsupported("Nested SVG vertical text layout is unsupported")
   }
-  if !element.child_elements().is_empty() &&
-    (
-      style.get("direction") == Some("rtl") ||
-      style.get("writing-mode") == Some("rl") ||
-      style.get("writing-mode") == Some("rl-tb")
-    ) {
-    raise Unsupported("Nested right-to-left SVG text layout is unsupported")
-  }
   let font_size = svg_dimension(style.get("font-size").unwrap_or("16"))
   let (width, height) = viewport
   let xs = svg_text_numbers(element, "x", font_size, width)
@@ -999,6 +991,22 @@ fn svg_glyph_group(
   cursor.val = (x, y)
   let mut children : Array[@dom.Node] = []
   let anchor = style.get("text-anchor").unwrap_or("start")
+  let rtl = style.get("direction") == Some("rtl") ||
+    ["rl", "rl-tb"].contains(style.get("writing-mode").unwrap_or(""))
+  if !element.child_elements().is_empty() &&
+    (rtl || @bidi.requires_bidi(element.text())) {
+    if path is None && svg_unpositioned_spans(element) {
+      let children = svg_bidi_glyphs(
+        element, style, selector, sheets, x, y, faces, fonts, outline_size, load,
+      )
+      return svg_wrap_glyph_group(element, selector, sheets, children)
+    }
+    if rtl {
+      raise Unsupported(
+        "SVG bidirectional text spans define multiple positioning contexts",
+      )
+    }
+  }
   if element.child_elements().is_empty() {
     let (paths, next_x, next_y) = svg_glyph_run(
       element.text(),
@@ -1129,6 +1137,16 @@ fn svg_glyph_group(
       cursor.val = (end_x + shift, end_y)
     }
   }
+  svg_wrap_glyph_group(element, selector, sheets, children)
+}
+
+///|
+fn svg_wrap_glyph_group(
+  element : @dom.Element,
+  selector : @css.Element,
+  sheets : Array[@css.Stylesheet],
+  children : Array[@dom.Node],
+) -> @dom.Element {
   let attrs = element.attrs.filter(pair => {
     !["x", "y", "dx", "dy", "rotate", "textLength", "lengthAdjust"].contains(
       pair.0,

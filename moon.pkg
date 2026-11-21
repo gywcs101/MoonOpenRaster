@@ -1,4 +1,5 @@
 import {
+  "moonbit-community/unicode-bidi" @bidi,
   "mizchi/font",
   "gywcs101/MoonOpenRaster/internal/svg" @vector,
   "Milky2018/css",
